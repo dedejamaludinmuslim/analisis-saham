@@ -114,6 +114,47 @@
     </svg>`;
   }
 
+  // ===== helper MA =====
+  function simpleMovingAverage(values, windowSize) {
+    if (!values || values.length === 0 || windowSize <= 0) return [];
+    const result = [];
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      sum += values[i];
+      if (i >= windowSize) {
+        sum -= values[i - windowSize];
+      }
+      if (i >= windowSize - 1) {
+        result.push(sum / windowSize);
+      } else {
+        result.push(null);
+      }
+    }
+    return result;
+  }
+
+  function classifyMajorTrend(latestClose, latestMa20, latestMa50) {
+    if (!latestClose || !latestMa20 || !latestMa50) return "Unknown";
+    if (latestClose > latestMa50 && latestMa20 > latestMa50) return "Uptrend";
+    if (latestClose < latestMa50 && latestMa20 < latestMa50) return "Downtrend";
+    return "Sideways";
+  }
+
+  function majorTrendChipClass(trend) {
+    const base =
+      "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold";
+    switch (trend) {
+      case "Uptrend":
+        return `${base} bg-emerald-500/15 text-emerald-300 border border-emerald-500/40`;
+      case "Downtrend":
+        return `${base} bg-red-500/15 text-red-300 border border-red-500/40`;
+      case "Sideways":
+        return `${base} bg-slate-500/15 text-slate-200 border border-slate-500/40`;
+      default:
+        return `${base} bg-slate-700/40 text-slate-200 border border-slate-600/60`;
+    }
+  }
+
   // ===== Toggle Tentang Aplikasi =====
   if (btnToggleAbout && aboutBox) {
     btnToggleAbout.addEventListener("click", () => {
@@ -404,6 +445,44 @@
       div.textContent = "Belum ada data harga untuk saham ini.";
       trendList.appendChild(div);
       return;
+    }
+
+    // ===== PERHITUNGAN MA UNTUK TREND FOLLOWING =====
+    const closesAsc = data
+      .slice()
+      .reverse()
+      .map((r) => r.close_price)
+      .filter((v) => typeof v === "number");
+
+    const ma20Arr = simpleMovingAverage(closesAsc, 20);
+    const ma50Arr = simpleMovingAverage(closesAsc, 50);
+
+    const latestClose = data[0].close_price;
+    const latestMa20 =
+      ma20Arr.length > 0 ? ma20Arr[ma20Arr.length - 1] : null;
+    const latestMa50 =
+      ma50Arr.length > 0 ? ma50Arr[ma50Arr.length - 1] : null;
+
+    const majorTrend = classifyMajorTrend(
+      latestClose,
+      latestMa20,
+      latestMa50
+    );
+
+    // Cari Exit All terakhir SEBELUM baris terbaru (untuk re-entry)
+    let lastExitRow = null;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i].signal === "Exit All") {
+        lastExitRow = data[i];
+        break;
+      }
+    }
+
+    let isReentryZone = false;
+    if (lastExitRow && latestClose && latestMa50 && majorTrend === "Uptrend") {
+      if (latestClose > latestMa50 && latestClose > lastExitRow.close_price) {
+        isReentryZone = true;
+      }
     }
 
     const sparkValues = data
@@ -700,6 +779,51 @@
       });
 
       card.appendChild(body);
+
+      // ====== BLOK TREND FOLLOWING & RE-ENTRY (hanya di baris terbaru) ======
+      if (isLatest) {
+        const tfBox = document.createElement("div");
+        tfBox.className =
+          "mt-2 border-t border-slate-800 pt-2 text-[11px] text-slate-300";
+
+        const trendChipClass = majorTrendChipClass(majorTrend);
+        const ma20Text =
+          latestMa20 != null ? latestMa20.toFixed(2) : "–";
+        const ma50Text =
+          latestMa50 != null ? latestMa50.toFixed(2) : "–";
+
+        const reentryText = isReentryZone ? "Zona Re-entry" : "Belum";
+        const reentryClass = isReentryZone
+          ? "text-emerald-300 font-semibold"
+          : "text-slate-400";
+
+        tfBox.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-semibold text-slate-100">Trend Following</span>
+            <span class="${trendChipClass}">
+              ${majorTrend}
+            </span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-[10px]">
+            <div>MA20: <span class="font-semibold">${ma20Text}</span></div>
+            <div>MA50: <span class="font-semibold">${ma50Text}</span></div>
+            <div>Re-entry: <span class="${reentryClass}">${reentryText}</span></div>
+          </div>
+          ${
+            lastExitRow
+              ? `<p class="mt-1 text-[10px] text-slate-500">
+                  Zona re-entry muncul jika setelah sinyal <span class="text-red-300 font-semibold">Exit All</span>,
+                  harga kembali di atas MA50 dalam kondisi Uptrend dan lebih tinggi dari harga exit terakhir.
+                 </p>`
+              : `<p class="mt-1 text-[10px] text-slate-500">
+                  Belum ada riwayat <span class="text-red-300 font-semibold">Exit All</span> sebelumnya, sehingga zona re-entry belum dihitung.
+                 </p>`
+          }
+        `;
+
+        card.appendChild(tfBox);
+      }
+
       card.appendChild(footer);
 
       trendList.appendChild(card);
