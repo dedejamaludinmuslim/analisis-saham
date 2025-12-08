@@ -7,12 +7,12 @@
   "theme_color": "#22c55e",
   "icons": [
     {
-      "src": "saham-192x192.png",
+      "src": "saham-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "saham-512x512.png",
+      "src": "saham-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
