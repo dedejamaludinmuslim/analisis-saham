@@ -14,7 +14,7 @@
   <!-- Perbesar semua font 150% -->
   <style>
     html {
-      font-size: 111%;
+      font-size: 150%;
     }
   </style>
 </head>
@@ -32,7 +32,7 @@
             Aplikasi Analisis Saham
           </h1>
           <p class="text-xs text-slate-100/80">
-            Trailing stop & tren harian berbasis closing price
+            Trailing stop, trend following & tren harian berbasis closing price
           </p>
         </div>
       </div>
@@ -64,7 +64,7 @@
       </div>
 
       <p class="text-[11px] text-slate-400">
-        Ringkasan posisi terakhir setiap saham: sinyal, drawdown, dan status tren.
+        Ringkasan posisi terakhir setiap saham: sinyal TS, drawdown, dan status tren.
       </p>
 
       <div id="dashboardList" class="space-y-1 max-h-[260px] overflow-y-auto pr-1 text-xs">
@@ -82,7 +82,7 @@
             <span class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 text-sm">
               📊
             </span>
-            Tren Saham & Trailing Stop
+            Tren Saham, Trailing Stop & Trend Following
           </h2>
           <span class="text-[10px] uppercase tracking-[0.14em] text-slate-500">
             Fitur 2 • Analisis
@@ -112,8 +112,8 @@
 
         <!-- Info kecil -->
         <p class="text-[11px] text-slate-400 mb-2">
-          Data berdasarkan <span class="font-semibold text-slate-200">closing price harian</span>. 
-          Peak & trailing stop dihitung otomatis dari riwayat harga saham tersebut.
+          Data berdasarkan <span class="font-semibold text-slate-200">closing price harian</span>.
+          TS dipakai untuk swing / proteksi, MA20/MA50 dipakai untuk trend following & re-entry.
         </p>
 
         <!-- LIST CARD TREN -->
@@ -227,8 +227,9 @@
             >
               <p class="text-[11px] text-slate-100">
                 Aplikasi analisis saham berbasis <span class="font-medium">closing price</span>
-                dengan fitur <span class="font-medium">trailing stop</span> dan
-                <span class="font-medium">sinyal jual bertahap</span> (Hold, Sell 30%, Sell 50%, Exit All).
+                dengan kombinasi <span class="font-medium">trailing stop (swing)</span> dan
+                <span class="font-medium">trend following sederhana (MA20/MA50)</span>
+                untuk membantu keputusan hold, jual bertahap, dan re-entry.
               </p>
               <div>
                 <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200 mb-1">
@@ -238,8 +239,10 @@
                   <li>Masukkan kode saham dan harga close harian, lalu tekan <span class="font-medium">Simpan Data</span>.</li>
                   <li>Kosongkan tanggal untuk memakai tanggal hari ini secara otomatis.</li>
                   <li>Gunakan tombol <span class="font-medium">Change Trailing Stop</span> untuk mengubah nilai TS1/TS2/TS3 global.</li>
-                  <li>Pada kartu tren, klik nilai <span class="font-medium underline decoration-dotted">Close</span> atau
+                  <li>Di fitur Tren, klik <span class="font-medium underline decoration-dotted">Close</span> atau
                     <span class="font-medium underline decoration-dotted">kode saham</span> untuk mengoreksi data lalu simpan.</li>
+                  <li>Gunakan bagian <span class="font-medium">Trend Following</span> di kartu terbaru untuk melihat MA20/MA50 dan status
+                    <span class="font-medium">Zona Re-entry</span>.</li>
                 </ul>
               </div>
             </div>
@@ -310,7 +313,7 @@
 
     <!-- FOOTNOTE -->
     <p class="text-[10px] text-slate-500 text-center">
-      Mode: Swing / End-of-Day • Sinyal: Hold / Sell 30% / Sell 50% / Exit All
+      Mode: Swing / Trend Following End-of-Day • Sinyal: Hold / Sell 30% / Sell 50% / Exit All • Zona Re-entry (MA20/MA50)
     </p>
 
   </main>
