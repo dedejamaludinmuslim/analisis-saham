@@ -27,14 +27,19 @@
   const dashboardList = document.getElementById("dashboardList");
   const btnReloadDashboard = document.getElementById("btnReloadDashboard");
 
-  const btnExportCsv = document.getElementById("btnExportCsv");
-  const catatanSaham = document.getElementById("catatanSaham");
-  const btnSaveCatatan = document.getElementById("btnSaveCatatan");
-
   const ts1Input = document.getElementById("ts1Input");
   const ts2Input = document.getElementById("ts2Input");
   const ts3Input = document.getElementById("ts3Input");
   const btnSaveTSConfig = document.getElementById("btnSaveTSConfig");
+
+  const btnToggleTS = document.getElementById("btnToggleTS");
+  const tsConfigBox = document.getElementById("tsConfigBox");
+
+  // ===== DEFAULT TANGGAL: HARI INI =====
+  if (closeDateInput) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    closeDateInput.value = todayStr;
+  }
 
   // ===== helper visual =====
   function getSignalBadge(signal) {
@@ -128,6 +133,13 @@
   if (btnAboutClose) btnAboutClose.addEventListener("click", closeAbout);
   if (btnAboutCloseBottom)
     btnAboutCloseBottom.addEventListener("click", closeAbout);
+
+  // ===== Toggle Trailing Stop Box =====
+  if (btnToggleTS && tsConfigBox) {
+    btnToggleTS.addEventListener("click", () => {
+      tsConfigBox.classList.toggle("hidden");
+    });
+  }
 
   // ===== PENGATURAN TRAILING STOP (GLOBAL) =====
   async function loadTSConfig() {
@@ -249,6 +261,7 @@
           return;
         }
 
+        // fallback: kalau tanggal kosong, pakai hari ini
         if (!closeDate) {
           const today = new Date();
           closeDate = today.toISOString().slice(0, 10);
@@ -634,99 +647,6 @@
 
       trendList.appendChild(card);
     });
-
-    // ====== CATATAN SAHAM ======
-    if (catatanSaham) {
-      const { data: sahamRow, error: errSaham } = await db
-        .from("saham")
-        .select("catatan")
-        .eq("kode", kode)
-        .maybeSingle();
-
-      if (!errSaham && sahamRow) {
-        catatanSaham.value = sahamRow.catatan || "";
-      } else {
-        catatanSaham.value = "";
-      }
-
-      if (btnSaveCatatan && !btnSaveCatatan._bound) {
-        btnSaveCatatan._bound = true;
-        btnSaveCatatan.addEventListener("click", async () => {
-          const teks = catatanSaham.value || "";
-          const { error: errUpdate } = await db
-            .from("saham")
-            .update({ catatan: teks })
-            .eq("kode", kode);
-
-          if (errUpdate) {
-            alert("Gagal menyimpan catatan.");
-          } else {
-            alert("Catatan tersimpan.");
-            loadDashboard();
-          }
-        });
-      }
-    }
-
-    // ====== EXPORT CSV ======
-    if (btnExportCsv && !btnExportCsv._bound) {
-      btnExportCsv._bound = true;
-      btnExportCsv.addEventListener("click", () => {
-        if (!data || data.length === 0) {
-          alert("Belum ada data untuk diexport.");
-          return;
-        }
-        const header = [
-          "tanggal",
-          "kode",
-          "close",
-          "peak",
-          "ts1",
-          "ts2",
-          "ts3",
-          "drawdown_pct",
-          "signal",
-          "status_tren",
-        ];
-        const rows = data
-          .slice()
-          .reverse()
-          .map((row) => [
-            row.close_date,
-            row.kode,
-            row.close_price,
-            row.peak_price,
-            row.ts1_price,
-            row.ts2_price,
-            row.ts3_price,
-            row.drawdown_pct,
-            row.signal,
-            row.status_tren,
-          ]);
-
-        const csvLines = [
-          header.join(","),
-          ...rows.map((r) =>
-            r
-              .map((val) =>
-                val == null ? "" : String(val).replace(/,/g, ".")
-              )
-              .join(",")
-          ),
-        ];
-        const blob = new Blob([csvLines.join("\n")], {
-          type: "text/csv;charset=utf-8;",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `tren_${kode}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    }
   }
 
   if (btnLoadTrend) {
