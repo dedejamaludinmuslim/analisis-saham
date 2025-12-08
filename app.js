@@ -18,12 +18,6 @@
   const btnLoadTrend = document.getElementById("btnLoadTrend");
   const trendList = document.getElementById("trendList");
 
-  const btnAbout = document.getElementById("btnAbout");
-  const aboutModal = document.getElementById("aboutModal");
-  const aboutOverlay = document.getElementById("aboutOverlay");
-  const btnAboutClose = document.getElementById("btnAboutClose");
-  const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
-
   const dashboardList = document.getElementById("dashboardList");
   const btnReloadDashboard = document.getElementById("btnReloadDashboard");
 
@@ -34,6 +28,9 @@
 
   const btnToggleTS = document.getElementById("btnToggleTS");
   const tsConfigBox = document.getElementById("tsConfigBox");
+
+  const btnToggleAbout = document.getElementById("btnToggleAbout");
+  const aboutBox = document.getElementById("aboutBox");
 
   // ===== DEFAULT TANGGAL: HARI INI =====
   if (closeDateInput) {
@@ -117,28 +114,16 @@
     </svg>`;
   }
 
-  // ===== modal tentang aplikasi =====
-  function openAbout() {
-    if (!aboutModal) return;
-    aboutModal.classList.remove("hidden");
+  // ===== Toggle Tentang Aplikasi =====
+  if (btnToggleAbout && aboutBox) {
+    btnToggleAbout.addEventListener("click", () => {
+      aboutBox.classList.toggle("hidden");
+    });
   }
-
-  function closeAbout() {
-    if (!aboutModal) return;
-    aboutModal.classList.add("hidden");
-  }
-
-  if (btnAbout) btnAbout.addEventListener("click", openAbout);
-  if (aboutOverlay) aboutOverlay.addEventListener("click", closeAbout);
-  if (btnAboutClose) btnAboutClose.addEventListener("click", closeAbout);
-  if (btnAboutCloseBottom)
-    btnAboutCloseBottom.addEventListener("click", closeAbout);
 
   // ===== Toggle Trailing Stop Box =====
   if (btnToggleTS && tsConfigBox) {
     btnToggleTS.addEventListener("click", () => {
-      // debug ringan (kalau buka console)
-      console.log("Toggle TS clicked");
       tsConfigBox.classList.toggle("hidden");
     });
   }
@@ -454,16 +439,35 @@
       const left = document.createElement("div");
       left.className = "flex items-center gap-2";
 
+      // ====== KODE SAHAM EDITABLE ======
+      let kodeDisplayEl = null;
+      let kodeInputEl = null;
+
+      const kodeWrapper = document.createElement("div");
+      kodeWrapper.className = "flex items-center gap-1";
+
       const kodeSpan = document.createElement("span");
       kodeSpan.className =
-        "text-sm font-semibold tracking-tight text-slate-100";
+        "text-sm font-semibold tracking-tight text-slate-100 cursor-pointer underline decoration-dotted underline-offset-2";
       kodeSpan.textContent = row.kode;
+
+      const kodeInput = document.createElement("input");
+      kodeInput.type = "text";
+      kodeInput.value = row.kode;
+      kodeInput.className =
+        "hidden w-20 rounded-md bg-slate-900 border border-slate-600 px-1.5 py-0.5 text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500";
+
+      kodeWrapper.appendChild(kodeSpan);
+      kodeWrapper.appendChild(kodeInput);
+
+      kodeDisplayEl = kodeSpan;
+      kodeInputEl = kodeInput;
 
       const dateSpan = document.createElement("span");
       dateSpan.className = "text-[11px] text-slate-400";
       dateSpan.textContent = row.close_date;
 
-      left.appendChild(kodeSpan);
+      left.appendChild(kodeWrapper);
       left.appendChild(dateSpan);
 
       const right = document.createElement("div");
@@ -610,33 +614,84 @@
         "hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]";
       footer.appendChild(saveBtn);
 
+      // ====== EVENT: EDIT KODE SAHAM ======
+      kodeDisplayEl.addEventListener("click", () => {
+        kodeDisplayEl.classList.add("hidden");
+        kodeInputEl.classList.remove("hidden");
+        if (saveBtn) saveBtn.classList.remove("hidden");
+        kodeInputEl.focus();
+        kodeInputEl.select();
+      });
+
+      kodeInputEl.addEventListener("keydown", (e) => {
+        if (
+          e.key === "Enter" &&
+          saveBtn &&
+          !saveBtn.classList.contains("hidden")
+        ) {
+          saveBtn.click();
+        }
+      });
+
+      // ====== EVENT: SIMPAN PERUBAHAN (kode & close) ======
       saveBtn.addEventListener("click", async () => {
         try {
-          if (!closeInputEl) return;
-          const newVal = parseFloat(closeInputEl.value);
-          if (!newVal || isNaN(newVal)) {
-            alert("Nilai close tidak valid.");
-            return;
+          const promises = [];
+
+          // UPDATE CLOSE (jika berubah & valid)
+          if (closeInputEl) {
+            const newClose = parseFloat(closeInputEl.value);
+            if (!isNaN(newClose) && newClose > 0 && newClose !== row.close_price) {
+              if (!row.harga_id) {
+                alert("ID harga tidak tersedia (periksa view saham_tren_view).");
+                return;
+              }
+              promises.push(
+                db
+                  .from("saham_harga")
+                  .update({ close_price: newClose })
+                  .eq("id", row.harga_id)
+              );
+            }
           }
 
-          if (!row.harga_id) {
-            alert("ID harga tidak tersedia (periksa view saham_tren_view).");
+          // UPDATE KODE (pindahkan baris ke saham lain)
+          if (kodeInputEl) {
+            const newKodeRaw = kodeInputEl.value || "";
+            const newKode = newKodeRaw.trim().toUpperCase();
+            if (newKode && newKode !== row.kode) {
+              if (!row.harga_id) {
+                alert("ID harga tidak tersedia (periksa view saham_tren_view).");
+                return;
+              }
+
+              const newSahamId = await getOrCreateSahamId(newKode);
+              promises.push(
+                db
+                  .from("saham_harga")
+                  .update({ saham_id: newSahamId })
+                  .eq("id", row.harga_id)
+              );
+            }
+          }
+
+          if (promises.length === 0) {
+            alert("Tidak ada perubahan data.");
             return;
           }
 
           saveBtn.disabled = true;
           saveBtn.textContent = "Menyimpan...";
 
-          const { error } = await db
-            .from("saham_harga")
-            .update({ close_price: newVal })
-            .eq("id", row.harga_id);
+          const results = await Promise.all(promises);
+          const anyError = results.find((r) => r.error);
 
-          if (error) {
-            console.error(error);
+          if (anyError) {
+            console.error(anyError.error);
             alert("Gagal menyimpan perubahan.");
           } else {
             await loadTrend(kode);
+            loadDashboard && loadDashboard();
           }
         } finally {
           saveBtn.disabled = false;
