@@ -941,14 +941,4 @@
       loadTrend(kode);
     });
   }
-
-    window.addEventListener("beforeinstallprompt", (e) => {
-    console.log("🔥 beforeinstallprompt fired", e);  // <-- tambah ini
-    e.preventDefault();
-    deferredPrompt = e;
-    if (btnInstallApp) {
-      btnInstallApp.classList.remove("hidden");
-    }
-  });
-
 })();
