@@ -137,6 +137,8 @@
   // ===== Toggle Trailing Stop Box =====
   if (btnToggleTS && tsConfigBox) {
     btnToggleTS.addEventListener("click", () => {
+      // debug ringan (kalau buka console)
+      console.log("Toggle TS clicked");
       tsConfigBox.classList.toggle("hidden");
     });
   }
