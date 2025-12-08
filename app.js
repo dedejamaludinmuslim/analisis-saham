@@ -22,6 +22,16 @@
   const aboutOverlay = document.getElementById("aboutOverlay");
   const btnAboutClose = document.getElementById("btnAboutClose");
   const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
+  const kodeSahamFilter = document.getElementById("kodeSahamFilter");
+  const btnLoadTrend = document.getElementById("btnLoadTrend");
+  const trendList = document.getElementById("trendList");
+
+  const dashboardList = document.getElementById("dashboardList");
+  const btnReloadDashboard = document.getElementById("btnReloadDashboard");
+
+  const btnExportCsv = document.getElementById("btnExportCsv");
+  const catatanSaham = document.getElementById("catatanSaham");
+  const btnSaveCatatan = document.getElementById("btnSaveCatatan"); 
 
   // helper warna signal
   function getSignalBadge(signal) {
@@ -38,6 +48,52 @@
       default:
         return `${base} bg-emerald-500/10 text-emerald-300 border border-emerald-500/40`;
     }
+  }
+  
+  function signalColorClass(signal) {
+    switch (signal) {
+      case "Exit All":
+        return "text-red-400";
+      case "Sell 50%":
+        return "text-orange-300";
+      case "Sell 30%":
+        return "text-amber-300";
+      default:
+        return "text-emerald-300";
+    }
+  }
+
+  function statusBgClass(status) {
+    switch (status) {
+      case "UP":
+        return "bg-emerald-500/10";
+      case "PULLBACK":
+        return "bg-sky-500/10";
+      default:
+        return "bg-slate-800/80";
+    }
+  }
+
+  // bikin simple sparkline SVG dari array angka
+  function createSparklineSvg(values) {
+    if (!values || values.length === 0) return "";
+    const w = 80;
+    const h = 24;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    const step = values.length > 1 ? w / (values.length - 1) : 0;
+    let d = "";
+    values.forEach((v, i) => {
+      const x = i * step;
+      const y = h - ((v - min) / range) * (h - 4) - 2; // padding 2px
+      d += (i === 0 ? "M" : "L") + x + " " + y + " ";
+    });
+
+    return `<svg viewBox="0 0 ${w} ${h}" class="w-20 h-6">
+      <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4" />
+    </svg>`;
   }
 
   function getTrendChip(status) {
@@ -138,6 +194,194 @@
       inputMessage.classList.add("text-red-400");
     }
   });
+  
+  async function loadDashboard() {
+    dashboardList.innerHTML = "";
+
+    const { data, error } = await db
+      .from("saham_ringkas_view")
+      .select("*")
+      .order("kode", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      const div = document.createElement("div");
+      div.className =
+        "text-sm text-red-400 bg-red-500/10 border border-red-500/40 rounded-xl px-3 py-2";
+      div.textContent = "Gagal memuat dashboard.";
+      dashboardList.appendChild(div);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      const div = document.createElement("div");
+      div.className =
+        "text-sm text-slate-300 bg-slate-800/70 border border-slate-700/80 rounded-xl px-3 py-2";
+      div.textContent = "Belum ada saham yang tercatat.";
+      dashboardList.appendChild(div);
+      return;
+    }
+
+    data.forEach((row) => {
+      const item = document.createElement("div");
+      item.className =
+        "flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border border-slate-800 " +
+        statusBgClass(row.status_tren);
+
+      const left = document.createElement("div");
+      left.className = "flex flex-col";
+
+      const kodeLine = document.createElement("div");
+      kodeLine.className = "flex items-center gap-2";
+      const kodeSpan = document.createElement("span");
+      kodeSpan.className =
+        "text-xs font-semibold text-slate-100 tracking-tight";
+      kodeSpan.textContent = row.kode;
+
+      const kategoriSpan = document.createElement("span");
+      kategoriSpan.className =
+        "text-[10px] px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-300";
+      kategoriSpan.textContent = row.kategori || "default";
+
+      kodeLine.appendChild(kodeSpan);
+      kodeLine.appendChild(kategoriSpan);
+
+      const infoLine = document.createElement("div");
+      infoLine.className = "text-[10px] text-slate-400";
+      infoLine.textContent = `Close ${row.close_price?.toFixed(
+        2
+      )} | DD ${row.drawdown_pct?.toFixed(2)}%`;
+
+      left.appendChild(kodeLine);
+      left.appendChild(infoLine);
+
+      const right = document.createElement("div");
+      right.className = "flex flex-col items-end gap-1";
+
+      const signalSpan = document.createElement("span");
+      signalSpan.className =
+        "text-[11px] font-semibold " + signalColorClass(row.signal);
+      signalSpan.textContent = row.signal;
+
+      const statusSpan = document.createElement("span");
+      statusSpan.className =
+        "text-[10px] text-slate-300 inline-flex items-center gap-1";
+      statusSpan.textContent = row.status_tren;
+
+      right.appendChild(signalSpan);
+      right.appendChild(statusSpan);
+
+      item.appendChild(left);
+      item.appendChild(right);
+
+      dashboardList.appendChild(item);
+    });
+  }
+
+    // ====== CATATAN SAHAM (fitur 3) ======
+    // load catatan dari tabel saham
+    if (catatanSaham) {
+      const { data: sahamRow, error: errSaham } = await db
+        .from("saham")
+        .select("catatan")
+        .eq("kode", kode)
+        .maybeSingle();
+
+      if (!errSaham && sahamRow) {
+        catatanSaham.value = sahamRow.catatan || "";
+      } else {
+        catatanSaham.value = "";
+      }
+
+      // simpan catatan
+      if (btnSaveCatatan && !btnSaveCatatan._bound) {
+        btnSaveCatatan._bound = true;
+        btnSaveCatatan.addEventListener("click", async () => {
+          const teks = catatanSaham.value || "";
+          const { error: errUpdate } = await db
+            .from("saham")
+            .update({ catatan: teks })
+            .eq("kode", kode);
+
+          if (errUpdate) {
+            alert("Gagal menyimpan catatan.");
+          } else {
+            alert("Catatan tersimpan.");
+            loadDashboard(); // refresh ringkasan
+          }
+        });
+      }
+    }
+
+    // ====== EXPORT CSV (fitur 4) ======
+    if (btnExportCsv && !btnExportCsv._bound) {
+      btnExportCsv._bound = true;
+      btnExportCsv.addEventListener("click", () => {
+        if (!data || data.length === 0) {
+          alert("Belum ada data untuk diexport.");
+          return;
+        }
+        const header = [
+          "tanggal",
+          "kode",
+          "close",
+          "peak",
+          "ts1",
+          "ts2",
+          "ts3",
+          "drawdown_pct",
+          "signal",
+          "status_tren",
+        ];
+        const rows = data
+          .slice()
+          .reverse() // dari lama ke baru di file
+          .map((row) => [
+            row.close_date,
+            row.kode,
+            row.close_price,
+            row.peak_price,
+            row.ts1_price,
+            row.ts2_price,
+            row.ts3_price,
+            row.drawdown_pct,
+            row.signal,
+            row.status_tren,
+          ]);
+
+        const csvLines = [
+          header.join(","),
+          ...rows.map((r) =>
+            r
+              .map((val) =>
+                val == null ? "" : String(val).replace(/,/g, ".")
+              )
+              .join(",")
+          ),
+        ];
+        const blob = new Blob([csvLines.join("\n")], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `tren_${kode}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
+  
+  // event tombol dashboard
+  if (btnReloadDashboard) {
+    btnReloadDashboard.addEventListener("click", () => {
+      loadDashboard();
+    });
+  }
+
+  // muat pertama kali
+  loadDashboard();
 
   // FUNGSI MUAT TREN (dipakai tombol & setelah edit)
   async function loadTrend(kodeParam) {
@@ -172,6 +416,14 @@
       return;
     }
 
+    // data sudah ada: kita siapkan untuk sparkline di baris terbaru
+    const sparkValues = data
+      .map((r) => r.close_price)
+      .filter((v) => typeof v === "number")
+      .slice()
+      .reverse() // dari lama ke baru
+      .slice(-20); // 20 titik terakhir
+    
     data.forEach((row, idx) => {
       const isLatest = idx === 0;
 
@@ -183,7 +435,16 @@
         card.className +=
           " border-sky-500/40 shadow-lg shadow-sky-500/20";
       }
-
+      
+     // tambahan highlight berdasar signal
+      if (row.signal === "Exit All") {
+        card.className += " bg-red-950/40";
+      } else if (row.signal === "Sell 50%") {
+        card.className += " bg-orange-950/30";
+      } else if (row.signal === "Sell 30%") {
+        card.className += " bg-amber-950/20";
+      }
+      
       const header = document.createElement("div");
       header.className = "flex items-center justify-between gap-2";
 
@@ -369,6 +630,21 @@
       });
 
       card.appendChild(header);
+      if (isLatest && sparkValues.length > 1) {
+        const sparkWrap = document.createElement("div");
+        sparkWrap.className =
+          "flex items-center gap-1 text-[10px] text-slate-400 mt-1";
+        sparkWrap.innerHTML =
+          '<span>Trend 20 hari:</span><span class="text-sky-400">' +
+          createSparklineSvg(sparkValues) +
+          "</span>";
+        // selipkan di bawah header
+        card.appendChild(header);
+        card.appendChild(sparkWrap);
+      } else {
+        card.appendChild(header);
+      }
+      
       card.appendChild(body);
       card.appendChild(footer);
 
