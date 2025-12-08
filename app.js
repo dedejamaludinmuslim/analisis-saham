@@ -33,6 +33,11 @@
   const catatanSaham = document.getElementById("catatanSaham");
   const btnSaveCatatan = document.getElementById("btnSaveCatatan"); 
 
+  const ts1Input = document.getElementById("ts1Input");
+  const ts2Input = document.getElementById("ts2Input");
+  const ts3Input = document.getElementById("ts3Input");
+  const btnSaveTSConfig = document.getElementById("btnSaveTSConfig"); 
+
   // helper warna signal
   function getSignalBadge(signal) {
     let base =
@@ -49,6 +54,81 @@
         return `${base} bg-emerald-500/10 text-emerald-300 border border-emerald-500/40`;
     }
   }
+  
+  // ===== PENGATURAN TRAILING STOP (GLOBAL) =====
+  async function loadTSConfig() {
+    if (!ts1Input || !ts2Input || !ts3Input) return;
+
+    const { data, error } = await db
+      .from("trailing_config")
+      .select("ts1_pct, ts2_pct, ts3_pct")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Gagal load config TS:", error);
+      return;
+    }
+
+    if (data) {
+      ts1Input.value = data.ts1_pct;
+      ts2Input.value = data.ts2_pct;
+      ts3Input.value = data.ts3_pct;
+    } else {
+      ts1Input.value = 5;
+      ts2Input.value = 10;
+      ts3Input.value = 15;
+    }
+  }
+
+  if (btnSaveTSConfig) {
+    btnSaveTSConfig.addEventListener("click", async () => {
+      const ts1 = parseFloat(ts1Input.value);
+      const ts2 = parseFloat(ts2Input.value);
+      const ts3 = parseFloat(ts3Input.value);
+
+      if (
+        !isFinite(ts1) ||
+        !isFinite(ts2) ||
+        !isFinite(ts3) ||
+        ts1 <= 0 ||
+        ts2 <= 0 ||
+        ts3 <= 0
+      ) {
+        alert("Nilai TS harus berupa persen > 0.");
+        return;
+      }
+
+      try {
+        btnSaveTSConfig.disabled = true;
+        btnSaveTSConfig.textContent = "Menyimpan...";
+
+        const { error } = await db.from("trailing_config").insert({
+          ts1_pct: ts1,
+          ts2_pct: ts2,
+          ts3_pct: ts3,
+        });
+
+        if (error) {
+          console.error(error);
+          alert("Gagal menyimpan pengaturan TS.");
+        } else {
+          alert("Pengaturan trailing stop tersimpan.\nData tren akan memakai nilai baru.");
+          // kalau mau, reload dashboard & tren terakhir
+          loadDashboard && loadDashboard();
+          const kode = kodeSahamFilter?.value?.trim().toUpperCase();
+          if (kode) loadTrend(kode);
+        }
+      } finally {
+        btnSaveTSConfig.disabled = false;
+        btnSaveTSConfig.textContent = "⚙️ Simpan pengaturan TS";
+      }
+    });
+  }
+
+  // panggil saat awal
+  loadTSConfig();
   
   function signalColorClass(signal) {
     switch (signal) {
