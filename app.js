@@ -114,7 +114,7 @@
     </svg>`;
   }
 
-  // ===== helper MA =====
+  // ===== helper MA & Trend Following =====
   function simpleMovingAverage(values, windowSize) {
     if (!values || values.length === 0 || windowSize <= 0) return [];
     const result = [];
@@ -153,6 +153,102 @@
       default:
         return `${base} bg-slate-700/40 text-slate-200 border border-slate-600/60`;
     }
+  }
+
+  /**
+   * Hitung MA20, MA50, major trend, dan zona re-entry dari array data saham_tren_view
+   * @param {Array} rows - hasil query saham_tren_view, urut DESC by close_date
+   */
+  function computeTrendFollowingFromRows(rows) {
+    if (!rows || rows.length === 0) {
+      return {
+        latestClose: null,
+        latestMa20: null,
+        latestMa50: null,
+        majorTrend: "Unknown",
+        isReentryZone: false,
+        lastExitRow: null,
+      };
+    }
+
+    const closesAsc = rows
+      .slice()
+      .reverse()
+      .map((r) => r.close_price)
+      .filter((v) => typeof v === "number");
+
+    const ma20Arr = simpleMovingAverage(closesAsc, 20);
+    const ma50Arr = simpleMovingAverage(closesAsc, 50);
+
+    const latestClose = rows[0].close_price;
+    const latestMa20 =
+      ma20Arr.length > 0 ? ma20Arr[ma20Arr.length - 1] : null;
+    const latestMa50 =
+      ma50Arr.length > 0 ? ma50Arr[ma50Arr.length - 1] : null;
+
+    const majorTrend = classifyMajorTrend(
+      latestClose,
+      latestMa20,
+      latestMa50
+    );
+
+    let lastExitRow = null;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].signal === "Exit All") {
+        lastExitRow = rows[i];
+        break;
+      }
+    }
+
+    let isReentryZone = false;
+    if (lastExitRow && latestClose && latestMa50 && majorTrend === "Uptrend") {
+      if (latestClose > latestMa50 && latestClose > lastExitRow.close_price) {
+        isReentryZone = true;
+      }
+    }
+
+    return {
+      latestClose,
+      latestMa20,
+      latestMa50,
+      majorTrend,
+      isReentryZone,
+      lastExitRow,
+    };
+  }
+
+  /**
+   * Helper untuk dashboard: ambil data tren dari DB lalu hitung TrendF & Re-entry
+   */
+  async function getTrendFollowingInfoFromDb(kode) {
+    const kodeUpper = (kode || "").trim().toUpperCase();
+    if (!kodeUpper) {
+      return {
+        majorTrend: "Unknown",
+        isReentryZone: false,
+      };
+    }
+
+    const { data, error } = await db
+      .from("saham_tren_view")
+      .select("*")
+      .eq("kode", kodeUpper)
+      .order("close_date", { ascending: false })
+      .limit(60);
+
+    if (error || !data || data.length === 0) {
+      console.error("Gagal load TrendF untuk", kodeUpper, error);
+      return {
+        majorTrend: "Unknown",
+        isReentryZone: false,
+      };
+    }
+
+    const tf = computeTrendFollowingFromRows(data);
+    return {
+      majorTrend: tf.majorTrend,
+      isReentryZone: tf.isReentryZone,
+    };
   }
 
   // ===== Toggle Tentang Aplikasi =====
@@ -350,7 +446,11 @@
       return;
     }
 
-    data.forEach((row) => {
+    // gunakan for..of supaya bisa await info TrendF tiap kode
+    for (const row of data) {
+      const { majorTrend, isReentryZone } =
+        await getTrendFollowingInfoFromDb(row.kode);
+
       const item = document.createElement("div");
       item.className =
         "flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border border-slate-800 " +
@@ -380,8 +480,16 @@
         2
       )} | DD ${row.drawdown_pct?.toFixed(2)}%`;
 
+      // BARU: info trend following + re-entry
+      const tfLine = document.createElement("div");
+      tfLine.className = "text-[10px] text-slate-400";
+      tfLine.textContent = `TrendF: ${majorTrend} | Re-entry: ${
+        isReentryZone ? "Zona Re-entry" : "Belum"
+      }`;
+
       left.appendChild(kodeLine);
       left.appendChild(infoLine);
+      left.appendChild(tfLine);
 
       const right = document.createElement("div");
       right.className = "flex flex-col items-end gap-1";
@@ -403,7 +511,7 @@
       item.appendChild(right);
 
       dashboardList.appendChild(item);
-    });
+    }
   }
 
   if (btnReloadDashboard) {
@@ -447,43 +555,14 @@
       return;
     }
 
-    // ===== PERHITUNGAN MA UNTUK TREND FOLLOWING =====
-    const closesAsc = data
-      .slice()
-      .reverse()
-      .map((r) => r.close_price)
-      .filter((v) => typeof v === "number");
-
-    const ma20Arr = simpleMovingAverage(closesAsc, 20);
-    const ma50Arr = simpleMovingAverage(closesAsc, 50);
-
-    const latestClose = data[0].close_price;
-    const latestMa20 =
-      ma20Arr.length > 0 ? ma20Arr[ma20Arr.length - 1] : null;
-    const latestMa50 =
-      ma50Arr.length > 0 ? ma50Arr[ma50Arr.length - 1] : null;
-
-    const majorTrend = classifyMajorTrend(
-      latestClose,
+    const tfInfo = computeTrendFollowingFromRows(data);
+    const {
       latestMa20,
-      latestMa50
-    );
-
-    // Cari Exit All terakhir SEBELUM baris terbaru (untuk re-entry)
-    let lastExitRow = null;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i].signal === "Exit All") {
-        lastExitRow = data[i];
-        break;
-      }
-    }
-
-    let isReentryZone = false;
-    if (lastExitRow && latestClose && latestMa50 && majorTrend === "Uptrend") {
-      if (latestClose > latestMa50 && latestClose > lastExitRow.close_price) {
-        isReentryZone = true;
-      }
-    }
+      latestMa50,
+      majorTrend,
+      isReentryZone,
+      lastExitRow,
+    } = tfInfo;
 
     const sparkValues = data
       .map((r) => r.close_price)
@@ -786,7 +865,7 @@
         tfBox.className =
           "mt-2 border-t border-slate-800 pt-2 text-[11px] text-slate-300";
 
-        const trendChipClass = majorTrendChipClass(majorTrend);
+        const trendChip = majorTrendChipClass(majorTrend);
         const ma20Text =
           latestMa20 != null ? latestMa20.toFixed(2) : "–";
         const ma50Text =
@@ -800,7 +879,7 @@
         tfBox.innerHTML = `
           <div class="flex items-center justify-between mb-1">
             <span class="font-semibold text-slate-100">Trend Following</span>
-            <span class="${trendChipClass}">
+            <span class="${trendChip}">
               ${majorTrend}
             </span>
           </div>
