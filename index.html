@@ -14,9 +14,13 @@
   <!-- Perbesar semua font 150% -->
   <style>
     html {
-      font-size: 111%;
+      font-size: 150%;
     }
   </style>
+
+  <!-- Manifest & theme-color (PWA) -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#22c55e" />
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
 
@@ -36,9 +40,20 @@
           </p>
         </div>
       </div>
-      <div class="hidden sm:flex flex-col items-end text-xs text-slate-100/80">
-        <span class="uppercase tracking-[0.16em] text-[10px]">Mode</span>
-        <span class="font-semibold">End-of-Day</span>
+
+      <div class="flex flex-col items-end gap-2 text-xs text-slate-100/80">
+        <!-- Tombol Install PWA -->
+        <button
+          id="btnInstallApp"
+          class="hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]"
+        >
+          📲 Install aplikasi
+        </button>
+
+        <div class="hidden sm:flex flex-col items-end text-xs text-slate-100/80">
+          <span class="uppercase tracking-[0.16em] text-[10px]">Mode</span>
+          <span class="font-semibold">End-of-Day</span>
+        </div>
       </div>
     </div>
   </header>
@@ -64,7 +79,7 @@
       </div>
 
       <p class="text-[11px] text-slate-400">
-        Ringkasan posisi terakhir setiap saham: sinyal TS, drawdown, dan status tren.
+        Ringkasan posisi terakhir setiap saham: sinyal TS, drawdown, status tren & trend following.
       </p>
 
       <div id="dashboardList" class="space-y-1 max-h-[260px] overflow-y-auto pr-1 text-xs">
@@ -75,7 +90,7 @@
     <!-- GRID 2 KARTU (Tren di kiri, Input di kanan) -->
     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
 
-      <!-- CARD: TREN SAHAM & TRAILING STOP (kiri, Fitur 1) -->
+      <!-- CARD: TREN SAHAM & TRAILING STOP (kiri, Fitur 2) -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5 flex flex-col">
         <div class="flex items-center justify-between mb-3 gap-2">
           <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
@@ -99,7 +114,7 @@
               id="kodeSahamFilter"
               type="text"
               placeholder="Misal: ANTM, CMRY, TAPG"
-              class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+              class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             />
           </div>
           <button
@@ -125,7 +140,7 @@
         </div>
       </section>
 
-      <!-- CARD: INPUT DATA SAHAM (kanan) -->
+      <!-- CARD: INPUT DATA SAHAM (kanan, Fitur 1) -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
@@ -143,12 +158,12 @@
           <!-- Kode Saham -->
           <div class="space-y-1">
             <label for="kodeSahamInput" class="text-xs font-medium text-slate-300">
-              Kode Saham
+              Kode Saham:
             </label>
             <input
               id="kodeSahamInput"
               type="text"
-              placeholder="Misal: ANTM, CMRY, TAPG"
+              placeholder="Contoh: ANTM, CMRY, TAPG"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             />
           </div>
@@ -162,15 +177,15 @@
               id="closePriceInput"
               type="number"
               step="0.01"
-              placeholder="Misal: 234, 1234"
+              placeholder="Misal: 540, 1230"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             />
           </div>
 
-          <!-- Tanggal (opsional) -->
+          <!-- Tanggal -->
           <div class="space-y-1">
             <label for="closeDateInput" class="text-xs font-medium text-slate-300 flex items-center justify-between">
-              <span>Tanggal:</span>
+              <span>Tanggal Close:</span>
               <span class="text-[10px] text-slate-500">
                 Kosongkan = hari ini
               </span>
@@ -216,7 +231,7 @@
                 type="button"
                 class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 transition active:scale-[0.99] cursor-pointer"
               >
-                ⚙️ Change Trailing Stop
+                ⚙️ Trailing Stop
               </button>
             </div>
 
