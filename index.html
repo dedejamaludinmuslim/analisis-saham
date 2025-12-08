@@ -14,7 +14,7 @@
   <!-- Perbesar semua font 150% -->
   <style>
     html {
-      font-size: 115%;
+      font-size: 150%;
     }
   </style>
 </head>
@@ -72,10 +72,10 @@
       </div>
     </section>
 
-    <!-- GRID 2 KARTU (Posisi ditukar: Tren di kiri, Input di kanan) -->
+    <!-- GRID 2 KARTU (Tren di kiri, Input di kanan) -->
     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
 
-      <!-- CARD: TREN SAHAM (sekarang di kiri, Fitur 2) -->
+      <!-- CARD: TREN SAHAM & TRAILING STOP (kiri, Fitur 2) -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5 flex flex-col">
         <div class="flex items-center justify-between mb-3 gap-2">
           <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
@@ -125,7 +125,7 @@
         </div>
       </section>
 
-      <!-- CARD: INPUT DATA SAHAM (sekarang di kanan, Fitur 1) -->
+      <!-- CARD: INPUT DATA SAHAM (kanan, Fitur 1) -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
@@ -182,20 +182,9 @@
             />
           </div>
 
-          <!-- Tombol -->
+          <!-- Tombol Simpan -->
           <div class="mt-3 space-y-2">
-            <div class="flex items-center justify-between gap-3">
-              <!-- kiri: tentang aplikasi -->
-              <button
-                id="btnAbout"
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 shadow-md shadow-amber-400/30 hover:bg-amber-300 transition active:scale-[0.99]"
-              >
-                <span>ℹ️</span>
-                <span>Tentang aplikasi</span>
-              </button>
-
-              <!-- kanan: simpan data -->
+            <div class="flex items-center justify-end gap-3">
               <button
                 id="btnSave"
                 class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]"
@@ -209,16 +198,53 @@
             <div id="inputMessage" class="text-xs text-right text-slate-300 min-h-[1.25rem]"></div>
           </div>
 
-          <!-- PENGATURAN TRAILING STOP (COLLAPSIBLE DI BAWAH) -->
-          <div class="mt-4">
-            <button
-              id="btnToggleTS"
-              type="button"
-              class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 transition active:scale-[0.99] cursor-pointer"
-            >
-              ⚙️ Change Trailing Stop
-            </button>
+          <!-- TENTANG APLIKASI + PENGATURAN TS (COLLAPSIBLE DI BAWAH) -->
+          <div class="mt-4 space-y-2">
+            <div class="flex items-center justify-between gap-3">
+              <!-- kiri: tentang aplikasi -->
+              <button
+                id="btnToggleAbout"
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 shadow-md shadow-amber-400/30 hover:bg-amber-300 transition active:scale-[0.99]"
+              >
+                ℹ️ Tentang aplikasi
+              </button>
 
+              <!-- kanan: change TS -->
+              <button
+                id="btnToggleTS"
+                type="button"
+                class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 transition active:scale-[0.99] cursor-pointer"
+              >
+                ⚙️ Change Trailing Stop
+              </button>
+            </div>
+
+            <!-- BOX: TENTANG APLIKASI -->
+            <div
+              id="aboutBox"
+              class="hidden mt-2 border border-amber-500/40 bg-amber-500/5 rounded-2xl px-3 py-2.5 space-y-2 text-[12px] text-slate-100"
+            >
+              <p class="text-[11px] text-slate-100">
+                Aplikasi analisis saham berbasis <span class="font-medium">closing price</span>
+                dengan fitur <span class="font-medium">trailing stop</span> dan
+                <span class="font-medium">sinyal jual bertahap</span> (Hold, Sell 30%, Sell 50%, Exit All).
+              </p>
+              <div>
+                <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200 mb-1">
+                  Cara pakai singkat
+                </h4>
+                <ul class="list-disc list-inside space-y-1 text-[11px] text-slate-100/90">
+                  <li>Masukkan kode saham dan harga close harian, lalu tekan <span class="font-medium">Simpan Data</span>.</li>
+                  <li>Kosongkan tanggal untuk memakai tanggal hari ini secara otomatis.</li>
+                  <li>Gunakan tombol <span class="font-medium">Change Trailing Stop</span> untuk mengubah nilai TS1/TS2/TS3 global.</li>
+                  <li>Pada kartu tren, klik nilai <span class="font-medium underline decoration-dotted">Close</span> atau
+                    <span class="font-medium underline decoration-dotted">kode saham</span> untuk mengoreksi data lalu simpan.</li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- BOX: PENGATURAN TRAILING STOP -->
             <div
               id="tsConfigBox"
               class="hidden mt-3 border-t border-slate-800 pt-3 space-y-2"
@@ -288,10 +314,6 @@
     </p>
 
   </main>
-
-  <!-- MODAL: TENTANG APLIKASI (sama seperti versi sebelumnya yang sudah diupdate TS) -->
-  <!-- ... modal sama persis dengan versi terakhir yang sudah saya kirim sebelumnya ... -->
-  <!-- Biar jawabannya tidak kepanjangan, kamu bisa copy blok modal dari versi sebelumnya tanpa perubahan. -->
 
   <script src="app.js"></script>
 </body>
