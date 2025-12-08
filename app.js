@@ -2,7 +2,8 @@
   const { createClient } = supabase;
 
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
 
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -22,23 +23,20 @@
   const aboutOverlay = document.getElementById("aboutOverlay");
   const btnAboutClose = document.getElementById("btnAboutClose");
   const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
-  const kodeSahamFilter = document.getElementById("kodeSahamFilter");
-  const btnLoadTrend = document.getElementById("btnLoadTrend");
-  const trendList = document.getElementById("trendList");
 
   const dashboardList = document.getElementById("dashboardList");
   const btnReloadDashboard = document.getElementById("btnReloadDashboard");
 
   const btnExportCsv = document.getElementById("btnExportCsv");
   const catatanSaham = document.getElementById("catatanSaham");
-  const btnSaveCatatan = document.getElementById("btnSaveCatatan"); 
+  const btnSaveCatatan = document.getElementById("btnSaveCatatan");
 
   const ts1Input = document.getElementById("ts1Input");
   const ts2Input = document.getElementById("ts2Input");
   const ts3Input = document.getElementById("ts3Input");
-  const btnSaveTSConfig = document.getElementById("btnSaveTSConfig"); 
+  const btnSaveTSConfig = document.getElementById("btnSaveTSConfig");
 
-  // helper warna signal
+  // ===== helper visual =====
   function getSignalBadge(signal) {
     let base =
       "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold";
@@ -54,7 +52,83 @@
         return `${base} bg-emerald-500/10 text-emerald-300 border border-emerald-500/40`;
     }
   }
-  
+
+  function signalColorClass(signal) {
+    switch (signal) {
+      case "Exit All":
+        return "text-red-400";
+      case "Sell 50%":
+        return "text-orange-300";
+      case "Sell 30%":
+        return "text-amber-300";
+      default:
+        return "text-emerald-300";
+    }
+  }
+
+  function statusBgClass(status) {
+    switch (status) {
+      case "UP":
+        return "bg-emerald-500/10";
+      case "PULLBACK":
+        return "bg-sky-500/10";
+      default:
+        return "bg-slate-800/80";
+    }
+  }
+
+  function getTrendChip(status) {
+    let base =
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium";
+    switch (status) {
+      case "UP":
+        return `${base} bg-emerald-500/10 text-emerald-300`;
+      case "PULLBACK":
+        return `${base} bg-sky-500/10 text-sky-300`;
+      default:
+        return `${base} bg-slate-700/80 text-slate-300`;
+    }
+  }
+
+  // sparkline mini
+  function createSparklineSvg(values) {
+    if (!values || values.length === 0) return "";
+    const w = 80;
+    const h = 24;
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    const step = values.length > 1 ? w / (values.length - 1) : 0;
+    let d = "";
+    values.forEach((v, i) => {
+      const x = i * step;
+      const y = h - ((v - min) / range) * (h - 4) - 2; // padding 2px
+      d += (i === 0 ? "M" : "L") + x + " " + y + " ";
+    });
+
+    return `<svg viewBox="0 0 ${w} ${h}" class="w-20 h-6">
+      <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4" />
+    </svg>`;
+  }
+
+  // ===== modal tentang aplikasi =====
+  function openAbout() {
+    if (!aboutModal) return;
+    aboutModal.classList.remove("hidden");
+  }
+
+  function closeAbout() {
+    if (!aboutModal) return;
+    aboutModal.classList.add("hidden");
+  }
+
+  if (btnAbout) btnAbout.addEventListener("click", openAbout);
+  if (aboutOverlay) aboutOverlay.addEventListener("click", closeAbout);
+  if (btnAboutClose) btnAboutClose.addEventListener("click", closeAbout);
+  if (btnAboutCloseBottom)
+    btnAboutCloseBottom.addEventListener("click", closeAbout);
+
   // ===== PENGATURAN TRAILING STOP (GLOBAL) =====
   async function loadTSConfig() {
     if (!ts1Input || !ts2Input || !ts3Input) return;
@@ -68,6 +142,9 @@
 
     if (error) {
       console.error("Gagal load config TS:", error);
+      ts1Input.value = 5;
+      ts2Input.value = 10;
+      ts3Input.value = 15;
       return;
     }
 
@@ -114,8 +191,9 @@
           console.error(error);
           alert("Gagal menyimpan pengaturan TS.");
         } else {
-          alert("Pengaturan trailing stop tersimpan.\nData tren akan memakai nilai baru.");
-          // kalau mau, reload dashboard & tren terakhir
+          alert(
+            "Pengaturan trailing stop tersimpan.\nData tren akan memakai nilai baru."
+          );
           loadDashboard && loadDashboard();
           const kode = kodeSahamFilter?.value?.trim().toUpperCase();
           if (kode) loadTrend(kode);
@@ -127,85 +205,9 @@
     });
   }
 
-  // panggil saat awal
   loadTSConfig();
-  
-  function signalColorClass(signal) {
-    switch (signal) {
-      case "Exit All":
-        return "text-red-400";
-      case "Sell 50%":
-        return "text-orange-300";
-      case "Sell 30%":
-        return "text-amber-300";
-      default:
-        return "text-emerald-300";
-    }
-  }
 
-  function statusBgClass(status) {
-    switch (status) {
-      case "UP":
-        return "bg-emerald-500/10";
-      case "PULLBACK":
-        return "bg-sky-500/10";
-      default:
-        return "bg-slate-800/80";
-    }
-  }
-
-  // bikin simple sparkline SVG dari array angka
-  function createSparklineSvg(values) {
-    if (!values || values.length === 0) return "";
-    const w = 80;
-    const h = 24;
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-
-    const step = values.length > 1 ? w / (values.length - 1) : 0;
-    let d = "";
-    values.forEach((v, i) => {
-      const x = i * step;
-      const y = h - ((v - min) / range) * (h - 4) - 2; // padding 2px
-      d += (i === 0 ? "M" : "L") + x + " " + y + " ";
-    });
-
-    return `<svg viewBox="0 0 ${w} ${h}" class="w-20 h-6">
-      <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4" />
-    </svg>`;
-  }
-
-  function getTrendChip(status) {
-    let base =
-      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium";
-    switch (status) {
-      case "UP":
-        return `${base} bg-emerald-500/10 text-emerald-300`;
-      case "PULLBACK":
-        return `${base} bg-sky-500/10 text-sky-300`;
-      default:
-        return `${base} bg-slate-700/80 text-slate-300`;
-    }
-  }
-
-  function openAbout() {
-    if (!aboutModal) return;
-    aboutModal.classList.remove("hidden");
-  }
-
-  function closeAbout() {
-    if (!aboutModal) return;
-    aboutModal.classList.add("hidden");
-  }
-
-  if (btnAbout) btnAbout.addEventListener("click", openAbout);
-  if (aboutOverlay) aboutOverlay.addEventListener("click", closeAbout);
-  if (btnAboutClose) btnAboutClose.addEventListener("click", closeAbout);
-  if (btnAboutCloseBottom)
-    btnAboutCloseBottom.addEventListener("click", closeAbout);
-
-  // GET or CREATE saham.id
+  // ===== GET or CREATE saham.id =====
   async function getOrCreateSahamId(kode) {
     const kodeUpper = kode.trim().toUpperCase();
 
@@ -228,54 +230,59 @@
     return inserted.id;
   }
 
-  // BTN SAVE INPUT DATA
-  btnSave.addEventListener("click", async () => {
-    inputMessage.textContent = "";
-    inputMessage.className =
-      "text-xs text-right min-h-[1.25rem] text-slate-300";
+  // ===== BTN SAVE INPUT DATA =====
+  if (btnSave) {
+    btnSave.addEventListener("click", async () => {
+      inputMessage.textContent = "";
+      inputMessage.className =
+        "text-xs text-right min-h-[1.25rem] text-slate-300";
 
-    try {
-      const kode = kodeSahamInput.value;
-      const closePrice = parseFloat(closePriceInput.value);
-      let closeDate = closeDateInput.value;
+      try {
+        const kode = kodeSahamInput.value;
+        const closePrice = parseFloat(closePriceInput.value);
+        let closeDate = closeDateInput.value;
 
-      if (!kode || !closePrice) {
-        inputMessage.textContent = "Kode saham dan harga close wajib diisi.";
-        inputMessage.classList.add("text-red-400");
-        return;
-      }
-
-      if (!closeDate) {
-        const today = new Date();
-        closeDate = today.toISOString().slice(0, 10);
-      }
-
-      const sahamId = await getOrCreateSahamId(kode);
-
-      const { error } = await db.from("saham_harga").upsert(
-        {
-          saham_id: sahamId,
-          close_date: closeDate,
-          close_price: closePrice,
-        },
-        {
-          onConflict: "saham_id,close_date",
+        if (!kode || !closePrice) {
+          inputMessage.textContent =
+            "Kode saham dan harga close wajib diisi.";
+          inputMessage.classList.add("text-red-400");
+          return;
         }
-      );
 
-      if (error) throw error;
+        if (!closeDate) {
+          const today = new Date();
+          closeDate = today.toISOString().slice(0, 10);
+        }
 
-      inputMessage.textContent = "Data tersimpan.";
-      inputMessage.classList.add("text-emerald-400");
-      closePriceInput.value = "";
-    } catch (err) {
-      console.error(err);
-      inputMessage.textContent = "Gagal menyimpan data.";
-      inputMessage.classList.add("text-red-400");
-    }
-  });
-  
+        const sahamId = await getOrCreateSahamId(kode);
+
+        const { error } = await db.from("saham_harga").upsert(
+          {
+            saham_id: sahamId,
+            close_date: closeDate,
+            close_price: closePrice,
+          },
+          {
+            onConflict: "saham_id,close_date",
+          }
+        );
+
+        if (error) throw error;
+
+        inputMessage.textContent = "Data tersimpan.";
+        inputMessage.classList.add("text-emerald-400");
+        closePriceInput.value = "";
+      } catch (err) {
+        console.error(err);
+        inputMessage.textContent = "Gagal menyimpan data.";
+        inputMessage.classList.add("text-red-400");
+      }
+    });
+  }
+
+  // ===== DASHBOARD RINGKAS =====
   async function loadDashboard() {
+    if (!dashboardList) return;
     dashboardList.innerHTML = "";
 
     const { data, error } = await db
@@ -358,112 +365,15 @@
     });
   }
 
-    // ====== CATATAN SAHAM (fitur 3) ======
-    // load catatan dari tabel saham
-    if (catatanSaham) {
-      const { data: sahamRow, error: errSaham } = await db
-        .from("saham")
-        .select("catatan")
-        .eq("kode", kode)
-        .maybeSingle();
-
-      if (!errSaham && sahamRow) {
-        catatanSaham.value = sahamRow.catatan || "";
-      } else {
-        catatanSaham.value = "";
-      }
-
-      // simpan catatan
-      if (btnSaveCatatan && !btnSaveCatatan._bound) {
-        btnSaveCatatan._bound = true;
-        btnSaveCatatan.addEventListener("click", async () => {
-          const teks = catatanSaham.value || "";
-          const { error: errUpdate } = await db
-            .from("saham")
-            .update({ catatan: teks })
-            .eq("kode", kode);
-
-          if (errUpdate) {
-            alert("Gagal menyimpan catatan.");
-          } else {
-            alert("Catatan tersimpan.");
-            loadDashboard(); // refresh ringkasan
-          }
-        });
-      }
-    }
-
-    // ====== EXPORT CSV (fitur 4) ======
-    if (btnExportCsv && !btnExportCsv._bound) {
-      btnExportCsv._bound = true;
-      btnExportCsv.addEventListener("click", () => {
-        if (!data || data.length === 0) {
-          alert("Belum ada data untuk diexport.");
-          return;
-        }
-        const header = [
-          "tanggal",
-          "kode",
-          "close",
-          "peak",
-          "ts1",
-          "ts2",
-          "ts3",
-          "drawdown_pct",
-          "signal",
-          "status_tren",
-        ];
-        const rows = data
-          .slice()
-          .reverse() // dari lama ke baru di file
-          .map((row) => [
-            row.close_date,
-            row.kode,
-            row.close_price,
-            row.peak_price,
-            row.ts1_price,
-            row.ts2_price,
-            row.ts3_price,
-            row.drawdown_pct,
-            row.signal,
-            row.status_tren,
-          ]);
-
-        const csvLines = [
-          header.join(","),
-          ...rows.map((r) =>
-            r
-              .map((val) =>
-                val == null ? "" : String(val).replace(/,/g, ".")
-              )
-              .join(",")
-          ),
-        ];
-        const blob = new Blob([csvLines.join("\n")], {
-          type: "text/csv;charset=utf-8;",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `tren_${kode}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    }
-  
-  // event tombol dashboard
   if (btnReloadDashboard) {
     btnReloadDashboard.addEventListener("click", () => {
       loadDashboard();
     });
   }
 
-  // muat pertama kali
   loadDashboard();
 
-  // FUNGSI MUAT TREN (dipakai tombol & setelah edit)
+  // ===== FUNGSI MUAT TREN (dipakai tombol & setelah edit) =====
   async function loadTrend(kodeParam) {
     trendList.innerHTML = "";
 
@@ -496,14 +406,13 @@
       return;
     }
 
-    // data sudah ada: kita siapkan untuk sparkline di baris terbaru
     const sparkValues = data
       .map((r) => r.close_price)
       .filter((v) => typeof v === "number")
       .slice()
-      .reverse() // dari lama ke baru
-      .slice(-20); // 20 titik terakhir
-    
+      .reverse()
+      .slice(-20);
+
     data.forEach((row, idx) => {
       const isLatest = idx === 0;
 
@@ -515,8 +424,7 @@
         card.className +=
           " border-sky-500/40 shadow-lg shadow-sky-500/20";
       }
-      
-     // tambahan highlight berdasar signal
+
       if (row.signal === "Exit All") {
         card.className += " bg-red-950/40";
       } else if (row.signal === "Sell 50%") {
@@ -524,7 +432,7 @@
       } else if (row.signal === "Sell 30%") {
         card.className += " bg-amber-950/20";
       }
-      
+
       const header = document.createElement("div");
       header.className = "flex items-center justify-between gap-2";
 
@@ -560,14 +468,26 @@
       header.appendChild(left);
       header.appendChild(right);
 
-      // BODY
+      card.appendChild(header);
+
+      if (isLatest && sparkValues.length > 1) {
+        const sparkWrap = document.createElement("div");
+        sparkWrap.className =
+          "flex items-center gap-1 text-[10px] text-slate-400 mt-1";
+        sparkWrap.innerHTML =
+          '<span>Trend 20 hari:</span><span class="text-sky-400">' +
+          createSparklineSvg(sparkValues) +
+          "</span>";
+        card.appendChild(sparkWrap);
+      }
+
       const body = document.createElement("div");
       body.className =
         "grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1 text-[11px] text-slate-300";
 
       let closeInputEl = null;
       let closeDisplayEl = null;
-      let saveBtn = null; // akan diisi sebelum dipakai
+      let saveBtn = null;
 
       const items = [
         {
@@ -620,13 +540,11 @@
         val.className = "font-medium";
 
         if (it.key === "close") {
-          // display span
           const span = document.createElement("span");
           span.textContent = it.value;
           span.className =
             "cursor-pointer underline decoration-dotted underline-offset-2";
 
-          // input hidden
           const input = document.createElement("input");
           input.type = "number";
           input.step = "0.01";
@@ -650,9 +568,12 @@
             closeInputEl.select();
           });
 
-          // Enter untuk simpan juga
           input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && saveBtn && !saveBtn.classList.contains("hidden")) {
+            if (
+              e.key === "Enter" &&
+              saveBtn &&
+              !saveBtn.classList.contains("hidden")
+            ) {
               saveBtn.click();
             }
           });
@@ -665,7 +586,6 @@
         body.appendChild(wrapper);
       });
 
-      // FOOTER: tombol simpan perubahan close (hidden default)
       const footer = document.createElement("div");
       footer.className = "flex justify-end mt-2";
 
@@ -701,7 +621,7 @@
             console.error(error);
             alert("Gagal menyimpan perubahan.");
           } else {
-            await loadTrend(kode); // refresh agar peak & trailing ikut update
+            await loadTrend(kode);
           }
         } finally {
           saveBtn.disabled = false;
@@ -709,33 +629,111 @@
         }
       });
 
-      card.appendChild(header);
-      if (isLatest && sparkValues.length > 1) {
-        const sparkWrap = document.createElement("div");
-        sparkWrap.className =
-          "flex items-center gap-1 text-[10px] text-slate-400 mt-1";
-        sparkWrap.innerHTML =
-          '<span>Trend 20 hari:</span><span class="text-sky-400">' +
-          createSparklineSvg(sparkValues) +
-          "</span>";
-        // selipkan di bawah header
-        card.appendChild(header);
-        card.appendChild(sparkWrap);
-      } else {
-        card.appendChild(header);
-      }
-      
       card.appendChild(body);
       card.appendChild(footer);
 
       trendList.appendChild(card);
     });
+
+    // ====== CATATAN SAHAM ======
+    if (catatanSaham) {
+      const { data: sahamRow, error: errSaham } = await db
+        .from("saham")
+        .select("catatan")
+        .eq("kode", kode)
+        .maybeSingle();
+
+      if (!errSaham && sahamRow) {
+        catatanSaham.value = sahamRow.catatan || "";
+      } else {
+        catatanSaham.value = "";
+      }
+
+      if (btnSaveCatatan && !btnSaveCatatan._bound) {
+        btnSaveCatatan._bound = true;
+        btnSaveCatatan.addEventListener("click", async () => {
+          const teks = catatanSaham.value || "";
+          const { error: errUpdate } = await db
+            .from("saham")
+            .update({ catatan: teks })
+            .eq("kode", kode);
+
+          if (errUpdate) {
+            alert("Gagal menyimpan catatan.");
+          } else {
+            alert("Catatan tersimpan.");
+            loadDashboard();
+          }
+        });
+      }
+    }
+
+    // ====== EXPORT CSV ======
+    if (btnExportCsv && !btnExportCsv._bound) {
+      btnExportCsv._bound = true;
+      btnExportCsv.addEventListener("click", () => {
+        if (!data || data.length === 0) {
+          alert("Belum ada data untuk diexport.");
+          return;
+        }
+        const header = [
+          "tanggal",
+          "kode",
+          "close",
+          "peak",
+          "ts1",
+          "ts2",
+          "ts3",
+          "drawdown_pct",
+          "signal",
+          "status_tren",
+        ];
+        const rows = data
+          .slice()
+          .reverse()
+          .map((row) => [
+            row.close_date,
+            row.kode,
+            row.close_price,
+            row.peak_price,
+            row.ts1_price,
+            row.ts2_price,
+            row.ts3_price,
+            row.drawdown_pct,
+            row.signal,
+            row.status_tren,
+          ]);
+
+        const csvLines = [
+          header.join(","),
+          ...rows.map((r) =>
+            r
+              .map((val) =>
+                val == null ? "" : String(val).replace(/,/g, ".")
+              )
+              .join(",")
+          ),
+        ];
+        const blob = new Blob([csvLines.join("\n")], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `tren_${kode}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+    }
   }
 
-  // BTN LOAD TREN
-  btnLoadTrend.addEventListener("click", () => {
-    const kode = kodeSahamFilter.value.trim().toUpperCase();
-    if (!kode) return;
-    loadTrend(kode);
-  });
+  if (btnLoadTrend) {
+    btnLoadTrend.addEventListener("click", () => {
+      const kode = kodeSahamFilter.value.trim().toUpperCase();
+      if (!kode) return;
+      loadTrend(kode);
+    });
+  }
 })();
