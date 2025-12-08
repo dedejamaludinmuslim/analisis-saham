@@ -8,6 +8,8 @@
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // ELEMENTS
+  const btnInstallApp = document.getElementById("btnInstallApp");
+
   const kodeSahamInput = document.getElementById("kodeSahamInput");
   const closePriceInput = document.getElementById("closePriceInput");
   const closeDateInput = document.getElementById("closeDateInput");
@@ -31,6 +33,45 @@
 
   const btnToggleAbout = document.getElementById("btnToggleAbout");
   const aboutBox = document.getElementById("aboutBox");
+
+  // ===== PWA INSTALL BUTTON LOGIC =====
+  let deferredPrompt = null;
+
+  // Sembunyikan tombol kalau sudah mode standalone
+  if (
+    window.matchMedia &&
+    window.matchMedia("(display-mode: standalone)").matches &&
+    btnInstallApp
+  ) {
+    btnInstallApp.classList.add("hidden");
+  }
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    // blokir prompt otomatis
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btnInstallApp) {
+      btnInstallApp.classList.remove("hidden");
+    }
+  });
+
+  if (btnInstallApp) {
+    btnInstallApp.addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      // apapun hasilnya, kita reset & sembunyikan tombol
+      deferredPrompt = null;
+      btnInstallApp.classList.add("hidden");
+    });
+  }
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    if (btnInstallApp) {
+      btnInstallApp.classList.add("hidden");
+    }
+  });
 
   // ===== DEFAULT TANGGAL: HARI INI =====
   if (closeDateInput) {
@@ -155,10 +196,6 @@
     }
   }
 
-  /**
-   * Hitung MA20, MA50, major trend, dan zona re-entry dari array data saham_tren_view
-   * @param {Array} rows - hasil query saham_tren_view, urut DESC by close_date
-   */
   function computeTrendFollowingFromRows(rows) {
     if (!rows || rows.length === 0) {
       return {
@@ -217,9 +254,6 @@
     };
   }
 
-  /**
-   * Helper untuk dashboard: ambil data tren dari DB lalu hitung TrendF & Re-entry
-   */
   async function getTrendFollowingInfoFromDb(kode) {
     const kodeUpper = (kode || "").trim().toUpperCase();
     if (!kodeUpper) {
@@ -385,7 +419,6 @@
           return;
         }
 
-        // fallback: kalau tanggal kosong, pakai hari ini
         if (!closeDate) {
           const today = new Date();
           closeDate = today.toISOString().slice(0, 10);
@@ -446,7 +479,6 @@
       return;
     }
 
-    // gunakan for..of supaya bisa await info TrendF tiap kode
     for (const row of data) {
       const { majorTrend, isReentryZone } =
         await getTrendFollowingInfoFromDb(row.kode);
@@ -480,7 +512,6 @@
         2
       )} | DD ${row.drawdown_pct?.toFixed(2)}%`;
 
-      // BARU: info trend following + re-entry
       const tfLine = document.createElement("div");
       tfLine.className = "text-[10px] text-slate-400";
       tfLine.textContent = `TrendF: ${majorTrend} | Re-entry: ${
@@ -597,7 +628,6 @@
       const left = document.createElement("div");
       left.className = "flex items-center gap-2";
 
-      // ====== KODE SAHAM EDITABLE ======
       let kodeDisplayEl = null;
       let kodeInputEl = null;
 
@@ -772,7 +802,6 @@
         "hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]";
       footer.appendChild(saveBtn);
 
-      // ====== EVENT: EDIT KODE SAHAM ======
       kodeDisplayEl.addEventListener("click", () => {
         kodeDisplayEl.classList.add("hidden");
         kodeInputEl.classList.remove("hidden");
@@ -791,12 +820,10 @@
         }
       });
 
-      // ====== EVENT: SIMPAN PERUBAHAN (kode & close) ======
       saveBtn.addEventListener("click", async () => {
         try {
           const promises = [];
 
-          // UPDATE CLOSE (jika berubah & valid)
           if (closeInputEl) {
             const newClose = parseFloat(closeInputEl.value);
             if (!isNaN(newClose) && newClose > 0 && newClose !== row.close_price) {
@@ -813,7 +840,6 @@
             }
           }
 
-          // UPDATE KODE (pindahkan baris ke saham lain)
           if (kodeInputEl) {
             const newKodeRaw = kodeInputEl.value || "";
             const newKode = newKodeRaw.trim().toUpperCase();
@@ -859,7 +885,6 @@
 
       card.appendChild(body);
 
-      // ====== BLOK TREND FOLLOWING & RE-ENTRY (hanya di baris terbaru) ======
       if (isLatest) {
         const tfBox = document.createElement("div");
         tfBox.className =
