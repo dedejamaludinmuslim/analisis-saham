@@ -1,6 +1,6 @@
 {
   "name": "Aplikasi Analisis Saham",
-  "short_name": "Saham TS",
+  "short_name": "Saham",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#020617",
