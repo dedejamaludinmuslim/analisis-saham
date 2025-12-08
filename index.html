@@ -75,7 +75,7 @@
     <!-- GRID 2 KARTU (Tren di kiri, Input di kanan) -->
     <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
 
-      <!-- CARD: TREN SAHAM & TRAILING STOP (kiri, Fitur 2) -->
+      <!-- CARD: TREN SAHAM & TRAILING STOP (kiri, Fitur 1) -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5 flex flex-col">
         <div class="flex items-center justify-between mb-3 gap-2">
           <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
@@ -85,7 +85,7 @@
             Tren Saham, Trailing Stop & Trend Following
           </h2>
           <span class="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-            Fitur 2 • Analisis
+            Analisis
           </span>
         </div>
 
@@ -93,7 +93,7 @@
         <div class="flex flex-col sm:flex-row gap-2 sm:items-end mb-3">
           <div class="flex-1 space-y-1">
             <label for="kodeSahamFilter" class="text-xs font-medium text-slate-300">
-              Kode Saham
+              Kode Saham:
             </label>
             <input
               id="kodeSahamFilter"
@@ -125,7 +125,7 @@
         </div>
       </section>
 
-      <!-- CARD: INPUT DATA SAHAM (kanan, Fitur 1) -->
+      <!-- CARD: INPUT DATA SAHAM (kanan) -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5">
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
@@ -135,7 +135,7 @@
             Input Data Saham
           </h2>
           <span class="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-            Fitur 1 • Input
+            Input
           </span>
         </div>
 
@@ -148,7 +148,7 @@
             <input
               id="kodeSahamInput"
               type="text"
-              placeholder="Contoh: ANTM, CMRY, TAPG"
+              placeholder="Misal: ANTM, CMRY, TAPG"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             />
           </div>
@@ -156,13 +156,13 @@
           <!-- Harga Close -->
           <div class="space-y-1">
             <label for="closePriceInput" class="text-xs font-medium text-slate-300">
-              Harga Close
+              Harga Close:
             </label>
             <input
               id="closePriceInput"
               type="number"
               step="0.01"
-              placeholder="Misal: 540, 1230"
+              placeholder="Misal: ANTM, CMRY, TAPG"
               class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
             />
           </div>
@@ -170,7 +170,7 @@
           <!-- Tanggal (opsional) -->
           <div class="space-y-1">
             <label for="closeDateInput" class="text-xs font-medium text-slate-300 flex items-center justify-between">
-              <span>Tanggal (opsional)</span>
+              <span>Tanggal:</span>
               <span class="text-[10px] text-slate-500">
                 Kosongkan = hari ini
               </span>
@@ -207,7 +207,7 @@
                 type="button"
                 class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-amber-950 shadow-md shadow-amber-400/30 hover:bg-amber-300 transition active:scale-[0.99]"
               >
-                ℹ️ Tentang aplikasi
+                ℹ️ About App
               </button>
 
               <!-- kanan: change TS -->
