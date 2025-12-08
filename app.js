@@ -116,37 +116,6 @@
     }
   });
 
-  // ... di atas sudah ada const2 lain
-
-  const btnAbout = document.getElementById("btnAbout");
-  const aboutModal = document.getElementById("aboutModal");
-  const aboutOverlay = document.getElementById("aboutOverlay");
-  const btnAboutClose = document.getElementById("btnAboutClose");
-  const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
-
-  function openAbout() {
-    if (!aboutModal) return;
-    aboutModal.classList.remove("hidden");
-  }
-
-  function closeAbout() {
-    if (!aboutModal) return;
-    aboutModal.classList.add("hidden");
-  }
-
-  if (btnAbout) {
-    btnAbout.addEventListener("click", openAbout);
-  }
-  if (aboutOverlay) {
-    aboutOverlay.addEventListener("click", closeAbout);
-  }
-  if (btnAboutClose) {
-    btnAboutClose.addEventListener("click", closeAbout);
-  }
-  if (btnAboutCloseBottom) {
-    btnAboutCloseBottom.addEventListener("click", closeAbout);
-  }
-  
   // BTN LOAD TREN
   btnLoadTrend.addEventListener("click", async () => {
     trendList.innerHTML = "";
@@ -180,6 +149,37 @@
       return;
     }
 
+    // ... di atas sudah ada const2 lain
+  
+    const btnAbout = document.getElementById("btnAbout");
+    const aboutModal = document.getElementById("aboutModal");
+    const aboutOverlay = document.getElementById("aboutOverlay");
+    const btnAboutClose = document.getElementById("btnAboutClose");
+    const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
+  
+    function openAbout() {
+      if (!aboutModal) return;
+      aboutModal.classList.remove("hidden");
+    }
+  
+    function closeAbout() {
+      if (!aboutModal) return;
+      aboutModal.classList.add("hidden");
+    }
+  
+    if (btnAbout) {
+      btnAbout.addEventListener("click", openAbout);
+    }
+    if (aboutOverlay) {
+      aboutOverlay.addEventListener("click", closeAbout);
+    }
+    if (btnAboutClose) {
+      btnAboutClose.addEventListener("click", closeAbout);
+    }
+    if (btnAboutCloseBottom) {
+      btnAboutCloseBottom.addEventListener("click", closeAbout);
+    }
+    
     data.forEach((row, idx) => {
       const isLatest = idx === 0;
 
