@@ -17,6 +17,12 @@
   const btnLoadTrend = document.getElementById("btnLoadTrend");
   const trendList = document.getElementById("trendList");
 
+  const btnAbout = document.getElementById("btnAbout");
+  const aboutModal = document.getElementById("aboutModal");
+  const aboutOverlay = document.getElementById("aboutOverlay");
+  const btnAboutClose = document.getElementById("btnAboutClose");
+  const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
+
   // helper warna signal
   function getSignalBadge(signal) {
     let base =
@@ -47,6 +53,22 @@
     }
   }
 
+  function openAbout() {
+    if (!aboutModal) return;
+    aboutModal.classList.remove("hidden");
+  }
+
+  function closeAbout() {
+    if (!aboutModal) return;
+    aboutModal.classList.add("hidden");
+  }
+
+  if (btnAbout) btnAbout.addEventListener("click", openAbout);
+  if (aboutOverlay) aboutOverlay.addEventListener("click", closeAbout);
+  if (btnAboutClose) btnAboutClose.addEventListener("click", closeAbout);
+  if (btnAboutCloseBottom)
+    btnAboutCloseBottom.addEventListener("click", closeAbout);
+
   // GET or CREATE saham.id
   async function getOrCreateSahamId(kode) {
     const kodeUpper = kode.trim().toUpperCase();
@@ -70,10 +92,11 @@
     return inserted.id;
   }
 
-  // BTN SAVE
+  // BTN SAVE INPUT DATA
   btnSave.addEventListener("click", async () => {
     inputMessage.textContent = "";
-    inputMessage.className = "text-xs text-right min-h-[1.25rem]";
+    inputMessage.className =
+      "text-xs text-right min-h-[1.25rem] text-slate-300";
 
     try {
       const kode = kodeSahamInput.value;
@@ -116,11 +139,11 @@
     }
   });
 
-  // BTN LOAD TREN
-  btnLoadTrend.addEventListener("click", async () => {
+  // FUNGSI MUAT TREN (dipakai tombol & setelah edit)
+  async function loadTrend(kodeParam) {
     trendList.innerHTML = "";
 
-    const kode = kodeSahamFilter.value.trim().toUpperCase();
+    const kode = (kodeParam || "").trim().toUpperCase();
     if (!kode) return;
 
     const { data, error } = await db
@@ -149,43 +172,17 @@
       return;
     }
 
-    // ... di atas sudah ada const2 lain
-  
-    const btnAbout = document.getElementById("btnAbout");
-    const aboutModal = document.getElementById("aboutModal");
-    const aboutOverlay = document.getElementById("aboutOverlay");
-    const btnAboutClose = document.getElementById("btnAboutClose");
-    const btnAboutCloseBottom = document.getElementById("btnAboutCloseBottom");
-  
-    function openAbout() {
-      if (!aboutModal) return;
-      aboutModal.classList.remove("hidden");
-    }
-  
-    function closeAbout() {
-      if (!aboutModal) return;
-      aboutModal.classList.add("hidden");
-    }
-  
-    if (btnAbout) {
-      btnAbout.addEventListener("click", openAbout);
-    }
-    if (aboutOverlay) {
-      aboutOverlay.addEventListener("click", closeAbout);
-    }
-    if (btnAboutClose) {
-      btnAboutClose.addEventListener("click", closeAbout);
-    }
-    if (btnAboutCloseBottom) {
-      btnAboutCloseBottom.addEventListener("click", closeAbout);
-    }
-    
     data.forEach((row, idx) => {
       const isLatest = idx === 0;
 
       const card = document.createElement("div");
       card.className =
         "rounded-2xl border border-slate-800 bg-slate-900/80 px-3 py-2.5 text-xs flex flex-col gap-1.5";
+
+      if (isLatest) {
+        card.className +=
+          " border-sky-500/40 shadow-lg shadow-sky-500/20";
+      }
 
       const header = document.createElement("div");
       header.className = "flex items-center justify-between gap-2";
@@ -222,32 +219,45 @@
       header.appendChild(left);
       header.appendChild(right);
 
+      // BODY
       const body = document.createElement("div");
       body.className =
         "grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1 text-[11px] text-slate-300";
+
+      let closeInputEl = null;
+      let closeDisplayEl = null;
+      let saveBtn = null; // akan diisi sebelum dipakai
 
       const items = [
         {
           label: "Close",
           value:
             row.close_price != null ? row.close_price.toFixed(2) : "-",
+          key: "close",
         },
         {
           label: "Peak",
           value:
             row.peak_price != null ? row.peak_price.toFixed(2) : "-",
+          key: "peak",
         },
         {
           label: "TS1",
-          value: row.ts1_price != null ? row.ts1_price.toFixed(2) : "-",
+          value:
+            row.ts1_price != null ? row.ts1_price.toFixed(2) : "-",
+          key: "ts1",
         },
         {
           label: "TS2",
-          value: row.ts2_price != null ? row.ts2_price.toFixed(2) : "-",
+          value:
+            row.ts2_price != null ? row.ts2_price.toFixed(2) : "-",
+          key: "ts2",
         },
         {
           label: "TS3",
-          value: row.ts3_price != null ? row.ts3_price.toFixed(2) : "-",
+          value:
+            row.ts3_price != null ? row.ts3_price.toFixed(2) : "-",
+          key: "ts3",
         },
         {
           label: "Drawdown",
@@ -255,6 +265,7 @@
             row.drawdown_pct != null
               ? row.drawdown_pct.toFixed(2) + " %"
               : "-",
+          key: "dd",
         },
       ];
 
@@ -263,22 +274,112 @@
         const label = document.createElement("div");
         label.className = "text-[10px] text-slate-500";
         label.textContent = it.label;
+
         const val = document.createElement("div");
         val.className = "font-medium";
-        val.textContent = it.value;
+
+        if (it.key === "close") {
+          // display span
+          const span = document.createElement("span");
+          span.textContent = it.value;
+          span.className =
+            "cursor-pointer underline decoration-dotted underline-offset-2";
+
+          // input hidden
+          const input = document.createElement("input");
+          input.type = "number";
+          input.step = "0.01";
+          input.value =
+            row.close_price != null ? row.close_price.toFixed(2) : "";
+          input.className =
+            "hidden w-full rounded-md bg-slate-900 border border-slate-600 px-2 py-0.5 text-[11px] text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500";
+
+          val.appendChild(span);
+          val.appendChild(input);
+
+          closeDisplayEl = span;
+          closeInputEl = input;
+
+          span.addEventListener("click", () => {
+            if (!closeInputEl) return;
+            closeDisplayEl.classList.add("hidden");
+            closeInputEl.classList.remove("hidden");
+            if (saveBtn) saveBtn.classList.remove("hidden");
+            closeInputEl.focus();
+            closeInputEl.select();
+          });
+
+          // Enter untuk simpan juga
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && saveBtn && !saveBtn.classList.contains("hidden")) {
+              saveBtn.click();
+            }
+          });
+        } else {
+          val.textContent = it.value;
+        }
+
         wrapper.appendChild(label);
         wrapper.appendChild(val);
         body.appendChild(wrapper);
       });
 
-      if (isLatest) {
-        card.className +=
-          " border-sky-500/40 shadow-lg shadow-sky-500/20";
-      }
+      // FOOTER: tombol simpan perubahan close (hidden default)
+      const footer = document.createElement("div");
+      footer.className = "flex justify-end mt-2";
+
+      saveBtn = document.createElement("button");
+      saveBtn.textContent = "Simpan perubahan";
+      saveBtn.className =
+        "hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]";
+      footer.appendChild(saveBtn);
+
+      saveBtn.addEventListener("click", async () => {
+        try {
+          if (!closeInputEl) return;
+          const newVal = parseFloat(closeInputEl.value);
+          if (!newVal || isNaN(newVal)) {
+            alert("Nilai close tidak valid.");
+            return;
+          }
+
+          if (!row.harga_id) {
+            alert("ID harga tidak tersedia (periksa view saham_tren_view).");
+            return;
+          }
+
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Menyimpan...";
+
+          const { error } = await db
+            .from("saham_harga")
+            .update({ close_price: newVal })
+            .eq("id", row.harga_id);
+
+          if (error) {
+            console.error(error);
+            alert("Gagal menyimpan perubahan.");
+          } else {
+            await loadTrend(kode); // refresh agar peak & trailing ikut update
+          }
+        } finally {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Simpan perubahan";
+        }
+      });
 
       card.appendChild(header);
       card.appendChild(body);
+      card.appendChild(footer);
+
       trendList.appendChild(card);
     });
+  }
+
+  // BTN LOAD TREN
+  btnLoadTrend.addEventListener("click", () => {
+    const kode = kodeSahamFilter.value.trim().toUpperCase();
+    if (!kode) return;
+    loadTrend(kode);
   });
 })();
