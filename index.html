@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aplikasi Analisis Saham</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- INPUT DATA SAHAM -->
+  <section>
+    <h2>Input Data Saham</h2>
+    <label>
+      Kode Saham:
+      <input type="text" id="kodeSahamInput" placeholder="ANTM / CMRY / TAPG" />
+    </label>
+    <br />
+    <label>
+      Harga Close:
+      <input type="number" id="closePriceInput" step="0.01" />
+    </label>
+    <br />
+    <label>
+      Tanggal (opsional, default hari ini):
+      <input type="date" id="closeDateInput" />
+    </label>
+    <br />
+    <button id="btnSave">Simpan</button>
+    <div id="inputMessage"></div>
+  </section>
+
+  <hr />
+
+  <!-- TREN SAHAM -->
+  <section>
+    <h2>Tren Saham</h2>
+    <label>
+      Kode Saham:
+      <input type="text" id="kodeSahamFilter" placeholder="ANTM" />
+    </label>
+    <button id="btnLoadTrend">Muat Tren</button>
+
+    <table border="1" cellspacing="0" cellpadding="4">
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Kode</th>
+          <th>Close</th>
+          <th>Peak</th>
+          <th>TS1</th>
+          <th>TS2</th>
+          <th>TS3</th>
+          <th>Drawdown %</th>
+          <th>Signal</th>
+          <th>Status Tren</th>
+        </tr>
+      </thead>
+      <tbody id="trendTableBody"></tbody>
+    </table>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
