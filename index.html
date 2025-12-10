@@ -244,11 +244,14 @@
       mix-blend-mode: soft-light;
       pointer-events: none;
     }
+
+    /* BARIS ATAS KARTU: kode - sinyal - gain */
     .stock-main {
       position: relative;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
+      display: grid;
+      grid-template-columns: auto 1fr auto; /* kiri: kode, tengah: sinyal, kanan: gain */
+      align-items: center;
+      gap: 6px;
       margin-bottom: 6px;
     }
     .stock-code {
@@ -256,26 +259,33 @@
       font-weight: 600;
       letter-spacing: 0.06em;
       color: #f9fafb;
+      justify-self: start;
     }
-    .stock-gain {
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .gain-pos { color: #4ade80; }
-    .gain-neg { color: #f97373; }
-    .gain-zero { color: #e5e7eb; }
-
     .signal-pill {
       position: relative;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       padding: 3px 8px;
       border-radius: 999px;
       font-size: 11px;
       font-weight: 500;
-      margin-top: 2px;
+      margin-top: 0;
+      justify-self: center;
     }
+    .stock-gain {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 64px;
+      text-align: right;
+      justify-self: end;
+    }
+
+    .gain-pos { color: #4ade80; }
+    .gain-neg { color: #f97373; }
+    .gain-zero { color: #e5e7eb; }
+
     .sig-cut {
       background: rgba(248, 113, 113, 0.12);
       color: #fecaca;
@@ -382,14 +392,12 @@
           <button id="btn-about" class="btn-secondary" type="button">
             ℹ️ Tentang
           </button>
-          <div>
-            <button id="btn-install" class="btn-ghost" type="button" hidden><center>
-              📱 Install Aplikasi
-            </center></button>
-            <button id="btn-save" class="btn-primary" type="button">
-              💾 Simpan
-            </button>
-          </div>
+          <button id="btn-install" class="btn-ghost" type="button" hidden>
+            📱 Install Aplikasi
+          </button>
+          <button id="btn-save" class="btn-primary" type="button">
+            💾 Simpan
+          </button>
         </div>
       </div>
 
