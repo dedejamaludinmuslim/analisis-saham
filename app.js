@@ -28,7 +28,6 @@
 
   let currentRows = [];
   let currentId = null;
-  let showingAbout = false;
 
   function parseNum(value) {
     const n = Number(value);
@@ -92,7 +91,7 @@
     }
 
     currentRows = data || [];
-    if (!showingAbout) renderDashboard();
+    renderDashboard();
   }
 
   function renderDashboard() {
@@ -332,22 +331,26 @@
     await loadData();
   }
 
-  // Toggle mode: dashboard <-> tentang
   function toggleAbout() {
-    showingAbout = !showingAbout;
+    if (!dashboardContent || !aboutDashboard) return;
 
-    if (showingAbout) {
-      if (dashboardContent) dashboardContent.style.display = "none";
-      if (aboutDashboard) aboutDashboard.style.display = "block";
+    const isDashboardVisible =
+      dashboardContent.style.display === "" || dashboardContent.style.display === "block";
+
+    if (isDashboardVisible) {
+      // Tampilkan TENTANG, sembunyikan dashboard
+      dashboardContent.style.display = "none";
+      aboutDashboard.style.display = "block";
       if (rightTitle) rightTitle.textContent = "Tentang Aplikasi";
       if (rightBadge) rightBadge.textContent = "Penjelasan fitur & cara pakai";
-      btnAbout.textContent = "⬅️ Kembali";
+      if (btnAbout) btnAbout.textContent = "⬅️ Kembali";
     } else {
-      if (aboutDashboard) aboutDashboard.style.display = "none";
-      if (dashboardContent) dashboardContent.style.display = "block";
+      // Tampilkan DASHBOARD, sembunyikan tentang
+      aboutDashboard.style.display = "none";
+      dashboardContent.style.display = "block";
       if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
       if (rightBadge) rightBadge.textContent = "Sinyal: Cut • TP • Run • Hold";
-      btnAbout.textContent = "ℹ️ Tentang";
+      if (btnAbout) btnAbout.textContent = "ℹ️ Tentang";
       renderDashboard();
     }
   }
