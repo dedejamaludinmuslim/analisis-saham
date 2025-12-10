@@ -115,17 +115,17 @@
 
     // Check for TP Zone
     if (last >= tpLevel) {
-      return { text: "ZONA TP +10%", className: "sig-tp", icon: "🎯" };
+      return { text: "TP +10%", className: "sig-tp", icon: "🎯" };
     }
 
     // Check for Add-on (when the price continues to rise)
     if (last > entry) {
-      return { text: "ADD-ON POSITION", className: "sig-run", icon: "🚀" };
+      return { text: "ADD-ON", className: "sig-run", icon: "🚀" };
     }
 
     // Check for Re-entry (when price dropped to trailing stop and rises again)
     if (last > high * (1 - TS1_PCT)) {
-      return { text: "RE-ENTRY (after drop)", className: "sig-run", icon: "🔁" };
+      return { text: "RE-ENTRY", className: "sig-run", icon: "🔁" };
     }
 
     // Check for Profit Run
