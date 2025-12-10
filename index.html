@@ -157,7 +157,32 @@
       transform: translateY(1px);
       box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
     }
+
+    /* GAYA BARU: Tombol 'Tentang' (Kuning) */
+    .btn-about {
+        background: linear-gradient(135deg, #fcd34d, #fbbf24); /* Yellow Gradient */
+        color: #3f2700; /* Dark text for contrast */
+        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.45);
+    }
+    .btn-about:active {
+        transform: translateY(1px);
+        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.55);
+    }
+
+    /* GAYA BARU: Tombol 'Set Entry Baru' (Biru) */
+    .btn-set-entry {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #eff6ff;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
+    }
+    .btn-set-entry:active {
+      transform: translateY(1px);
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.55);
+    }
+
+
     .btn-secondary {
+      /* Digunakan jika ada tombol secondary lain yang bukan about/set entry */
       background: rgba(15, 23, 42, 0.9);
       color: #e5e7eb;
       border: 1px solid rgba(148, 163, 184, 0.7);
@@ -211,6 +236,21 @@
     .about-dashboard li {
       margin-bottom: 3px;
     }
+    .about-dashboard strong {
+        color: #f9fafb;
+    }
+    .about-dashboard .action-list {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        border-left: 3px solid #60a5fa;
+        padding-left: 10px;
+    }
+    .action-list h4 {
+        margin: 0 0 5px 0;
+        font-size: 13px;
+        color: #93c5fd;
+    }
+
 
     .cards-grid {
       display: grid;
@@ -294,19 +334,19 @@
       color: #e5e7eb;
       border: 1px solid rgba(107, 114, 128, 0.8);
     }
-    /* GAYA BARU: RE-ENTRY (Kuning) */
+    /* GAYA SINYAL: RE-ENTRY (Kuning) */
     .sig-reentry {
       background: rgba(251, 191, 36, 0.25);
       color: #fcd34d;
       border: 1px solid rgba(251, 191, 36, 0.9);
     }
-    /* GAYA BARU: ADD-ON (Pyramiding - Biru Muda) */
+    /* GAYA SINYAL: ADD-ON (Pyramiding - Biru Muda) */
     .sig-addon {
       background: rgba(37, 99, 235, 0.2);
       color: #93c5fd;
       border: 1px solid rgba(59, 130, 246, 0.8);
     }
-    /* GAYA BARU: TS HIT (Peringatan - Oranye Merah) */
+    /* GAYA SINYAL: TS HIT (Peringatan - Oranye Merah) */
     .sig-tshit {
       background: rgba(255, 127, 80, 0.25); /* Coral */
       color: #ffa07a;
@@ -395,11 +435,11 @@
         </div>
 
         <div class="btn-row-main">
-          <button id="btn-about" class="btn-secondary" type="button">
+          <button id="btn-about" class="btn-about" type="button">
             ℹ️ Tentang
           </button>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <button id="btn-set-entry" class="btn-secondary" type="button">
+            <button id="btn-set-entry" class="btn-set-entry" type="button">
               🔄 Set Entry Baru
             </button>
             <button id="btn-install" class="btn-ghost" type="button" hidden>
@@ -426,27 +466,42 @@
         </div>
 
         <div id="about-dashboard" class="about-dashboard">
-          <p><strong>Tentang Aplikasi Dashboard Tren Saham</strong></p>
-          <p>
-            Aplikasi ini membantu mencatat dan memantau tren saham pribadi secara sederhana namun terstruktur.
-          </p>
+          <p><strong>Dasar Perhitungan Harga</strong></p>
           <ul>
-            <li><strong>Entry price</strong> diambil dari harga pertama kali kode saham dicatat.</li>
-            <li><strong>Highest price</strong> otomatis diperbarui setiap kali harga baru lebih tinggi dari sebelumnya.</li>
-            <li><strong>Last price</strong> adalah harga terbaru yang Anda input pada jam 12 atau 18.</li>
-            <li><strong>TS1</strong> = high - 5%, <strong>TS2</strong> = high - 10% sebagai panduan trailing stop.</li>
-            <li>Sinyal: <em>Cut Loss -5%</em>, <em>Zona TP +10%</em>, <em>Profit Run</em>, atau <em>Hold</em> berdasarkan perbandingan entry vs last.</li>
-            <li>**Fitur Baru (Sinyal Aksi):**
-                <ul>
-                    <li>**ADD-ON (PYR.)**: Muncul saat saham sedang profit $\ge$ 3%, mengindikasikan momentum untuk *Pyramiding* (Average Up).</li>
-                    <li>**RE-ENTRY**: Muncul saat saham yang pernah profit signifikan (>+5%) terkoreksi kembali ke zona beli (di bawah *High - 5%*) tetapi masih di zona rugi/dekat entry.</li>
-                    <li>**TS HIT (TS1/TS2)**: Muncul saat harga turun dan menyentuh level Trailing Stop (High -5% atau High -10%) setelah mencapai profit signifikan. Ini adalah sinyal untuk segera mengamankan sisa profit.</li>
-                </ul>
-            </li>
-            <li>**Fitur Baru (Set Entry Baru):** Tombol "🔄 Set Entry Baru" digunakan untuk **mereset Entry Price** (dan Highest Price) ke harga yang diinput saat ini. Gunakan ini setelah melakukan *Re-entry* atau setelah *Average Up* (Pyramiding) untuk mencatat harga rata-rata baru.</li>
+            <li><strong>Entry Price</strong>: Harga beli awal/rata-rata yang dijadikan basis perhitungan untung/rugi.</li>
+            <li><strong>Highest Price</strong>: Harga tertinggi yang pernah dicapai saham sejak Entry. Digunakan sebagai dasar penghitungan Trailing Stop.</li>
+            <li><strong>Last Price</strong>: Harga terbaru yang di-input pada kolom sebelah kiri.</li>
+            <li><strong>TS1 ($H - 5\%$) / TS2 ($H - 10\%$)</strong>: Level harga Trailing Stop.</li>
           </ul>
+
+          <div class="action-list">
+              <h4>Panduan Sinyal Aksi (Action Signals)</h4>
+              <p>Sinyal-sinyal di bawah dirancang untuk memandu pengambilan keputusan Jual/Beli:</p>
+              <ul>
+                  <li>🛑 <strong>LOSS -5%</strong>: Harga jatuh di bawah level Cut Loss -5% dari Entry Price. Sinyal Jual Wajib.</li>
+                  <li>🎯 <strong>TP +10%</strong>: Harga mencapai Target Profit +10% dari Entry Price. Sinyal Jual Target.</li>
+                  <li>⚠️ <strong>TS HIT (TS1/TS2)</strong>: Saham yang sudah pernah untung signifikan, kini turun dan menyentuh level Trailing Stop ($H - 5\%$ atau $H - 10\%$). **Sinyal Jual Cepat** untuk mengamankan keuntungan yang tersisa.</li>
+                  <li>⬆️ <strong>ADD-ON</strong>: Saham sedang Profit $\ge$ 3%. Momentum dianggap cukup kuat untuk dipertimbangkan tambah muatan (*Pyramiding*).</li>
+                  <li>🔄 <strong>RE-ENTRY</strong>: Saham yang pernah naik >5% kini terkoreksi kembali ke zona beli (di bawah $H - 5\%$) namun masih di zona rugi/dekat entry. Mengindikasikan kesempatan untuk beli ulang.</li>
+                  <li>🚀 <strong>PROFIT</strong>: Saham masih profit (>0% dan <3%) atau momentum belum cukup kuat untuk sinyal *Add-on*.</li>
+                  <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data kurang/tidak jelas.</li>
+              </ul>
+          </div>
+          
+          <p><strong>Panduan Penggunaan Tombol</strong></p>
+          <ul>
+            <li><strong>💾 Simpan (Hijau)</strong>: Gunakan untuk <strong>Update Harga Harian</strong>. Tombol ini tidak akan mengubah Entry Price (harga beli awal Anda), kecuali pada input saham yang benar-benar baru (pembelian pertama).</li>
+            <li><strong>🔄 Set Entry Baru (Biru)</strong>: Gunakan secara **SANGAT SPESIFIK** setelah Anda melakukan:
+                <ol>
+                    <li>**Average Up (Pyramiding):** Untuk mencatat harga rata-rata baru.</li>
+                    <li>**Re-entry:** Untuk mencatat harga beli ulang yang baru.</li>
+                </ol>
+                Aksi ini akan **mereset Entry Price dan Highest Price** ke harga yang diinput saat itu.</li>
+            <li><strong>ℹ️ Tentang (Kuning)</strong>: Menampilkan atau menyembunyikan panel penjelasan ini.</li>
+          </ul>
+
           <p>
-            Urutan kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> untuk memudahkan prioritas keputusan.
+            Kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> (berdasarkan Last Price vs Entry Price) untuk memudahkan prioritas tindakan.
           </p>
         </div>
       </div>
