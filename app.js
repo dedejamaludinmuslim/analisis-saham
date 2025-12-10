@@ -2,7 +2,6 @@
 (function () {
   const { createClient } = supabase;
 
-  // Project saham-edge kamu
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
@@ -19,7 +18,8 @@
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
   const btnSave = document.getElementById("btn-save");
-  const btnLabel = document.getElementById("btn-label");
+  const btnAbout = document.getElementById("btn-about");
+  const aboutPanel = document.getElementById("about-panel");
   const summaryRow = document.getElementById("summary-row");
   const cardsContainer = document.getElementById("cards-container");
 
@@ -149,7 +149,7 @@
       });
     }
 
-    // sort: profit tertinggi -> terendah
+    // Urutkan dari gain tertinggi ke terendah
     cards.sort((a, b) => {
       const ga = (a.gainPct === null || Number.isNaN(a.gainPct)) ? -Infinity : a.gainPct;
       const gb = (b.gainPct === null || Number.isNaN(b.gainPct)) ? -Infinity : b.gainPct;
@@ -227,7 +227,6 @@
     currentId = null;
     kodeEl.value = "";
     lastPriceEl.value = "";
-    if (btnLabel) btnLabel.textContent = "Simpan / Update";
   }
 
   async function saveData() {
@@ -274,7 +273,7 @@
       return;
     }
 
-    // MODE 2: upsert by kode (tidak sedang edit id tertentu)
+    // MODE 2: upsert by kode
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
       .select("id, entry_price, highest_price_after_entry, last_price")
@@ -349,7 +348,14 @@
     currentId = row.id;
     kodeEl.value = row.kode || "";
     lastPriceEl.value = row.last_price || "";
-    if (btnLabel) btnLabel.textContent = "Update Kode / Harga";
+  });
+
+  // Tombol Tentang: toggle panel
+  btnAbout.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (!aboutPanel) return;
+    const isHidden = aboutPanel.style.display === "" || aboutPanel.style.display === "none";
+    aboutPanel.style.display = isHidden ? "block" : "none";
   });
 
   loadData();
