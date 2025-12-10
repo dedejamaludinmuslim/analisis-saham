@@ -175,35 +175,26 @@
       display: none;
     }
 
-    /* PANEL STATISTIK: 5–6 BARIS + REKOMENDASI */
     .summary-row {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-bottom: 10px;
     }
-    .summary-line {
-      display: grid;
-      grid-template-columns: 120px 70px minmax(0, 1fr);
-      column-gap: 8px;
-      align-items: center;
-      font-size: 11px;
+    .summary-chip {
       padding: 5px 9px;
       border-radius: 999px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(75, 85, 99, 0.8);
-    }
-    .summary-label {
-      font-weight: 500;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.5);
       color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
-    .summary-value {
+    .summary-chip strong {
       font-weight: 600;
       color: #f9fafb;
-    }
-    .summary-action {
-      color: #9ca3af;
-      font-size: 11px;
     }
 
     .about-dashboard {
