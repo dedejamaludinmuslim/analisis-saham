@@ -244,10 +244,12 @@
       mix-blend-mode: soft-light;
       pointer-events: none;
     }
+
+    /* BARIS ATAS KARTU: kode - sinyal - gain */
     .stock-main {
       position: relative;
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: auto 1fr auto; /* kiri: kode, tengah: sinyal, kanan: gain */
       align-items: center;
       gap: 6px;
       margin-bottom: 6px;
@@ -257,18 +259,8 @@
       font-weight: 600;
       letter-spacing: 0.06em;
       color: #f9fafb;
-      flex: 1;
+      justify-self: start;
     }
-    .stock-gain {
-      font-size: 13px;
-      font-weight: 600;
-      min-width: 64px;
-      text-align: right;
-    }
-    .gain-pos { color: #4ade80; }
-    .gain-neg { color: #f97373; }
-    .gain-zero { color: #e5e7eb; }
-
     .signal-pill {
       position: relative;
       display: inline-flex;
@@ -280,8 +272,20 @@
       font-size: 11px;
       font-weight: 500;
       margin-top: 0;
-      flex-shrink: 0;
+      justify-self: center;
     }
+    .stock-gain {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 64px;
+      text-align: right;
+      justify-self: end;
+    }
+
+    .gain-pos { color: #4ade80; }
+    .gain-neg { color: #f97373; }
+    .gain-zero { color: #e5e7eb; }
+
     .sig-cut {
       background: rgba(248, 113, 113, 0.12);
       color: #fecaca;
