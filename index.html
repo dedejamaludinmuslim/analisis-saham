@@ -128,8 +128,13 @@
       margin-bottom: 6px;
     }
 
-    /* .btn-row-center dihapus */
-
+    /* CSS DITAMBAHKAN KEMBALI UNTUK CENTER */
+    .btn-row-center {
+        display: flex;
+        justify-content: center; /* Memastikan tombol di tengah */
+        margin-bottom: 8px;
+    }
+    
     .btn-row-main {
       display: flex;
       justify-content: space-between;
@@ -153,6 +158,14 @@
       font-size: 13px;
       cursor: pointer;
       white-space: nowrap;
+    }
+
+    /* Adjustments for centered Set Entry Button */
+    .btn-row-center .btn-set-entry {
+        width: 100%; 
+        max-width: 300px;
+        padding: 9px 14px; /* Tambahkan sedikit padding vertikal agar lebih menonjol */
+        font-size: 14px;
     }
 
     /* GAYA UTAMA: SIMPAN (HIJAU) */
@@ -462,14 +475,16 @@
           Klik kartu saham di kanan untuk <strong>edit</strong> kode / last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga.
         </div>
         
+        <div class="btn-row-center">
+            <button id="btn-set-entry" class="btn-set-entry" type="button">
+              🔄 Set Entry Baru
+            </button>
+        </div>
         <div class="btn-row-main">
           <button id="btn-about" class="btn-about" type="button">
             ℹ️ Tentang
           </button>
           <div style="display: flex; gap: 8px; align-items: center;">
-            <button id="btn-set-entry" class="btn-set-entry" type="button">
-              🔄 Set Entry Baru
-            </button>
             <button id="btn-install" class="btn-ghost" type="button" hidden>
               📱 Install Aplikasi
             </button>
