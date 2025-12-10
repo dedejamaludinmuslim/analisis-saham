@@ -4,6 +4,12 @@
   <meta charset="UTF-8" />
   <title>Dashboard Tren Saham</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- PWA: manifest & theme-color -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#0f172a" />
+
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -121,10 +127,10 @@
     .form-hint {
       font-size: 11px;
       color: #9ca3af;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
-    .btn-row {
+    .btn-row-main {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -132,7 +138,8 @@
       gap: 8px;
     }
     .btn-primary,
-    .btn-secondary {
+    .btn-secondary,
+    .btn-ghost {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -156,6 +163,16 @@
       background: rgba(15, 23, 42, 0.9);
       color: #e5e7eb;
       border: 1px solid rgba(148, 163, 184, 0.7);
+    }
+    .btn-ghost {
+      padding: 5px 12px;
+      font-size: 12px;
+      background: transparent;
+      color: #bfdbfe;
+      border: 1px dashed rgba(96, 165, 250, 0.7);
+    }
+    .btn-ghost[hidden] {
+      display: none;
     }
 
     .summary-row {
@@ -301,16 +318,9 @@
       color: #e5e7eb;
     }
 
-    /* ENTRY kiri, HIGH tengah, LAST kanan */
-    .stock-rows > div:nth-child(1) {
-      text-align: left;
-    }
-    .stock-rows > div:nth-child(2) {
-      text-align: center;
-    }
-    .stock-rows > div:nth-child(3) {
-      text-align: right;
-    }
+    .stock-rows > div:nth-child(1) { text-align: left; }
+    .stock-rows > div:nth-child(2) { text-align: center; }
+    .stock-rows > div:nth-child(3) { text-align: right; }
 
     .ts-row {
       position: relative;
@@ -368,13 +378,18 @@
           Klik kartu saham di kanan untuk <strong>edit</strong> kode / last price, lalu tekan Simpan.
         </div>
 
-        <div class="btn-row">
+        <div class="btn-row-main">
           <button id="btn-about" class="btn-secondary" type="button">
             ℹ️ Tentang
           </button>
-          <button id="btn-save" class="btn-primary" type="button">
-            💾 Simpan
-          </button>
+          <div>
+            <button id="btn-install" class="btn-ghost" type="button" hidden>
+              📱 Install Aplikasi
+            </button>
+            <button id="btn-save" class="btn-primary" type="button">
+              💾 Simpan
+            </button>
+          </div>
         </div>
       </div>
 
