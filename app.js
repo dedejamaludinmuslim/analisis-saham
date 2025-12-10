@@ -3,7 +3,9 @@
   const { createClient } = supabase;
 
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
+
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // Konstanta strategi
@@ -16,10 +18,12 @@
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
   const btnSave = document.getElementById("btn-save");
+  const btnLabel = document.getElementById("btn-label");
   const summaryRow = document.getElementById("summary-row");
   const cardsContainer = document.getElementById("cards-container");
 
   let currentRows = [];
+  let currentId = null; // id record yang sedang diedit (kalau null = mode tambah / upsert by kode)
 
   function parseNum(value) {
     const n = Number(value);
@@ -66,8 +70,6 @@
   }
 
   async function loadData() {
-    console.log("[DEBUG] loadData() from portofolio_saham");
-
     const { data, error } = await db
       .from("portofolio_saham")
       .select("id, kode, entry_price, highest_price_after_entry, last_price")
@@ -134,6 +136,7 @@
       const sig = signalInfo(entry, last, high);
 
       cards.push({
+        id: row.id,
         kode: row.kode,
         entry,
         last,
@@ -173,7 +176,7 @@
           .map((c) => {
             const gainClass = classForGain(c.gainPct);
             return `
-              <div class="stock-card">
+              <div class="stock-card" data-id="${c.id}">
                 <div class="stock-main">
                   <div>
                     <div class="stock-code">${c.kode || "-"}</div>
@@ -212,6 +215,13 @@
     `;
   }
 
+  function resetForm() {
+    currentId = null;
+    kodeEl.value = "";
+    lastPriceEl.value = "";
+    if (btnLabel) btnLabel.textContent = "Simpan / Update";
+  }
+
   async function saveData() {
     const kode = (kodeEl.value || "").trim().toUpperCase();
     const lastPrice = parseNum(lastPriceEl.value);
@@ -221,9 +231,43 @@
       return;
     }
 
-    console.log("[DEBUG] saveData()", { kode, lastPrice });
+    // MODE 1: sedang edit record tertentu (klik dari kartu)
+    if (currentId) {
+      const row = currentRows.find((r) => r.id === currentId);
+      if (!row) {
+        // fallback: kalau tiba-tiba row tidak ada, treat sebagai insert baru
+        currentId = null;
+        return saveData();
+      }
 
-    // Cek ke Supabase apakah kode ini sudah pernah ada
+      const entry = parseNum(row.entry_price) || lastPrice;
+      const oldHigh = parseNum(row.highest_price_after_entry) || entry;
+      const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
+
+      const payloadUpdate = {
+        kode,
+        entry_price: entry,
+        last_price: lastPrice,
+        highest_price_after_entry: newHigh
+      };
+
+      const { error: updateError } = await db
+        .from("portofolio_saham")
+        .update(payloadUpdate)
+        .eq("id", currentId);
+
+      if (updateError) {
+        console.error("Gagal update:", updateError);
+        alert("Gagal update data: " + updateError.message);
+        return;
+      }
+
+      resetForm();
+      await loadData();
+      return;
+    }
+
+    // MODE 2: tidak ada currentId → upsert by kode
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
       .select("id, entry_price, highest_price_after_entry, last_price")
@@ -231,25 +275,23 @@
       .maybeSingle();
 
     if (queryError && queryError.code !== "PGRST116") {
-      // PGRST116 = no rows found, itu bukan error fatal
       console.error("Gagal cek existing:", queryError);
       alert("Gagal cek data existing: " + queryError.message);
       return;
     }
 
     if (existing) {
-      // === RECORD SUDAH ADA → UPDATE ===
+      // kode sudah ada → update berdasarkan data existing
       const entry = parseNum(existing.entry_price) || lastPrice;
       const oldHigh = parseNum(existing.highest_price_after_entry) || entry;
       const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
 
       const payloadUpdate = {
+        kode,
         entry_price: entry,
         last_price: lastPrice,
         highest_price_after_entry: newHigh
       };
-
-      console.log("[DEBUG] UPDATE payload:", payloadUpdate);
 
       const { error: updateError } = await db
         .from("portofolio_saham")
@@ -262,15 +304,13 @@
         return;
       }
     } else {
-      // === RECORD BARU → INSERT ===
+      // kode belum ada → insert record baru
       const payloadInsert = {
         kode,
         entry_price: lastPrice,
         last_price: lastPrice,
         highest_price_after_entry: lastPrice
       };
-
-      console.log("[DEBUG] INSERT payload:", payloadInsert);
 
       const { error: insertError } = await db
         .from("portofolio_saham")
@@ -283,9 +323,7 @@
       }
     }
 
-    // opsional: kosongkan last price setiap kali simpan
-    lastPriceEl.value = "";
-
+    resetForm();
     await loadData();
   }
 
@@ -295,19 +333,19 @@
     saveData();
   });
 
-  // Klik kartu → isi ulang form untuk update cepat
+  // Klik kartu → masuk mode edit
   cardsContainer.addEventListener("click", (e) => {
     const card = e.target.closest(".stock-card");
     if (!card) return;
-    const codeEl = card.querySelector(".stock-code");
-    if (!codeEl) return;
 
-    const kode = codeEl.textContent.trim();
-    const row = currentRows.find((r) => r.kode === kode);
+    const id = card.getAttribute("data-id");
+    const row = currentRows.find((r) => r.id === id);
     if (!row) return;
 
+    currentId = row.id;
     kodeEl.value = row.kode || "";
     lastPriceEl.value = row.last_price || "";
+    if (btnLabel) btnLabel.textContent = "Update Kode / Harga";
   });
 
   // Init pertama kali
