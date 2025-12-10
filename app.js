@@ -239,8 +239,8 @@
           case "RE-ENTRY":
             countReEntry++;
             break;
-          case "TS1 HIT":
-          case "TS2 HIT":
+          case "TS HIT (TS1)":
+          case "TS HIT (TS2)":
             countTsHit++;
             break;
           case "HOLD":
