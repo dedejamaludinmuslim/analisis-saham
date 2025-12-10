@@ -10,16 +10,18 @@
 
   const TP_PCT = 0.10; // Target Profit +10%
   const CUT_PCT = -0.05; // Cut Loss -5%
-  const TS1_PCT = 0.05; // Trailing Stop 1: High -5% (Digunakan juga untuk ambang batas Re-entry check)
+  const TS1_PCT = 0.05; // Trailing Stop 1: High -5%
   const TS2_PCT = 0.10; // Trailing Stop 2: High -10%
 
   // Konstanta Baru untuk Sinyal
-  const RE_ENTRY_CHECK_PCT = 0.05; // High harus > Entry +5% agar Re-entry valid
+  const RE_ENTRY_CHECK_PCT = 0.05; // High harus > Entry +5% agar Re-entry/TS Hit valid
   const ADD_ON_PCT = 0.03; // Ambang batas Add-on (Pyramiding): Profit >= +3%
 
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
   const btnSave = document.getElementById("btn-save");
+  // NEW: Button for setting new entry price
+  const btnSetEntry = document.getElementById("btn-set-entry"); 
   const btnAbout = document.getElementById("btn-about");
   const btnInstall = document.getElementById("btn-install");
 
@@ -103,10 +105,9 @@
     return "gain-zero";
   }
 
-  // FUNGSI SINYAL TELAH DIUBAH UNTUK MENAMBAHKAN RE-ENTRY & ADD-ON
+  // FUNGSI SINYAL TELAH DIUBAH UNTUK MENAMBAHKAN RE-ENTRY, ADD-ON (3%), DAN TS-HIT
   function signalInfo(entry, last, high) {
     if (!entry || !last || !high) {
-      // Jika salah satu data penting tidak ada, anggap data kurang
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
 
@@ -114,9 +115,10 @@
     const cutLevel = entry * (1 + CUT_PCT); // Entry -5%
     const tpLevel = entry * (1 + TP_PCT); // Entry +10%
 
-    // Level untuk Re-entry
+    // Level untuk Re-entry dan TS Hit
     const highCheckLevel = entry * (1 + RE_ENTRY_CHECK_PCT); // Entry +5% (High harus melebihi ini)
-    const reEntryLevel = high * (1 - TS1_PCT); // High -5% (Sinyal Re-entry aktif jika Last < level ini)
+    const ts1Level = high * (1 - TS1_PCT); // High -5%
+    const ts2Level = high * (1 - TS2_PCT); // High -10%
 
     // 1. CUT LOSS
     if (last <= cutLevel) {
@@ -127,24 +129,36 @@
     if (last >= tpLevel) {
       return { text: "TP +10%", className: "sig-tp", icon: "🎯" };
     }
+
+    // 3. TS HIT - Terjadi jika sudah pernah profit signifikan (H > E + 5%)
+    // DAN harga saat ini di bawah level Trailing Stop, TAPI masih untung (gainPct > 0).
+    if (high >= highCheckLevel && gainPct > 0) {
+        if (last < ts2Level) { // TS2 Hit (lebih urgent)
+            return { text: "TS HIT (TS2)", className: "sig-tshit", icon: "🚨" };
+        }
+        if (last < ts1Level) { // TS1 Hit
+            return { text: "TS HIT (TS1)", className: "sig-tshit", icon: "⚠️" };
+        }
+    }
     
-    // 3. RE-ENTRY
-    // Kondisi: (Sudah pernah naik signifikan > +5%) AND (Koreksi di bawah High - 5%)
-    if (high >= highCheckLevel && last < reEntryLevel) {
-      return { text: "RE-ENTRY", className: "sig-reentry", icon: "🔄" };
+    // 4. RE-ENTRY
+    // Kondisi: Sudah pernah naik signifikan (>+5%) DAN koreksi di bawah TS1 (H-5%)
+    // TAPI sekarang floating loss (gainPct < 0), yang berarti saham ini menarik untuk dibeli ulang.
+    if (high >= highCheckLevel && last < ts1Level && gainPct < 0) {
+        return { text: "RE-ENTRY", className: "sig-reentry", icon: "🔄" };
     }
 
-    // 4. PROFIT RUN / ADD-ON
+    // 5. PROFIT RUN / ADD-ON
     if (gainPct > 0) {
         // Cek apakah profitnya >= 3% untuk sinyal Add-on (Pyramiding)
         if (gainPct >= ADD_ON_PCT) {
-            return { text: "ADD-ON", className: "sig-addon", icon: "⬆️" };
+            return { text: "ADD-ON (PYR.)", className: "sig-addon", icon: "⬆️" };
         }
         // Jika profit > 0% tapi < 3%
-        return { text: "PROFIT", className: "sig-run", icon: "🚀" };
+        return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
     }
     
-    // 5. HOLD (L < E, tapi belum Cut Loss dan belum Re-entry)
+    // 6. HOLD (L < E, tapi belum Cut Loss dan belum Re-entry)
     return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
   }
 
@@ -188,8 +202,9 @@
     let countTP = 0;
     let countRun = 0;
     let countHold = 0;
-    let countAddOn = 0; // Tambah counter baru
-    let countReEntry = 0; // Tambah counter baru
+    let countAddOn = 0; // NEW
+    let countReEntry = 0; // NEW
+    let countTsHit = 0; // NEW
 
     const cards = [];
 
@@ -224,6 +239,10 @@
           case "RE-ENTRY":
             countReEntry++;
             break;
+          case "TS HIT (TS1)":
+          case "TS HIT (TS2)":
+            countTsHit++;
+            break;
           case "HOLD":
           case "DATA KURANG":
           default:
@@ -257,7 +276,7 @@
 
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
 
-    // Summary Row diubah: menambahkan Add-on dan Re-entry
+    // Summary Row diubah: menambahkan Add-on, Re-entry, dan TS Hit
     summaryRow.innerHTML = `
       <div class="summary-chip">
         📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
@@ -281,6 +300,9 @@
       </div>
       <div class="summary-chip">
         🔄 <span>Re-entry: <strong>${countReEntry}</strong></span>
+      </div>
+      <div class="summary-chip">
+        ⚠️ <span>TS Hit: <strong>${countTsHit}</strong></span>
       </div>
     `;
 
@@ -332,6 +354,47 @@
     kodeEl.value = "";
     lastPriceEl.value = "";
   }
+  
+  // NEW FUNCTION: Set New Entry Price
+  async function setNewEntryPrice(kode, lastPrice) {
+    const { data: existing, error: queryError } = await db
+      .from("portofolio_saham")
+      .select("id")
+      .eq("kode", kode)
+      .maybeSingle();
+
+    if (queryError) {
+        alert("Gagal cek data existing: " + queryError.message);
+        return;
+    }
+
+    if (!existing) {
+        alert("Kode saham belum ada di portofolio. Silahkan Simpan dulu.");
+        return;
+    }
+
+    // Payload untuk update Entry Price, Last Price, dan High Price (semua disetel sama)
+    const payloadUpdate = {
+      entry_price: lastPrice,
+      last_price: lastPrice, 
+      highest_price_after_entry: lastPrice
+    };
+
+    const { error: updateError } = await db
+      .from("portofolio_saham")
+      .update(payloadUpdate)
+      .eq("id", existing.id);
+
+    if (updateError) {
+      console.error("Gagal update entry price:", updateError);
+      alert("Gagal update Entry Price: " + updateError.message);
+      return;
+    }
+
+    resetForm();
+    await loadData();
+  }
+
 
   async function saveData() {
     const kode = (kodeEl.value || "").trim().toUpperCase();
@@ -355,7 +418,7 @@
 
       const payloadUpdate = {
         kode,
-        entry_price: entry,
+        entry_price: entry, // Entry TIDAK diubah saat SIMPAN
         last_price: lastPrice,
         highest_price_after_entry: newHigh
       };
@@ -459,6 +522,27 @@
     e.preventDefault();
     saveData();
   });
+  
+  // NEW: Event Listener for Set Entry Price Button
+  if (btnSetEntry) {
+    btnSetEntry.addEventListener("click", (e) => {
+      e.preventDefault();
+      const kode = (kodeEl.value || "").trim().toUpperCase();
+      const lastPrice = parseNum(lastPriceEl.value);
+
+      if (!kode || !lastPrice) {
+        alert("Isi Kode Saham dan Harga saat ini (Entry Baru) dulu.");
+        return;
+      }
+      
+      if (!confirm(`Yakin ingin menyetel ulang Entry Price ${kode} menjadi ${formatNum(lastPrice)}? Semua data HIGH akan direset (Entry = Last = High).`)) {
+          return;
+      }
+      
+      setNewEntryPrice(kode, lastPrice);
+    });
+  }
+
 
   if (btnAbout) {
     btnAbout.addEventListener("click", (e) => {
