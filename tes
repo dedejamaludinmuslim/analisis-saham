@@ -1,7 +1,0 @@
-const { data, error } = await db.from("portofolio_saham").select();
-if (error) {
-  console.error("Error fetching data from Supabase:", error);
-  alert("Gagal terhubung ke Supabase.");
-} else {
-  console.log("Data fetched from Supabase:", data);
-}
