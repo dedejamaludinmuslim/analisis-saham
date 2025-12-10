@@ -34,7 +34,7 @@
   // ===== PWA: REGISTER SERVICE WORKER =====
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
-      navigator.serviceWorker
+navigator.serviceWorker
         .register("service-worker.js")
         .catch((err) => {
           console.warn("SW register gagal:", err);
@@ -99,7 +99,8 @@
     return "gain-zero";
   }
 
-  function signalInfo(entry, last) {
+  // Update signalInfo function to handle re-entry and add-on
+  function signalInfo(entry, last, high) {
     if (!entry || !last) {
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
@@ -108,15 +109,32 @@
     const cutLevel = entry * (1 + CUT_PCT);
     const tpLevel = entry * (1 + TP_PCT);
 
+    // Check for Cut Loss
     if (last <= cutLevel) {
       return { text: "CUT LOSS -5%", className: "sig-cut", icon: "🛑" };
     }
+
+    // Check for TP Zone
     if (last >= tpLevel) {
       return { text: "ZONA TP +10%", className: "sig-tp", icon: "🎯" };
     }
+
+    // Check for Add-on (when the price continues to rise)
+    if (last > entry) {
+      return { text: "ADD-ON POSITION", className: "sig-run", icon: "🚀" };
+    }
+
+    // Check for Re-entry (when price dropped to trailing stop and rises again)
+    if (last > high * (1 - TS1_PCT)) {
+      return { text: "RE-ENTRY (after drop)", className: "sig-run", icon: "🔁" };
+    }
+
+    // Check for Profit Run
     if (gainPct > 0) {
       return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
     }
+
+    // Default: Hold
     return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
   }
 
@@ -186,7 +204,7 @@
 
       const ts1 = high ? high * (1 - TS1_PCT) : null;
       const ts2 = high ? high * (1 - TS2_PCT) : null;
-      const sig = signalInfo(entry, last);
+      const sig = signalInfo(entry, last, high);
 
       cards.push({
         id: row.id,
