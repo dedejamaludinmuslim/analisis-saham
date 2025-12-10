@@ -129,10 +129,8 @@
     if (error) {
       console.error("Gagal load data:", error);
       summaryRow.innerHTML = `
-        <div class="summary-line">
-          <div class="summary-label">Error</div>
-          <div class="summary-value">-</div>
-          <div class="summary-action">Gagal memuat data: ${error.message}</div>
+        <div class="summary-chip">
+          ❌ Error load: <strong>${error.message}</strong>
         </div>
       `;
       cardsContainer.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`;
@@ -148,13 +146,11 @@
   function renderDashboard() {
     if (!currentRows.length) {
       summaryRow.innerHTML = `
-        <div class="summary-line">
-          <div class="summary-label">Total saham</div>
-          <div class="summary-value">0</div>
-          <div class="summary-action">Belum ada posisi. Mulai catat saham yang ingin dipantau.</div>
+        <div class="summary-chip">
+          ℹ️ <span>Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</span>
         </div>
       `;
-      cardsContainer.innerHTML = `<div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>`;
+      cardsContainer.innerHTML = `<div class="empty-state">Belum ada data.</div>`;
       return;
     }
 
@@ -213,37 +209,23 @@
 
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
 
-    // ===== PANEL STATISTIK + REKOMENDASI AKSI (5–6 BARIS) =====
     summaryRow.innerHTML = `
-      <div class="summary-line">
-        <div class="summary-label">Total saham</div>
-        <div class="summary-value">${currentRows.length}</div>
-        <div class="summary-action">Jaga portofolio tetap fokus, jangan terlalu banyak saham agar mudah dipantau.</div>
+      <div class="summary-chip">
+        📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
       </div>
-      <div class="summary-line">
-        <div class="summary-label">Average gain</div>
-        <div class="summary-value">${formatPct(avgGainPct)}</div>
-        <div class="summary-action">Bandingkan dengan target gain pribadi; evaluasi saham yang menyeret rata-rata turun.</div>
+      <div class="summary-chip">
+        📈 <span>Rata-rata gain: <strong>${formatPct(avgGainPct)}</strong></span>
       </div>
-      <div class="summary-line">
-        <div class="summary-label">Zona TP +10%</div>
-        <div class="summary-value">${countTP}</div>
-        <div class="summary-action">Siapkan rencana partial sell (±30–50%) untuk saham di zona TP saat closing.</div>
+      <div class="summary-chip">
+        🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
       </div>
-      <div class="summary-line">
-        <div class="summary-label">Profit run</div>
-        <div class="summary-value">${countRun}</div>
-        <div class="summary-action">Tahan saham ini dan perketat trailing stop; biarkan profit berlari tapi tetap terjaga.</div>
+      <div class="summary-chip">
+        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
+      <div class="summary-chip">
+        🚀 <span>Profit run: <strong>${countRun}</strong></span>
       </div>
-      <div class="summary-line">
-        <div class="summary-label">Hold</div>
-        <div class="summary-value">${countHold}</div>
-        <div class="summary-action">Belum ada sinyal aksi kuat; cukup pantau tren dan tunggu mendekati TP atau TS.</div>
-      </div>
-      <div class="summary-line">
-        <div class="summary-label">Cut loss -5%</div>
-        <div class="summary-value">${countCut}</div>
-        <div class="summary-action">Disiplin cut loss di saham ini saat closing untuk menjaga kesehatan modal.</div>
+      <div class="summary-chip">
+        ⏸️ <span>Hold: <strong>${countHold}</strong></span>
       </div>
     `;
 
@@ -255,12 +237,10 @@
             return `
               <div class="stock-card" data-id="${c.id}">
                 <div class="stock-main">
-                  <div>
-                    <div class="stock-code">${c.kode || "-"}</div>
-                    <div class="signal-pill ${c.sig.className}">
-                      <span>${c.sig.icon}</span>
-                      <span>${c.sig.text}</span>
-                    </div>
+                  <div class="stock-code">${c.kode || "-"}</div>
+                  <div class="signal-pill ${c.sig.className}">
+                    <span>${c.sig.icon}</span>
+                    <span>${c.sig.text}</span>
                   </div>
                   <div class="stock-gain ${gainClass}">
                     ${c.gainPct === null ? "-" : formatPct(c.gainPct)}
