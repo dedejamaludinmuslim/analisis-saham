@@ -109,13 +109,13 @@
     const tpLevel = entry * (1 + TP_PCT);
 
     if (last <= cutLevel) {
-      return { text: "CUT LOSS -5%", className: "sig-cut", icon: "🛑" };
+      return { text: "LOSS -5%", className: "sig-cut", icon: "🛑" };
     }
     if (last >= tpLevel) {
       return { text: "TP +10%", className: "sig-tp", icon: "🎯" };
     }
     if (gainPct > 0) {
-      return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
+      return { text: "PROFIT", className: "sig-run", icon: "🚀" };
     }
     return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
   }
