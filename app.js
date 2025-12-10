@@ -1,4 +1,3 @@
-// app.js
 (function () {
   const { createClient } = supabase;
 
@@ -8,10 +7,10 @@
 
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const TP_PCT = 0.10;
-  const CUT_PCT = -0.05;
-  const TS1_PCT = 0.05;
-  const TS2_PCT = 0.10;
+  const TP_PCT = 0.10; // Zona Take Profit +10%
+  const CUT_PCT = -0.05; // Cut Loss -5%
+  const TS1_PCT = 0.05; // Trailing Stop 1 -5%
+  const TS2_PCT = 0.10; // Trailing Stop 2 -10%
 
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
@@ -99,7 +98,8 @@
     return "gain-zero";
   }
 
-  function signalInfo(entry, last) {
+  // Update signalInfo function to handle re-entry and add-on
+  function signalInfo(entry, last, high) {
     if (!entry || !last) {
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
@@ -108,15 +108,32 @@
     const cutLevel = entry * (1 + CUT_PCT);
     const tpLevel = entry * (1 + TP_PCT);
 
+    // Check for Cut Loss
     if (last <= cutLevel) {
       return { text: "CUT LOSS -5%", className: "sig-cut", icon: "🛑" };
     }
+
+    // Check for TP Zone
     if (last >= tpLevel) {
       return { text: "ZONA TP +10%", className: "sig-tp", icon: "🎯" };
     }
+
+    // Check for Add-on (when the price continues to rise)
+    if (last > entry) {
+      return { text: "ADD-ON POSITION", className: "sig-run", icon: "🚀" };
+    }
+
+    // Check for Re-entry (when price dropped to trailing stop and rises again)
+    if (last > high * (1 - TS1_PCT)) {
+      return { text: "RE-ENTRY (after drop)", className: "sig-run", icon: "🔁" };
+    }
+
+    // Check for Profit Run
     if (gainPct > 0) {
       return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
     }
+
+    // Default: Hold
     return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
   }
 
@@ -186,7 +203,7 @@
 
       const ts1 = high ? high * (1 - TS1_PCT) : null;
       const ts2 = high ? high * (1 - TS2_PCT) : null;
-      const sig = signalInfo(entry, last);
+      const sig = signalInfo(entry, last, high);
 
       cards.push({
         id: row.id,
