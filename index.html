@@ -128,12 +128,7 @@
       margin-bottom: 6px;
     }
 
-    /* NEW: Row untuk tombol Set Entry yang di tengah */
-    .btn-row-center {
-        display: flex;
-        justify-content: center; /* Memastikan tombol di tengah */
-        margin-bottom: 8px;
-    }
+    /* .btn-row-center dihapus */
 
     .btn-row-main {
       display: flex;
@@ -160,14 +155,6 @@
       white-space: nowrap;
     }
 
-    /* Adjustments for centered Set Entry Button */
-    .btn-row-center .btn-set-entry {
-        width: 100%; 
-        max-width: 300px;
-        padding: 9px 14px; /* Tambahkan sedikit padding vertikal agar lebih menonjol */
-        font-size: 14px;
-    }
-
     /* GAYA UTAMA: SIMPAN (HIJAU) */
     .btn-primary {
       background: linear-gradient(135deg, #22c55e, #16a34a);
@@ -179,7 +166,7 @@
       box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
     }
 
-    /* GAYA UTAMA: SET ENTRY BARU (BIRU) - Format sama, warna beda */
+    /* GAYA UTAMA: SET ENTRY BARU (BIRU) */
     .btn-set-entry {
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: #eff6ff;
@@ -190,7 +177,7 @@
       box-shadow: 0 6px 18px rgba(37, 99, 235, 0.55);
     }
 
-    /* GAYA UTAMA: TENTANG (KUNING) - Format sama, warna beda */
+    /* GAYA UTAMA: TENTANG (KUNING) */
     .btn-about {
         background: linear-gradient(135deg, #fcd34d, #fbbf24);
         color: #3f2700;
@@ -203,7 +190,7 @@
 
 
     .btn-secondary {
-      /* Digunakan jika ada tombol secondary lain yang bukan about/set entry */
+      /* Digunakan jika ada tombol secondary lain */
       background: rgba(15, 23, 42, 0.9);
       color: #e5e7eb;
       border: 1px solid rgba(148, 163, 184, 0.7);
@@ -475,16 +462,14 @@
           Klik kartu saham di kanan untuk <strong>edit</strong> kode / last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga.
         </div>
         
-        <div class="btn-row-center">
-            <button id="btn-set-entry" class="btn-set-entry" type="button">
-              🔄 Set Entry Baru
-            </button>
-        </div>
         <div class="btn-row-main">
           <button id="btn-about" class="btn-about" type="button">
             ℹ️ Tentang
           </button>
           <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="btn-set-entry" class="btn-set-entry" type="button">
+              🔄 Set Entry Baru
+            </button>
             <button id="btn-install" class="btn-ghost" type="button" hidden>
               📱 Install Aplikasi
             </button>
