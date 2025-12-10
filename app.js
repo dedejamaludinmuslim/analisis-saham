@@ -20,7 +20,6 @@
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
   const btnSave = document.getElementById("btn-save");
-  // NEW: Button for setting new entry price
   const btnSetEntry = document.getElementById("btn-set-entry"); 
   const btnAbout = document.getElementById("btn-about");
   const btnInstall = document.getElementById("btn-install");
@@ -105,7 +104,6 @@
     return "gain-zero";
   }
 
-  // FUNGSI SINYAL TELAH DIUBAH UNTUK MENAMBAHKAN RE-ENTRY, ADD-ON (3%), DAN TS-HIT
   function signalInfo(entry, last, high) {
     if (!entry || !last || !high) {
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
@@ -202,9 +200,9 @@
     let countTP = 0;
     let countRun = 0;
     let countHold = 0;
-    let countAddOn = 0; // NEW
-    let countReEntry = 0; // NEW
-    let countTsHit = 0; // NEW
+    let countAddOn = 0;
+    let countReEntry = 0;
+    let countTsHit = 0;
 
     const cards = [];
 
@@ -216,7 +214,7 @@
       if (!high && entry) high = entry;
       const gainPct = entry && last ? ((last - entry) / entry) * 100 : null;
 
-      const sig = signalInfo(entry, last, high); // Panggilan fungsi diubah: tambahkan 'high'
+      const sig = signalInfo(entry, last, high);
 
       if (entry && last) {
         totalGain += (last - entry) / entry;
@@ -239,8 +237,8 @@
           case "RE-ENTRY":
             countReEntry++;
             break;
-          case "TS HIT (TS1)":
-          case "TS HIT (TS2)":
+          case "TS HIT (TS1)": // Perbaikan untuk menghitung TS HIT dengan benar
+          case "TS HIT (TS2)": // Perbaikan untuk menghitung TS HIT dengan benar
             countTsHit++;
             break;
           case "HOLD":
@@ -275,9 +273,14 @@
     });
 
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
+    // NEW: Perhitungan Sinyal Cepat (LOSS + TS HIT)
+    const countUrgent = countCut + countTsHit; 
 
-    // Summary Row diubah: menambahkan Add-on, Re-entry, dan TS Hit
+    // Summary Row diubah: tambahkan Sinyal URGENT di awal
     summaryRow.innerHTML = `
+      <div class="summary-chip summary-chip-urgent">
+        🚨 <span>SINYAL URGENT: <strong>${countUrgent} Saham</strong></span>
+      </div>
       <div class="summary-chip">
         📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
       </div>
@@ -355,8 +358,7 @@
     lastPriceEl.value = "";
   }
   
-  // NEW FUNCTION: Set New Entry Price
-  async function setNewEntryPrice(kode, lastPrice) {
+  function setNewEntryPrice(kode, lastPrice) {
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
       .select("id")
@@ -512,7 +514,7 @@
       aboutDashboard.style.display = "none";
       dashboardContent.style.display = "block";
       if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
-      if (rightBadge) rightBadge.textContent = "Sinyal: Cut • TP • Run • Hold";
+      if (rightBadge) rightBadge.textContent = "Sinyal: TS • CL • TP • RE • AD • PR • HO";
       if (btnAbout) btnAbout.textContent = "ℹ️ Tentang";
       renderDashboard();
     }
@@ -523,7 +525,6 @@
     saveData();
   });
   
-  // NEW: Event Listener for Set Entry Price Button
   if (btnSetEntry) {
     btnSetEntry.addEventListener("click", (e) => {
       e.preventDefault();
