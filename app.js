@@ -214,7 +214,10 @@
         📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
       </div>
       <div class="summary-chip">
-        📈 <span>Rata-rata gain: <strong>${formatPct(avgGainPct)}</strong></span>
+        📈 <span>Average gain: <strong>${formatPct(avgGainPct)}</strong></span>
+      </div>
+      <div class="summary-chip">
+        ⏸️ <span>Hold: <strong>${countHold}</strong></span>
       </div>
       <div class="summary-chip">
         🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
@@ -223,9 +226,6 @@
         🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
       <div class="summary-chip">
         🚀 <span>Profit run: <strong>${countRun}</strong></span>
-      </div>
-      <div class="summary-chip">
-        ⏸️ <span>Hold: <strong>${countHold}</strong></span>
       </div>
     `;
 
