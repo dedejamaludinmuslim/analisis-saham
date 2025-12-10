@@ -17,6 +17,7 @@
   const lastPriceEl = document.getElementById("last_price");
   const btnSave = document.getElementById("btn-save");
   const btnAbout = document.getElementById("btn-about");
+  const btnInstall = document.getElementById("btn-install");
 
   const summaryRow = document.getElementById("summary-row");
   const cardsContainer = document.getElementById("cards-container");
@@ -28,6 +29,42 @@
 
   let currentRows = [];
   let currentId = null;
+  let deferredPrompt = null; // for PWA install
+
+  // ===== PWA: REGISTER SERVICE WORKER =====
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("service-worker.js")
+        .catch((err) => {
+          console.warn("SW register gagal:", err);
+        });
+    });
+  }
+
+  // ===== PWA: HANDLE beforeinstallprompt & install button =====
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btnInstall) {
+      btnInstall.hidden = false;
+    }
+  });
+
+  if (btnInstall) {
+    btnInstall.addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      if (choiceResult.outcome === "accepted") {
+        console.log("PWA install accepted");
+      } else {
+        console.log("PWA install dismissed");
+      }
+      deferredPrompt = null;
+      btnInstall.hidden = true;
+    });
+  }
 
   function parseNum(value) {
     const n = Number(value);
@@ -91,7 +128,10 @@
     }
 
     currentRows = data || [];
-    renderDashboard();
+    // hanya render kalau sedang di mode dashboard
+    if (dashboardContent && dashboardContent.style.display !== "none") {
+      renderDashboard();
+    }
   }
 
   function renderDashboard() {
@@ -338,14 +378,12 @@
       dashboardContent.style.display === "" || dashboardContent.style.display === "block";
 
     if (isDashboardVisible) {
-      // Tampilkan TENTANG, sembunyikan dashboard
       dashboardContent.style.display = "none";
       aboutDashboard.style.display = "block";
       if (rightTitle) rightTitle.textContent = "Tentang Aplikasi";
       if (rightBadge) rightBadge.textContent = "Penjelasan fitur & cara pakai";
       if (btnAbout) btnAbout.textContent = "⬅️ Kembali";
     } else {
-      // Tampilkan DASHBOARD, sembunyikan tentang
       aboutDashboard.style.display = "none";
       dashboardContent.style.display = "block";
       if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
