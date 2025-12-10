@@ -1,10 +1,10 @@
-// app.js
+// app.js (Isi sama dengan perbaikan terakhir Anda)
 (function () {
   const { createClient } = supabase;
 
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeLleFQDs";
 
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -278,7 +278,7 @@
     // Summary Row
     summaryRow.innerHTML = `
       <div class="summary-chip summary-chip-urgent">
-        🚨 <span>URGENT: <strong>${countUrgent} Saham</strong></span>
+        🚨 <span>SINYAL URGENT: <strong>${countUrgent} Saham</strong></span>
       </div>
       <div class="summary-chip">
         📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
