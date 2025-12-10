@@ -16,18 +16,12 @@
 
   // DOM
   const kodeEl = document.getElementById("kode");
-  const entryPriceEl = document.getElementById("entry_price");
   const lastPriceEl = document.getElementById("last_price");
-
   const btnSave = document.getElementById("btn-save");
-  const btnReset = document.getElementById("btn-reset");
-  const btnDelete = document.getElementById("btn-delete");
-
-  const tbody = document.getElementById("table-body");
   const summaryRow = document.getElementById("summary-row");
+  const cardsContainer = document.getElementById("cards-container");
 
-  let currentId = null;    // id record yang sedang diedit
-  let currentRows = [];    // cache data terbaru
+  let currentRows = [];
 
   function parseNum(value) {
     const n = Number(value);
@@ -41,23 +35,42 @@
 
   function formatPct(n) {
     if (n === null || n === undefined || Number.isNaN(n)) return "-";
-    const sign = n > 0 ? "+" : "";
+    const sign = n > 0 ? "+" : (n < 0 ? "" : "");
     return sign + n.toFixed(2) + "%";
   }
 
-  function formatPill(text, type) {
-    const cls =
-      type === "profit" ? "pill pill-profit" :
-      type === "loss" ? "pill pill-loss" :
-      type === "tp" ? "pill pill-tp" :
-      "pill pill-hold";
-    return `<span class="${cls}">${text}</span>`;
+  function classForGain(n) {
+    if (n === null || Number.isNaN(n)) return "gain-zero";
+    if (n > 0.05) return "gain-pos";
+    if (n < -0.05) return "gain-neg";
+    return "gain-zero";
+  }
+
+  function signalInfo(entry, last, high) {
+    if (!entry || !last) {
+      return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
+    }
+
+    const gainPct = (last - entry) / entry;
+    const cutLevel = entry * (1 + CUT_PCT);
+    const tpLevel = entry * (1 + TP_PCT);
+
+    if (last <= cutLevel) {
+      return { text: "CUT LOSS -5%", className: "sig-cut", icon: "🛑" };
+    }
+    if (last >= tpLevel) {
+      return { text: "ZONA TP +10%", className: "sig-tp", icon: "🎯" };
+    }
+    if (gainPct > 0) {
+      return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
+    }
+    return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
   }
 
   async function loadData() {
     const { data, error } = await db
       .from("portofolio_saham")
-      .select("*")
+      .select("id, kode, entry_price, highest_price_after_entry, last_price")
       .order("kode", { ascending: true });
 
     if (error) {
@@ -67,213 +80,139 @@
     }
 
     currentRows = data || [];
-    renderTable();
-    renderSummary();
+    renderDashboard();
   }
 
-  function renderSummary() {
+  function renderDashboard() {
+    // Ringkasan
     if (!currentRows.length) {
-      summaryRow.innerHTML = `<div class="summary-item">Belum ada data. Tambah dulu minimal 1 saham.</div>`;
+      summaryRow.innerHTML = "";
+      cardsContainer.innerHTML = `<div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>`;
       return;
     }
 
-    let totalGainVal = 0;
+    let totalGain = 0;
     let countGain = 0;
     let countCut = 0;
     let countTP = 0;
+    let countRun = 0;
+    let countHold = 0;
 
-    for (const row of currentRows) {
-      const entry = parseNum(row.entry_price);
-      const last = parseNum(row.last_price);
-      if (!entry || !last) continue;
-
-      const gainPct = (last - entry) / entry;
-      totalGainVal += gainPct;
-      countGain++;
-
-      const cutLevel = entry * (1 + CUT_PCT);
-      const tpLevel = entry * (1 + TP_PCT);
-
-      if (last <= cutLevel) countCut++;
-      if (last >= tpLevel) countTP++;
-    }
-
-    const avgGain = countGain ? totalGainVal / countGain : 0;
-
-    summaryRow.innerHTML = `
-      <div class="summary-item">Rata-rata Gain: <span>${formatPct(avgGain * 100)}</span></div>
-      <div class="summary-item">Saham di zona TP (+10%): <span>${countTP}</span></div>
-      <div class="summary-item">Kandidat Cut Loss (-5%): <span>${countCut}</span></div>
-    `;
-  }
-
-  function renderTable() {
-    tbody.innerHTML = "";
+    const cards = [];
 
     for (const row of currentRows) {
       const entry = parseNum(row.entry_price);
       const last = parseNum(row.last_price);
       let high = parseNum(row.highest_price_after_entry);
 
-      // fallback: kalau high belum ada, pakai entry
       if (!high && entry) high = entry;
+      const gainPct = entry && last ? ((last - entry) / entry) * 100 : null;
 
-      let gainPct = null;
-      if (entry && last) gainPct = ((last - entry) / entry) * 100;
+      if (entry && last) {
+        totalGain += (last - entry) / entry;
+        countGain++;
+
+        const cutLevel = entry * (1 + CUT_PCT);
+        const tpLevel = entry * (1 + TP_PCT);
+
+        if (last <= cutLevel) countCut++;
+        else if (last >= tpLevel) countTP++;
+        else if ((last - entry) / entry > 0) countRun++;
+        else countHold++;
+      }
 
       const ts1 = high ? high * (1 - TS1_PCT) : null;
       const ts2 = high ? high * (1 - TS2_PCT) : null;
-      const cutLevel = entry ? entry * (1 + CUT_PCT) : null;
-      const tpLevel = entry ? entry * (1 + TP_PCT) : null;
+      const sig = signalInfo(entry, last, high);
 
-      // Sinyal utama sederhana
-      let signalText = "HOLD";
-      let signalType = "hold";
-
-      if (entry && last) {
-        if (last <= cutLevel) {
-          signalText = "CUT LOSS -5% Entry";
-          signalType = "loss";
-        } else if (last >= tpLevel) {
-          signalText = "Zona TP +10%";
-          signalType = "tp";
-        } else if (gainPct > 0) {
-          signalText = "PROFIT RUN";
-          signalType = "profit";
-        } else {
-          signalText = "HOLD";
-          signalType = "hold";
-        }
-      }
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${row.kode}</td>
-        <td>${formatNum(entry)}</td>
-        <td>${formatNum(high)}</td>
-        <td>${formatNum(last)}</td>
-        <td>${formatPct(gainPct)}</td>
-        <td>${ts1 ? formatNum(ts1) : "-"}</td>
-        <td>${ts2 ? formatNum(ts2) : "-"}</td>
-        <td>${formatPill(signalText, signalType)}</td>
-      `;
-
-      tr.addEventListener("click", () => fillForm(row));
-      tbody.appendChild(tr);
+      cards.push({
+        kode: row.kode,
+        entry,
+        last,
+        high,
+        gainPct,
+        ts1,
+        ts2,
+        sig
+      });
     }
-  }
 
-  function fillForm(row) {
-    currentId = row.id;
-    kodeEl.value = row.kode || "";
-    entryPriceEl.value = row.entry_price || "";
-    lastPriceEl.value = row.last_price || "";
-  }
+    const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
 
-  function resetForm() {
-    currentId = null;
-    kodeEl.value = "";
-    entryPriceEl.value = "";
-    lastPriceEl.value = "";
+    summaryRow.innerHTML = `
+      <div class="summary-chip">
+        📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
+      </div>
+      <div class="summary-chip">
+        📈 <span>Rata-rata gain: <strong>${formatPct(avgGainPct)}</strong></span>
+      </div>
+      <div class="summary-chip">
+        🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
+      </div>
+      <div class="summary-chip">
+        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span>
+      </div>
+      <div class="summary-chip">
+        🚀 <span>Profit run: <strong>${countRun}</strong></span>
+      </div>
+      <div class="summary-chip">
+        ⏸️ <span>Hold: <strong>${countHold}</strong></span>
+      </div>
+    `;
+
+    cardsContainer.innerHTML = `
+      <div class="cards-grid">
+        ${cards
+          .map((c) => {
+            const gainClass = classForGain(c.gainPct);
+            return `
+              <div class="stock-card">
+                <div class="stock-main">
+                  <div>
+                    <div class="stock-code">${c.kode || "-"}</div>
+                    <div class="signal-pill ${c.sig.className}">
+                      <span>${c.sig.icon}</span>
+                      <span>${c.sig.text}</span>
+                    </div>
+                  </div>
+                  <div class="stock-gain ${gainClass}">
+                    ${c.gainPct === null ? "-" : formatPct(c.gainPct)}
+                  </div>
+                </div>
+                <div class="stock-rows">
+                  <div>
+                    <div class="row-label">ENTRY</div>
+                    <div class="row-value">${formatNum(c.entry)}</div>
+                  </div>
+                  <div>
+                    <div class="row-label">HIGH</div>
+                    <div class="row-value">${formatNum(c.high)}</div>
+                  </div>
+                  <div>
+                    <div class="row-label">LAST</div>
+                    <div class="row-value">${formatNum(c.last)}</div>
+                  </div>
+                </div>
+                <div class="ts-row">
+                  <span class="ts1">TS1 -5%: ${c.ts1 ? formatNum(c.ts1) : "-"}</span>
+                  <span class="ts2">TS2 -10%: ${c.ts2 ? formatNum(c.ts2) : "-"}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
   }
 
   async function saveData() {
     const kode = (kodeEl.value || "").trim().toUpperCase();
-    const entryPrice = parseNum(entryPriceEl.value);
     const lastPrice = parseNum(lastPriceEl.value);
 
-    if (!kode || !entryPrice) {
-      alert("Minimal isi Kode Saham dan Entry Price.");
+    if (!kode || !lastPrice) {
+      alert("Isi Kode Saham dan Last Price dulu.");
       return;
     }
 
-    // Cari high lama (kalau record sudah ada)
-    let oldHigh = null;
-    if (currentId) {
-      const oldRow = currentRows.find(r => r.id === currentId);
-      if (oldRow) oldHigh = parseNum(oldRow.highest_price_after_entry);
-    }
-
-    let highest = oldHigh || entryPrice;
-    if (lastPrice && lastPrice > highest) {
-      highest = lastPrice; // high auto update
-    }
-
-    const payload = {
-      kode,
-      entry_price: entryPrice,
-      last_price: lastPrice,
-      highest_price_after_entry: highest
-    };
-
-    let result;
-    if (currentId) {
-      result = await db
-        .from("portofolio_saham")
-        .update(payload)
-        .eq("id", currentId)
-        .select()
-        .single();
-    } else {
-      // record baru: kalau lastPrice kosong, high = entry
-      if (!lastPrice) {
-        payload.highest_price_after_entry = entryPrice;
-      }
-      result = await db
-        .from("portofolio_saham")
-        .insert(payload)
-        .select()
-        .single();
-    }
-
-    const { error } = result;
-    if (error) {
-      console.error("Gagal simpan:", error);
-      alert("Gagal menyimpan data.");
-      return;
-    }
-
-    resetForm();
-    await loadData();
-  }
-
-  async function deleteData() {
-    if (!currentId) {
-      alert("Pilih dulu baris yang mau dihapus (klik baris di tabel).");
-      return;
-    }
-    if (!confirm("Yakin ingin menghapus record ini?")) return;
-
-    const { error } = await db
-      .from("portofolio_saham")
-      .delete()
-      .eq("id", currentId);
-
-    if (error) {
-      console.error("Gagal hapus:", error);
-      alert("Gagal menghapus data.");
-      return;
-    }
-    resetForm();
-    await loadData();
-  }
-
-  // Event listeners
-  btnSave.addEventListener("click", (e) => {
-    e.preventDefault();
-    saveData();
-  });
-
-  btnReset.addEventListener("click", (e) => {
-    e.preventDefault();
-    resetForm();
-  });
-
-  btnDelete.addEventListener("click", (e) => {
-    e.preventDefault();
-    deleteData();
-  });
-
-  // Init
-  loadData();
-})();
+    // cek apakah sudah ada kode ini
+    const existing = current
