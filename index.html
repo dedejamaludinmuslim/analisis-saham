@@ -2,348 +2,256 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Aplikasi Analisis Saham</title>
+  <title>Dashboard Portofolio Saham (Entry / Partial / High)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- TailwindCSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Supabase JS -->
+  <!-- Supabase JS v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- Perbesar semua font 150% -->
   <style>
-    html {
-      font-size: 111%;
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    .app {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      margin-bottom: 16px;
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: #e0f2fe;
+      color: #0369a1;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4b5563;
+      display: block;
+      margin-bottom: 4px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 13px;
+      outline: none;
+    }
+    input:focus, textarea:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px #2563eb33;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 40px;
+    }
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #16a34a;
+      color: white;
+    }
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #d1d5db;
+      color: #374151;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      white-space: nowrap;
+      text-align: right;
+    }
+    th {
+      text-align: center;
+      font-weight: 600;
+      font-size: 11px;
+      color: #6b7280;
+      background: #f9fafb;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    td:first-child, th:first-child {
+      text-align: left;
+    }
+    tr:hover {
+      background: #f3f4f6;
+      cursor: pointer;
+    }
+    .pill {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pill-profit { background: #dcfce7; color: #166534; }
+    .pill-loss { background: #fee2e2; color: #b91c1c; }
+    .pill-hold { background: #e5e7eb; color: #374151; }
+    .pill-cut { background: #fee2e2; color: #b91c1c; }
+    .pill-tp { background: #dbeafe; color: #1d4ed8; }
+    .summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: #4b5563;
+    }
+    .summary-item span {
+      font-weight: 600;
     }
   </style>
-
-  <!-- Manifest & theme-color (PWA) -->
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#22c55e" />
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen">
+<body>
+  <div class="app">
+    <!-- CARD: FORM INPUT -->
+    <div class="card">
+      <div class="card-header">
+        <h1>📈 Portofolio Saham</h1>
+        <div class="badge">Mode: Entry / Partial / Highest</div>
+      </div>
 
-  <!-- HEADER -->
-  <header class="bg-gradient-to-r from-emerald-500 via-sky-500 to-blue-600 shadow-lg">
-    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="bg-white/20 rounded-2xl p-2">
-          <span class="text-2xl">📈</span>
+      <div class="form-grid">
+        <div>
+          <label>Kode Saham</label>
+          <input id="kode" placeholder="MISAL: TAPG.JK" />
         </div>
         <div>
-          <h1 class="text-lg font-semibold tracking-tight">
-            Aplikasi Analisis Saham
-          </h1>
-          <p class="text-xs text-slate-100/80">
-            Trailing stop, trend following & tren harian berbasis closing price
-          </p>
+          <label>Tanggal Entry</label>
+          <input id="entry_date" type="date" />
+        </div>
+        <div>
+          <label>Entry Price</label>
+          <input id="entry_price" type="number" step="0.01" />
+        </div>
+        <div>
+          <label>Qty (lot / lembar)</label>
+          <input id="qty" type="number" />
+        </div>
+        <div>
+          <label>Partial Sell Price</label>
+          <input id="partial_price" type="number" step="0.01" />
+        </div>
+        <div>
+          <label>Partial Sell Qty</label>
+          <input id="partial_qty" type="number" />
+        </div>
+        <div>
+          <label>Highest Price After Entry</label>
+          <input id="highest_price" type="number" step="0.01" />
+        </div>
+        <div>
+          <label>Last Price (terkini)</label>
+          <input id="last_price" type="number" step="0.01" />
         </div>
       </div>
 
-      <!-- Keterangan mode saja (tombol install dipindah ke atas dashboard) -->
-      <div class="hidden sm:flex flex-col items-end text-xs text-slate-100/80">
-        <span class="uppercase tracking-[0.16em] text-[10px]">Mode</span>
-        <span class="font-semibold">End-of-Day</span>
+      <label>Catatan</label>
+      <textarea id="catatan" placeholder="Catatan strategi, misal: +10% jual 50%, -5% cut full"></textarea>
+
+      <div class="btn-row">
+        <button id="btn-save" class="btn-primary">💾 Simpan / Update</button>
+        <button id="btn-reset" class="btn-secondary">🧹 Reset Form</button>
+        <button id="btn-new-high" class="btn-ghost">⬆️ Update Highest = Last Price</button>
+        <button id="btn-delete" class="btn-danger" style="margin-left:auto;">🗑️ Hapus Record</button>
       </div>
     </div>
-  </header>
 
-  <!-- MAIN -->
-  <main class="max-w-5xl mx-auto px-4 py-5 space-y-5">
-
-    <!-- TOMBOL INSTALL PWA: tepat di atas DASHBOARD -->
-    <div class="flex justify-end">
-      <button
-        id="btnInstallApp"
-        class="hidden inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]"
-      >
-        📲 Install aplikasi
-      </button>
-    </div>
-
-    <!-- DASHBOARD RINGKAS -->
-    <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5 space-y-3">
-      <div class="flex items-center justify-between gap-2 mb-1">
-        <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
-          <span class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400 text-sm">
-            📋
-          </span>
-          Dashboard Ringkas Saham
-        </h2>
-        <button
-          id="btnReloadDashboard"
-          class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 py-1.5 text-[11px] font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]"
-        >
-          🔄 Refresh
-        </button>
+    <!-- CARD: RINGKASAN + TABEL -->
+    <div class="card">
+      <div class="card-header">
+        <h1>📊 Ringkasan & Sinyal</h1>
       </div>
 
-      <p class="text-[11px] text-slate-400">
-        Ringkasan posisi terakhir setiap saham: sinyal TS, drawdown, status tren & trend following.
-      </p>
-
-      <div id="dashboardList" class="space-y-1 max-h-[260px] overflow-y-auto pr-1 text-xs">
-        <!-- item dashboard diisi via JS -->
+      <div class="summary-row" id="summary-row">
+        <!-- diisi via JS -->
       </div>
-    </section>
 
-    <!-- GRID 2 KARTU (Tren di kiri, Input di kanan) -->
-    <div class="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
-
-      <!-- CARD: TREN SAHAM & TRAILING STOP (kiri, Fitur 2) -->
-      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5 flex flex-col">
-        <div class="flex items-center justify-between mb-3 gap-2">
-          <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
-            <span class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400 text-sm">
-              📊
-            </span>
-            Tren Saham, Trailing Stop & Trend Following
-          </h2>
-          <span class="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-            Analisis
-          </span>
-        </div>
-
-        <!-- Filter -->
-        <div class="flex flex-col sm:flex-row gap-2 sm:items-end mb-3">
-          <div class="flex-1 space-y-1">
-            <label for="kodeSahamFilter" class="text-xs font-medium text-slate-300">
-              Kode Saham:
-            </label>
-            <input
-              id="kodeSahamFilter"
-              type="text"
-              placeholder="Misal: ANTM, CMRY, TAPG"
-              class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
-            />
-          </div>
-          <button
-            id="btnLoadTrend"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]"
-          >
-            🔍 Tampilkan Tren
-          </button>
-        </div>
-
-        <!-- Info kecil -->
-        <p class="text-[11px] text-slate-400 mb-2">
-          Data berdasarkan <span class="font-semibold text-slate-200">closing price harian</span>.
-          TS dipakai untuk swing / proteksi, MA20/MA50 dipakai untuk trend following & re-entry.
-        </p>
-
-        <!-- LIST CARD TREN -->
-        <div
-          id="trendList"
-          class="mt-2 space-y-2 max-h-[320px] overflow-y-auto pr-1"
-        >
-          <!-- Card tren akan di-inject via JS -->
-        </div>
-      </section>
-
-      <!-- CARD: INPUT DATA SAHAM (kanan, Fitur 1) -->
-      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl shadow-black/40 p-4 md:p-5">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-semibold text-slate-100 tracking-tight flex items-center gap-2">
-            <span class="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 text-sm">
-              ⊕
-            </span>
-            Input Data Saham
-          </h2>
-          <span class="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-            Input
-          </span>
-        </div>
-
-        <div class="space-y-3">
-          <!-- Kode Saham -->
-          <div class="space-y-1">
-            <label for="kodeSahamInput" class="text-xs font-medium text-slate-300">
-              Kode Saham:
-            </label>
-            <input
-              id="kodeSahamInput"
-              type="text"
-              placeholder="Misal: ANTM, CMRY, TAPG"
-              class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
-            />
-          </div>
-
-          <!-- Harga Close -->
-          <div class="space-y-1">
-            <label for="closePriceInput" class="text-xs font-medium text-slate-300">
-              Harga Close:
-            </label>
-            <input
-              id="closePriceInput"
-              type="number"
-              step="0.01"
-              placeholder="Misal: 540, 1230"
-              class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
-            />
-          </div>
-
-          <!-- Tanggal -->
-          <div class="space-y-1">
-            <label for="closeDateInput" class="text-xs font-medium text-slate-300 flex items-center justify-between">
-              <span>Tanggal Close:</span>
-              <span class="text-[10px] text-slate-500">
-                Kosongkan = hari ini
-              </span>
-            </label>
-            <input
-              id="closeDateInput"
-              type="date"
-              class="w-full rounded-xl bg-slate-900/80 border border-slate-700/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
-            />
-          </div>
-
-          <!-- Tombol Simpan -->
-          <div class="mt-3 space-y-2">
-            <div class="flex items-center justify-center gap-3">
-              <button
-                id="btnSave"
-                class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-emerald-950 shadow-md shadow-emerald-500/30 hover:bg-emerald-400 transition active:scale-[0.99]"
-              >
-                <span>💾</span>
-                <span>Simpan Data</span>
-              </button>
-            </div>
-
-            <!-- pesan status di bawah, rata kanan -->
-            <div id="inputMessage" class="text-xs text-right text-slate-300 min-h-[1.25rem]"></div>
-          </div>
-
-          <!-- TENTANG APLIKASI + PENGATURAN TS (COLLAPSIBLE DI BAWAH) -->
-          <div class="mt-4 space-y-2">
-            <div class="flex items-center justify-between gap-3">
-              <!-- kiri: tentang aplikasi -->
-              <button
-                id="btnToggleAbout"
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 transition active:scale-[0.99] cursor-pointer"
-              >
-                ℹ️ About App
-              </button>
-
-              <!-- kanan: change TS -->
-              <button
-                id="btnToggleTS"
-                type="button"
-                class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-100 hover:bg-slate-700 transition active:scale-[0.99] cursor-pointer"
-              >
-                ⚙️ Trailing Stop
-              </button>
-            </div>
-
-            <!-- BOX: TENTANG APLIKASI -->
-            <div
-              id="aboutBox"
-              class="hidden mt-2 border border-amber-500/40 bg-amber-500/5 rounded-2xl px-3 py-2.5 space-y-2 text-[12px] text-slate-100"
-            >
-              <p class="text-[11px] text-slate-100">
-                Aplikasi analisis saham berbasis <span class="font-medium">closing price</span>
-                dengan kombinasi <span class="font-medium">trailing stop (swing)</span> dan
-                <span class="font-medium">trend following sederhana (MA20/MA50)</span>
-                untuk membantu keputusan hold, jual bertahap, dan re-entry.
-              </p>
-              <div>
-                <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200 mb-1">
-                  Cara pakai singkat
-                </h4>
-                <ul class="list-disc list-inside space-y-1 text-[11px] text-slate-100/90">
-                  <li>Masukkan kode saham dan harga close harian, lalu tekan <span class="font-medium">Simpan Data</span>.</li>
-                  <li>Kosongkan tanggal untuk memakai tanggal hari ini secara otomatis.</li>
-                  <li>Gunakan tombol <span class="font-medium">Change Trailing Stop</span> untuk mengubah nilai TS1/TS2/TS3 global.</li>
-                  <li>Di fitur Tren, klik <span class="font-medium underline decoration-dotted">Close</span> atau
-                    <span class="font-medium underline decoration-dotted">kode saham</span> untuk mengoreksi data lalu simpan.</li>
-                  <li>Gunakan bagian <span class="font-medium">Trend Following</span> di kartu terbaru untuk melihat MA20/MA50 dan status
-                    <span class="font-medium">Zona Re-entry</span>.</li>
-                </ul>
-              </div>
-            </div>
-
-            <!-- BOX: PENGATURAN TRAILING STOP -->
-            <div
-              id="tsConfigBox"
-              class="hidden mt-3 border-t border-slate-800 pt-3 space-y-2"
-            >
-              <div class="flex items-center justify-between gap-2">
-                <h3 class="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.14em]">
-                  Pengaturan trailing stop
-                </h3>
-                <span class="text-[10px] text-slate-500">
-                  Berlaku global untuk semua saham
-                </span>
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 text-[11px]">
-                <div class="space-y-1">
-                  <label for="ts1Input" class="text-slate-300">TS1 (%)</label>
-                  <input
-                    id="ts1Input"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    class="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="5"
-                  />
-                </div>
-                <div class="space-y-1">
-                  <label for="ts2Input" class="text-slate-300">TS2 (%)</label>
-                  <input
-                    id="ts2Input"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    class="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="10"
-                  />
-                </div>
-                <div class="space-y-1">
-                  <label for="ts3Input" class="text-slate-300">TS3 (%)</label>
-                  <input
-                    id="ts3Input"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    class="w-full rounded-lg bg-slate-900/80 border border-slate-700 px-2 py-1 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="15"
-                  />
-                </div>
-              </div>
-
-              <div class="flex justify-end">
-                <button
-                  id="btnSaveTSConfig"
-                  class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-700 px-3 py-1.5 text-[11px] font-semibold text-slate-100 hover:bg-slate-600 transition active:scale-[0.99]"
-                >
-                  ⚙️ Simpan pengaturan TS
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <div class="table-wrapper" style="margin-top: 12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Kode</th>
+              <th>Entry</th>
+              <th>Partial</th>
+              <th>High</th>
+              <th>Last</th>
+              <th>Gain %</th>
+              <th>TS Price</th>
+              <th>Sinyal</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- rows via JS -->
+          </tbody>
+        </table>
+      </div>
     </div>
+  </div>
 
-    <!-- FOOTNOTE -->
-    <p class="text-[10px] text-slate-500 text-center">
-      Mode: Swing / Trend Following End-of-Day • Sinyal: Hold / Sell 30% / Sell 50% / Exit All • Zona Re-entry (MA20/MA50)
-    </p>
-
-  </main>
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", function () {
-        navigator.serviceWorker
-          .register("service-worker.js")
-          .catch(function (err) {
-            console.error("SW register gagal:", err);
-          });
-      });
-    }
-  </script>
   <script src="app.js"></script>
 </body>
 </html>
