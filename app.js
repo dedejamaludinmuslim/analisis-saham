@@ -1,8 +1,8 @@
+
 // app.js
 (function () {
   const { createClient } = supabase;
 
-  // GANTI dengan URL & ANON KEY proyek kamu
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
 
@@ -68,6 +68,9 @@
   }
 
   async function loadData() {
+    // DEBUG: cek URL & key di console
+    console.log("[DEBUG] SUPABASE_URL =", SUPABASE_URL);
+
     const { data, error } = await db
       .from("portofolio_saham")
       .select("id, kode, entry_price, highest_price_after_entry, last_price")
@@ -75,7 +78,12 @@
 
     if (error) {
       console.error("Gagal load data:", error);
-      alert("Gagal memuat data portofolio.");
+      summaryRow.innerHTML = `
+        <div class="summary-chip">
+          ❌ Error load: <strong>${error.message}</strong>
+        </div>
+      `;
+      cardsContainer.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`;
       return;
     }
 
@@ -84,10 +92,13 @@
   }
 
   function renderDashboard() {
-    // Ringkasan
     if (!currentRows.length) {
-      summaryRow.innerHTML = "";
-      cardsContainer.innerHTML = `<div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>`;
+      summaryRow.innerHTML = `
+        <div class="summary-chip">
+          ℹ️ <span>Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</span>
+        </div>
+      `;
+      cardsContainer.innerHTML = `<div class="empty-state">Belum ada data.</div>`;
       return;
     }
 
@@ -150,8 +161,7 @@
         🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
       </div>
       <div class="summary-chip">
-        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span>
-      </div>
+        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
       <div class="summary-chip">
         🚀 <span>Profit run: <strong>${countRun}</strong></span>
       </div>
@@ -214,5 +224,71 @@
       return;
     }
 
-    // cek apakah sudah ada kode ini
-    const existing = current
+    const existing = currentRows.find((r) => r.kode === kode);
+
+    let payload;
+    if (existing) {
+      const entry = parseNum(existing.entry_price) || lastPrice;
+      const oldHigh = parseNum(existing.highest_price_after_entry) || entry;
+      const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
+
+      payload = {
+        entry_price: entry,
+        last_price: lastPrice,
+        highest_price_after_entry: newHigh
+      };
+
+      const { error } = await db
+        .from("portofolio_saham")
+        .update(payload)
+        .eq("id", existing.id);
+
+      if (error) {
+        console.error("Gagal update:", error);
+        alert("Gagal update data: " + error.message);
+        return;
+      }
+    } else {
+      payload = {
+        kode,
+        entry_price: lastPrice,
+        last_price: lastPrice,
+        highest_price_after_entry: lastPrice
+      };
+
+      const { error } = await db
+        .from("portofolio_saham")
+        .insert(payload);
+
+      if (error) {
+        console.error("Gagal insert:", error);
+        alert("Gagal insert data: " + error.message);
+        return;
+      }
+    }
+
+    lastPriceEl.value = "";
+    await loadData();
+  }
+
+  btnSave.addEventListener("click", (e) => {
+    e.preventDefault();
+    saveData();
+  });
+
+  cardsContainer.addEventListener("click", (e) => {
+    const card = e.target.closest(".stock-card");
+    if (!card) return;
+    const codeEl = card.querySelector(".stock-code");
+    if (!codeEl) return;
+
+    const kode = codeEl.textContent.trim();
+    const row = currentRows.find((r) => r.kode === kode);
+    if (!row) return;
+
+    kodeEl.value = row.kode || "";
+    lastPriceEl.value = row.last_price || "";
+  });
+
+  loadData();
+})();
