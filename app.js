@@ -1,11 +1,9 @@
-
 // app.js
 (function () {
   const { createClient } = supabase;
 
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
-
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // Konstanta strategi
@@ -68,8 +66,7 @@
   }
 
   async function loadData() {
-    // DEBUG: cek URL & key di console
-    console.log("[DEBUG] SUPABASE_URL =", SUPABASE_URL);
+    console.log("[DEBUG] loadData() from portofolio_saham");
 
     const { data, error } = await db
       .from("portofolio_saham")
@@ -224,58 +221,81 @@
       return;
     }
 
-    const existing = currentRows.find((r) => r.kode === kode);
+    console.log("[DEBUG] saveData()", { kode, lastPrice });
 
-    let payload;
+    // Cek ke Supabase apakah kode ini sudah pernah ada
+    const { data: existing, error: queryError } = await db
+      .from("portofolio_saham")
+      .select("id, entry_price, highest_price_after_entry, last_price")
+      .eq("kode", kode)
+      .maybeSingle();
+
+    if (queryError && queryError.code !== "PGRST116") {
+      // PGRST116 = no rows found, itu bukan error fatal
+      console.error("Gagal cek existing:", queryError);
+      alert("Gagal cek data existing: " + queryError.message);
+      return;
+    }
+
     if (existing) {
+      // === RECORD SUDAH ADA → UPDATE ===
       const entry = parseNum(existing.entry_price) || lastPrice;
       const oldHigh = parseNum(existing.highest_price_after_entry) || entry;
       const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
 
-      payload = {
+      const payloadUpdate = {
         entry_price: entry,
         last_price: lastPrice,
         highest_price_after_entry: newHigh
       };
 
-      const { error } = await db
+      console.log("[DEBUG] UPDATE payload:", payloadUpdate);
+
+      const { error: updateError } = await db
         .from("portofolio_saham")
-        .update(payload)
+        .update(payloadUpdate)
         .eq("id", existing.id);
 
-      if (error) {
-        console.error("Gagal update:", error);
-        alert("Gagal update data: " + error.message);
+      if (updateError) {
+        console.error("Gagal update:", updateError);
+        alert("Gagal update data: " + updateError.message);
         return;
       }
     } else {
-      payload = {
+      // === RECORD BARU → INSERT ===
+      const payloadInsert = {
         kode,
         entry_price: lastPrice,
         last_price: lastPrice,
         highest_price_after_entry: lastPrice
       };
 
-      const { error } = await db
-        .from("portofolio_saham")
-        .insert(payload);
+      console.log("[DEBUG] INSERT payload:", payloadInsert);
 
-      if (error) {
-        console.error("Gagal insert:", error);
-        alert("Gagal insert data: " + error.message);
+      const { error: insertError } = await db
+        .from("portofolio_saham")
+        .insert(payloadInsert);
+
+      if (insertError) {
+        console.error("Gagal insert:", insertError);
+        alert("Gagal insert data: " + insertError.message);
         return;
       }
     }
 
+    // opsional: kosongkan last price setiap kali simpan
     lastPriceEl.value = "";
+
     await loadData();
   }
 
+  // Event: klik Simpan / Update
   btnSave.addEventListener("click", (e) => {
     e.preventDefault();
     saveData();
   });
 
+  // Klik kartu → isi ulang form untuk update cepat
   cardsContainer.addEventListener("click", (e) => {
     const card = e.target.closest(".stock-card");
     if (!card) return;
@@ -290,5 +310,6 @@
     lastPriceEl.value = row.last_price || "";
   });
 
+  // Init pertama kali
   loadData();
 })();
