@@ -8,23 +8,27 @@
 
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Konstanta strategi
-  const TP_PCT = 0.10;   // +10% = zona TP 50%
-  const CUT_PCT = -0.05; // -5% dari ENTRY = cut loss
-  const TS1_PCT = 0.05;  // TS1 = -5% dari HIGH
-  const TS2_PCT = 0.10;  // TS2 = -10% dari HIGH
+  const TP_PCT = 0.10;
+  const CUT_PCT = -0.05;
+  const TS1_PCT = 0.05;
+  const TS2_PCT = 0.10;
 
-  // DOM
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
   const btnSave = document.getElementById("btn-save");
   const btnAbout = document.getElementById("btn-about");
-  const aboutPanel = document.getElementById("about-panel");
+
   const summaryRow = document.getElementById("summary-row");
   const cardsContainer = document.getElementById("cards-container");
 
+  const rightTitle = document.getElementById("right-title");
+  const rightBadge = document.getElementById("right-badge");
+  const dashboardContent = document.getElementById("dashboard-content");
+  const aboutDashboard = document.getElementById("about-dashboard");
+
   let currentRows = [];
-  let currentId = null; // id record yang sedang diedit
+  let currentId = null;
+  let showingAbout = false;
 
   function parseNum(value) {
     const n = Number(value);
@@ -88,7 +92,7 @@
     }
 
     currentRows = data || [];
-    renderDashboard();
+    if (!showingAbout) renderDashboard();
   }
 
   function renderDashboard() {
@@ -149,7 +153,6 @@
       });
     }
 
-    // Urutkan dari gain tertinggi ke terendah
     cards.sort((a, b) => {
       const ga = (a.gainPct === null || Number.isNaN(a.gainPct)) ? -Infinity : a.gainPct;
       const gb = (b.gainPct === null || Number.isNaN(b.gainPct)) ? -Infinity : b.gainPct;
@@ -238,7 +241,6 @@
       return;
     }
 
-    // MODE 1: edit record tertentu (klik kartu)
     if (currentId) {
       const row = currentRows.find((r) => r.id === currentId);
       if (!row) {
@@ -273,7 +275,6 @@
       return;
     }
 
-    // MODE 2: upsert by kode
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
       .select("id, entry_price, highest_price_after_entry, last_price")
@@ -331,12 +332,38 @@
     await loadData();
   }
 
+  // Toggle mode: dashboard <-> tentang
+  function toggleAbout() {
+    showingAbout = !showingAbout;
+
+    if (showingAbout) {
+      if (dashboardContent) dashboardContent.style.display = "none";
+      if (aboutDashboard) aboutDashboard.style.display = "block";
+      if (rightTitle) rightTitle.textContent = "Tentang Aplikasi";
+      if (rightBadge) rightBadge.textContent = "Penjelasan fitur & cara pakai";
+      btnAbout.textContent = "⬅️ Kembali";
+    } else {
+      if (aboutDashboard) aboutDashboard.style.display = "none";
+      if (dashboardContent) dashboardContent.style.display = "block";
+      if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
+      if (rightBadge) rightBadge.textContent = "Sinyal: Cut • TP • Run • Hold";
+      btnAbout.textContent = "ℹ️ Tentang";
+      renderDashboard();
+    }
+  }
+
   btnSave.addEventListener("click", (e) => {
     e.preventDefault();
     saveData();
   });
 
-  // Klik kartu → masuk mode edit
+  if (btnAbout) {
+    btnAbout.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleAbout();
+    });
+  }
+
   cardsContainer.addEventListener("click", (e) => {
     const card = e.target.closest(".stock-card");
     if (!card) return;
@@ -348,14 +375,6 @@
     currentId = row.id;
     kodeEl.value = row.kode || "";
     lastPriceEl.value = row.last_price || "";
-  });
-
-  // Tombol Tentang: toggle panel
-  btnAbout.addEventListener("click", (e) => {
-    e.preventDefault();
-    if (!aboutPanel) return;
-    const isHidden = aboutPanel.style.display === "" || aboutPanel.style.display === "none";
-    aboutPanel.style.display = isHidden ? "block" : "none";
   });
 
   loadData();
