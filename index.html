@@ -128,8 +128,6 @@
       margin-bottom: 6px;
     }
 
-    /* CSS untuk centering baris sebelumnya dihapus */
-    /* .btn-row-center TIDAK DIGUNAKAN LAGI */
     
     .btn-row-main {
       display: flex;
@@ -149,6 +147,7 @@
       align-items: center;
       gap: 6px;
       border-radius: 999px;
+      /* Default size untuk tombol yang lebih kecil/secondary */
       padding: 7px 14px;
       border: none;
       font-size: 13px;
@@ -156,10 +155,12 @@
       white-space: nowrap;
     }
 
-    /* Override untuk tombol Set Entry yang kini di tengah */
-    .btn-set-entry {
-        padding: 9px 14px; /* Tambahkan sedikit padding vertikal agar lebih menonjol */
-        font-size: 14px;
+    /* PENTING: Menyamakan ukuran ketiga tombol utama (Simpan, Set Entry, Tentang) */
+    .btn-primary,
+    .btn-set-entry,
+    .btn-about {
+        padding: 9px 14px; /* Padding yang lebih besar */
+        font-size: 14px; /* Ukuran font yang lebih besar */
     }
 
     /* GAYA UTAMA: SIMPAN (HIJAU) */
