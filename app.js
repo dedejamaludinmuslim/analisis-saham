@@ -262,7 +262,7 @@
         🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
       </div>
       <div class="summary-chip">
-        🎯 <span>TP +10%: <strong>${countTP}</strong></span></div>
+        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
       <div class="summary-chip">
         🚀 <span>Profit run: <strong>${countRun}</strong></span>
       </div>
