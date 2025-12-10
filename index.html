@@ -306,6 +306,12 @@
       color: #93c5fd;
       border: 1px solid rgba(59, 130, 246, 0.8);
     }
+    /* GAYA BARU: TS HIT (Peringatan - Oranye Merah) */
+    .sig-tshit {
+      background: rgba(255, 127, 80, 0.25); /* Coral */
+      color: #ffa07a;
+      border: 1px solid rgba(255, 127, 80, 0.9);
+    }
 
 
     .stock-rows {
@@ -392,7 +398,10 @@
           <button id="btn-about" class="btn-secondary" type="button">
             ℹ️ Tentang
           </button>
-          <div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="btn-set-entry" class="btn-secondary" type="button">
+              🔄 Set Entry Baru
+            </button>
             <button id="btn-install" class="btn-ghost" type="button" hidden>
               📱 Install Aplikasi
             </button>
@@ -406,7 +415,7 @@
       <div class="card">
         <div class="card-header">
           <h2 id="right-title">Tren Semua Saham</h2>
-          <div class="badge" id="right-badge">Sinyal: L • P • H • E • A</div>
+          <div class="badge" id="right-badge">Sinyal: Cut • TP • Run • Hold</div>
         </div>
 
         <div id="dashboard-content">
@@ -426,13 +435,15 @@
             <li><strong>Highest price</strong> otomatis diperbarui setiap kali harga baru lebih tinggi dari sebelumnya.</li>
             <li><strong>Last price</strong> adalah harga terbaru yang Anda input pada jam 12 atau 18.</li>
             <li><strong>TS1</strong> = high - 5%, <strong>TS2</strong> = high - 10% sebagai panduan trailing stop.</li>
-            <li>Sinyal: <em>Cut Loss -5%</em>, <em>Zona TP +10%</em>, <em>Profit</em>, atau <em>Hold</em> berdasarkan perbandingan entry vs last.</li>
-            <li>**Sinyal Baru:**
+            <li>Sinyal: <em>Cut Loss -5%</em>, <em>Zona TP +10%</em>, <em>Profit Run</em>, atau <em>Hold</em> berdasarkan perbandingan entry vs last.</li>
+            <li>**Fitur Baru (Sinyal Aksi):**
                 <ul>
-                    <li>**ADD-ON**: Muncul saat saham sedang profit $\ge$ 3%, mengindikasikan momentum untuk *Pyramiding* (Average Up).</li>
-                    <li>**RE-ENTRY**: Muncul saat saham yang pernah profit signifikan (>+5%) terkoreksi kembali ke zona beli (di bawah *High - 5%*) tetapi masih aman dari Cut Loss.</li>
+                    <li>**ADD-ON (PYR.)**: Muncul saat saham sedang profit $\ge$ 3%, mengindikasikan momentum untuk *Pyramiding* (Average Up).</li>
+                    <li>**RE-ENTRY**: Muncul saat saham yang pernah profit signifikan (>+5%) terkoreksi kembali ke zona beli (di bawah *High - 5%*) tetapi masih di zona rugi/dekat entry.</li>
+                    <li>**TS HIT (TS1/TS2)**: Muncul saat harga turun dan menyentuh level Trailing Stop (High -5% atau High -10%) setelah mencapai profit signifikan. Ini adalah sinyal untuk segera mengamankan sisa profit.</li>
                 </ul>
             </li>
+            <li>**Fitur Baru (Set Entry Baru):** Tombol "🔄 Set Entry Baru" digunakan untuk **mereset Entry Price** (dan Highest Price) ke harga yang diinput saat ini. Gunakan ini setelah melakukan *Re-entry* atau setelah *Average Up* (Pyramiding) untuk mencatat harga rata-rata baru.</li>
           </ul>
           <p>
             Urutan kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> untuk memudahkan prioritas keputusan.
