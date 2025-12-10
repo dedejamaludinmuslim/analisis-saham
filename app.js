@@ -2,6 +2,7 @@
 (function () {
   const { createClient } = supabase;
 
+  // Project saham-edge kamu
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
@@ -23,7 +24,7 @@
   const cardsContainer = document.getElementById("cards-container");
 
   let currentRows = [];
-  let currentId = null; // id record yang sedang diedit (kalau null = mode tambah / upsert by kode)
+  let currentId = null; // id record yang sedang diedit
 
   function parseNum(value) {
     const n = Number(value);
@@ -148,6 +149,13 @@
       });
     }
 
+    // sort: profit tertinggi -> terendah
+    cards.sort((a, b) => {
+      const ga = (a.gainPct === null || Number.isNaN(a.gainPct)) ? -Infinity : a.gainPct;
+      const gb = (b.gainPct === null || Number.isNaN(b.gainPct)) ? -Infinity : b.gainPct;
+      return gb - ga;
+    });
+
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
 
     summaryRow.innerHTML = `
@@ -231,11 +239,10 @@
       return;
     }
 
-    // MODE 1: sedang edit record tertentu (klik dari kartu)
+    // MODE 1: edit record tertentu (klik kartu)
     if (currentId) {
       const row = currentRows.find((r) => r.id === currentId);
       if (!row) {
-        // fallback: kalau tiba-tiba row tidak ada, treat sebagai insert baru
         currentId = null;
         return saveData();
       }
@@ -267,7 +274,7 @@
       return;
     }
 
-    // MODE 2: tidak ada currentId → upsert by kode
+    // MODE 2: upsert by kode (tidak sedang edit id tertentu)
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
       .select("id, entry_price, highest_price_after_entry, last_price")
@@ -281,7 +288,6 @@
     }
 
     if (existing) {
-      // kode sudah ada → update berdasarkan data existing
       const entry = parseNum(existing.entry_price) || lastPrice;
       const oldHigh = parseNum(existing.highest_price_after_entry) || entry;
       const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
@@ -304,7 +310,6 @@
         return;
       }
     } else {
-      // kode belum ada → insert record baru
       const payloadInsert = {
         kode,
         entry_price: lastPrice,
@@ -327,7 +332,6 @@
     await loadData();
   }
 
-  // Event: klik Simpan / Update
   btnSave.addEventListener("click", (e) => {
     e.preventDefault();
     saveData();
@@ -348,6 +352,5 @@
     if (btnLabel) btnLabel.textContent = "Update Kode / Harga";
   });
 
-  // Init pertama kali
   loadData();
 })();
