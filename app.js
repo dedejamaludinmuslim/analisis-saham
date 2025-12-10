@@ -1,9 +1,11 @@
+// app.js
 (function () {
   const { createClient } = supabase;
 
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
+
   const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const TP_PCT = 0.10;
@@ -97,7 +99,7 @@
     return "gain-zero";
   }
 
-  function signalInfo(entry, last, high, lastSignal) {
+  function signalInfo(entry, last) {
     if (!entry || !last) {
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
@@ -105,12 +107,6 @@
     const gainPct = (last - entry) / entry;
     const cutLevel = entry * (1 + CUT_PCT);
     const tpLevel = entry * (1 + TP_PCT);
-
-    // Re-entry signal: if price drops below a certain point and then starts rising
-    const reEntryLevel = entry * (1 + TS2_PCT);
-    if (last <= reEntryLevel && lastSignal !== "Re-entry") {
-      return { text: "RE-ENTRY", className: "sig-reentry", icon: "🔁" };
-    }
 
     if (last <= cutLevel) {
       return { text: "CUT LOSS -5%", className: "sig-cut", icon: "🛑" };
@@ -127,7 +123,7 @@
   async function loadData() {
     const { data, error } = await db
       .from("portofolio_saham")
-      .select("id, kode, entry_price, highest_price_after_entry, last_price, last_signal")
+      .select("id, kode, entry_price, highest_price_after_entry, last_price")
       .order("kode", { ascending: true });
 
     if (error) {
@@ -164,7 +160,6 @@
     let countTP = 0;
     let countRun = 0;
     let countHold = 0;
-    let countReentry = 0;
 
     const cards = [];
 
@@ -172,7 +167,6 @@
       const entry = parseNum(row.entry_price);
       const last = parseNum(row.last_price);
       let high = parseNum(row.highest_price_after_entry);
-      const lastSignal = row.last_signal;
 
       if (!high && entry) high = entry;
       const gainPct = entry && last ? ((last - entry) / entry) * 100 : null;
@@ -188,16 +182,11 @@
         else if (last >= tpLevel) countTP++;
         else if ((last - entry) / entry > 0) countRun++;
         else countHold++;
-
-        // Re-entry count
-        if (last <= entry * (1 + TS2_PCT) && lastSignal !== "Re-entry") {
-          countReentry++;
-        }
       }
 
       const ts1 = high ? high * (1 - TS1_PCT) : null;
       const ts2 = high ? high * (1 - TS2_PCT) : null;
-      const sig = signalInfo(entry, last, high, lastSignal);
+      const sig = signalInfo(entry, last);
 
       cards.push({
         id: row.id,
@@ -231,16 +220,12 @@
         🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
       </div>
       <div class="summary-chip">
-        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span>
-      </div>
+        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
       <div class="summary-chip">
         🚀 <span>Profit run: <strong>${countRun}</strong></span>
       </div>
       <div class="summary-chip">
         ⏸️ <span>Hold: <strong>${countHold}</strong></span>
-      </div>
-      <div class="summary-chip">
-        🔁 <span>Re-entry: <strong>${countReentry}</strong></span>
       </div>
     `;
 
@@ -285,6 +270,12 @@
           .join("")}
       </div>
     `;
+  }
+
+  function resetForm() {
+    currentId = null;
+    kodeEl.value = "";
+    lastPriceEl.value = "";
   }
 
   async function saveData() {
@@ -387,19 +378,33 @@
     await loadData();
   }
 
-  function resetForm() {
-    currentId = null;
-    kodeEl.value = "";
-    lastPriceEl.value = "";
+  function toggleAbout() {
+    if (!dashboardContent || !aboutDashboard) return;
+
+    const isDashboardVisible =
+      dashboardContent.style.display === "" || dashboardContent.style.display === "block";
+
+    if (isDashboardVisible) {
+      dashboardContent.style.display = "none";
+      aboutDashboard.style.display = "block";
+      if (rightTitle) rightTitle.textContent = "Tentang Aplikasi";
+      if (rightBadge) rightBadge.textContent = "Penjelasan fitur & cara pakai";
+      if (btnAbout) btnAbout.textContent = "⬅️ Kembali";
+    } else {
+      aboutDashboard.style.display = "none";
+      dashboardContent.style.display = "block";
+      if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
+      if (rightBadge) rightBadge.textContent = "Sinyal: Cut • TP • Run • Hold";
+      if (btnAbout) btnAbout.textContent = "ℹ️ Tentang";
+      renderDashboard();
+    }
   }
 
-  // Event: klik Simpan / Update
   btnSave.addEventListener("click", (e) => {
     e.preventDefault();
     saveData();
   });
 
-  // Event: klik "Tentang"
   if (btnAbout) {
     btnAbout.addEventListener("click", (e) => {
       e.preventDefault();
@@ -407,7 +412,6 @@
     });
   }
 
-  // Klik kartu → isi ulang form untuk update cepat
   cardsContainer.addEventListener("click", (e) => {
     const card = e.target.closest(".stock-card");
     if (!card) return;
@@ -421,6 +425,5 @@
     lastPriceEl.value = row.last_price || "";
   });
 
-  // Init pertama kali
   loadData();
 })();
