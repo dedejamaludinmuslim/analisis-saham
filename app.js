@@ -160,7 +160,7 @@
     return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
   }
 
-  async function loadData() { // Pastikan loadData juga async
+  async function loadData() { 
     const { data, error } = await db
       .from("portofolio_saham")
       .select("id, kode, entry_price, highest_price_after_entry, last_price")
@@ -237,8 +237,8 @@
           case "RE-ENTRY":
             countReEntry++;
             break;
-          case "TS HIT (TS1)": // Perbaikan untuk menghitung TS HIT dengan benar
-          case "TS HIT (TS2)": // Perbaikan untuk menghitung TS HIT dengan benar
+          case "TS HIT (TS1)":
+          case "TS HIT (TS2)":
             countTsHit++;
             break;
           case "HOLD":
@@ -273,10 +273,9 @@
     });
 
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
-    // NEW: Perhitungan Sinyal Cepat (LOSS + TS HIT)
     const countUrgent = countCut + countTsHit; 
 
-    // Summary Row diubah: tambahkan Sinyal URGENT di awal
+    // Summary Row
     summaryRow.innerHTML = `
       <div class="summary-chip summary-chip-urgent">
         🚨 <span>SINYAL URGENT: <strong>${countUrgent} Saham</strong></span>
@@ -358,7 +357,6 @@
     lastPriceEl.value = "";
   }
   
-  // FIX: Menambahkan keyword 'async' di sini
   async function setNewEntryPrice(kode, lastPrice) {
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
@@ -521,13 +519,15 @@
     }
   }
 
-  btnSave.addEventListener("click", (e) => {
+  // FIX: Mengubah listener menjadi async dan menambahkan await saveData()
+  btnSave.addEventListener("click", async (e) => {
     e.preventDefault();
-    saveData();
+    await saveData();
   });
   
   if (btnSetEntry) {
-    btnSetEntry.addEventListener("click", (e) => {
+    // FIX: Mengubah listener menjadi async dan menambahkan await setNewEntryPrice()
+    btnSetEntry.addEventListener("click", async (e) => {
       e.preventDefault();
       const kode = (kodeEl.value || "").trim().toUpperCase();
       const lastPrice = parseNum(lastPriceEl.value);
@@ -541,7 +541,7 @@
           return;
       }
       
-      setNewEntryPrice(kode, lastPrice);
+      await setNewEntryPrice(kode, lastPrice);
     });
   }
 
