@@ -1,540 +1,570 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8" />
-  <title>Dashboard Tren Saham</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+// app.js (Isi sama dengan perbaikan terakhir Anda)
+(function () {
+  const { createClient } = supabase;
 
-  <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#0f172a" />
+  const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeLleFQDs";
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #020617 100%);
-      color: #e5e7eb;
+  const TP_PCT = 0.10; // Target Profit +10%
+  const CUT_PCT = -0.05; // Cut Loss -5%
+  const TS1_PCT = 0.05; // Trailing Stop 1: High -5%
+  const TS2_PCT = 0.10; // Trailing Stop 2: High -10%
+
+  // Konstanta Baru untuk Sinyal
+  const RE_ENTRY_CHECK_PCT = 0.05; // High harus > Entry +5% agar Re-entry/TS Hit valid
+  const ADD_ON_PCT = 0.03; // Ambang batas Add-on (Pyramiding): Profit >= +3%
+
+  const kodeEl = document.getElementById("kode");
+  const lastPriceEl = document.getElementById("last_price");
+  const btnSave = document.getElementById("btn-save");
+  const btnSetEntry = document.getElementById("btn-set-entry"); 
+  const btnAbout = document.getElementById("btn-about");
+  const btnInstall = document.getElementById("btn-install");
+
+  const summaryRow = document.getElementById("summary-row");
+  const cardsContainer = document.getElementById("cards-container");
+
+  const rightTitle = document.getElementById("right-title");
+  const rightBadge = document.getElementById("right-badge");
+  const dashboardContent = document.getElementById("dashboard-content");
+  const aboutDashboard = document.getElementById("about-dashboard");
+
+  let currentRows = [];
+  let currentId = null;
+  let deferredPrompt = null;
+
+  // ===== PWA: REGISTER SERVICE WORKER =====
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("service-worker.js")
+        .catch((err) => {
+          console.warn("SW register gagal:", err);
+        });
+    });
+  }
+
+  // Cek kalau sudah jalan sebagai PWA -> hide tombol install
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone && btnInstall) {
+    btnInstall.hidden = true;
+  }
+
+  // ===== PWA: HANDLE beforeinstallprompt & install button =====
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (btnInstall && !isStandalone) {
+      btnInstall.hidden = false;
     }
-    .app {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 16px;
-    }
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .title-main {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .title-main h1 {
-      margin: 0;
-      font-size: 22px;
-      color: #f9fafb;
-      letter-spacing: 0.02em;
-    }
-    .title-main span {
-      font-size: 12px;
-      color: #9ca3af;
-    }
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: rgba(15, 118, 110, 0.15);
-      color: #5eead4;
-      border: 1px solid rgba(45, 212, 191, 0.35);
-    }
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 2.2fr);
-      gap: 14px;
-    }
-    @media (max-width: 840px) {
-      .layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-    .card {
-      background: radial-gradient(circle at top left, #1e293b 0, #020617 65%);
-      border-radius: 18px;
-      padding: 14px 14px 16px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.55);
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .card-header h2 {
-      margin: 0;
-      font-size: 15px;
-      color: #e5e7eb;
-      letter-spacing: 0.02em;
-    }
-    .badge {
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.12);
-      color: #93c5fd;
-      border: 1px solid rgba(59, 130, 246, 0.5);
-    }
-    label {
-      font-size: 12px;
-      font-weight: 500;
-      color: #9ca3af;
-      display: block;
-      margin-bottom: 5px;
-    }
-    input {
-      width: 100%;
-      padding: 7px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(15, 23, 42, 0.9);
-      color: #e5e7eb;
-      font-size: 13px;
-      outline: none;
-    }
-    input::placeholder {
-      color: #6b7280;
-    }
-    input:focus {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
-    }
-    .form-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    .form-hint {
-      font-size: 11px;
-      color: #9ca3af;
-      margin-bottom: 6px;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    if (btnInstall) btnInstall.hidden = true;
+  });
+
+  if (btnInstall) {
+    btnInstall.addEventListener("click", async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choiceResult = await deferredPrompt.userChoice;
+      console.log("User choice:", choiceResult.outcome);
+      deferredPrompt = null;
+      btnInstall.hidden = true;
+    });
+  }
+
+  function parseNum(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatNum(n, digit = 2) {
+    if (n === null || n === undefined || Number.isNaN(n)) return "-";
+    return n.toFixed(digit);
+  }
+
+  function formatPct(n) {
+    if (n === null || n === undefined || Number.isNaN(n)) return "-";
+    const sign = n > 0 ? "+" : (n < 0 ? "" : "");
+    return sign + n.toFixed(2) + "%";
+  }
+
+  function classForGain(n) {
+    if (n === null || Number.isNaN(n)) return "gain-zero";
+    if (n > 0.05) return "gain-pos";
+    if (n < -0.05) return "gain-neg";
+    return "gain-zero";
+  }
+
+  function signalInfo(entry, last, high) {
+    if (!entry || !last || !high) {
+      return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
 
-    .btn-row-main {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 4px;
-      gap: 8px;
+    const gainPct = (last - entry) / entry;
+    const cutLevel = entry * (1 + CUT_PCT); // Entry -5%
+    const tpLevel = entry * (1 + TP_PCT); // Entry +10%
+
+    // Level untuk Re-entry dan TS Hit
+    const highCheckLevel = entry * (1 + RE_ENTRY_CHECK_PCT); // Entry +5% (High harus melebihi ini)
+    const ts1Level = high * (1 - TS1_PCT); // High -5%
+    const ts2Level = high * (1 - TS2_PCT); // High -10%
+
+    // 1. CUT LOSS
+    if (last <= cutLevel) {
+      return { text: "LOSS -5%", className: "sig-cut", icon: "🛑" };
     }
     
-    /* Tombol Utama: Menetapkan format (shape, padding) yang seragam */
-    .btn-primary,
-    .btn-set-entry, /* Diubah untuk menyertakan format primary */
-    .btn-about, /* Diubah untuk menyertakan format primary */
-    .btn-secondary,
-    .btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 7px 14px;
-      border: none;
-      font-size: 13px;
-      cursor: pointer;
-      white-space: nowrap;
+    // 2. TARGET PROFIT
+    if (last >= tpLevel) {
+      return { text: "TP +10%", className: "sig-tp", icon: "🎯" };
     }
 
-    /* GAYA UTAMA: SIMPAN (HIJAU) */
-    .btn-primary {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: #ecfdf5;
-      box-shadow: 0 10px 25px rgba(22, 163, 74, 0.45);
+    // 3. TS HIT - Terjadi jika sudah pernah profit signifikan (H > E + 5%)
+    // DAN harga saat ini di bawah level Trailing Stop, TAPI masih untung (gainPct > 0).
+    if (high >= highCheckLevel && gainPct > 0) {
+        if (last < ts2Level) { // TS2 Hit (lebih urgent)
+            return { text: "TS HIT (TS2)", className: "sig-tshit", icon: "🚨" };
+        }
+        if (last < ts1Level) { // TS1 Hit
+            return { text: "TS HIT (TS1)", className: "sig-tshit", icon: "⚠️" };
+        }
     }
-    .btn-primary:active {
-      transform: translateY(1px);
-      box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
-    }
-
-    /* GAYA UTAMA: SET ENTRY BARU (BIRU) - Format sama, warna beda */
-    .btn-set-entry {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: #eff6ff;
-      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
-    }
-    .btn-set-entry:active {
-      transform: translateY(1px);
-      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.55);
+    
+    // 4. RE-ENTRY
+    // Kondisi: Sudah pernah naik signifikan (>+5%) DAN koreksi di bawah TS1 (H-5%)
+    // TAPI sekarang floating loss (gainPct < 0), yang berarti saham ini menarik untuk dibeli ulang.
+    if (high >= highCheckLevel && last < ts1Level && gainPct < 0) {
+        return { text: "RE-ENTRY", className: "sig-reentry", icon: "🔄" };
     }
 
-    /* GAYA UTAMA: TENTANG (KUNING) - Format sama, warna beda */
-    .btn-about {
-        background: linear-gradient(135deg, #fcd34d, #fbbf24);
-        color: #3f2700;
-        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.45);
+    // 5. PROFIT RUN / ADD-ON
+    if (gainPct > 0) {
+        // Cek apakah profitnya >= 3% untuk sinyal Add-on (Pyramiding)
+        if (gainPct >= ADD_ON_PCT) {
+            return { text: "ADD-ON", className: "sig-addon", icon: "⬆️" };
+        }
+        // Jika profit > 0% tapi < 3%
+        return { text: "PROFIT", className: "sig-run", icon: "🚀" };
     }
-    .btn-about:active {
-        transform: translateY(1px);
-        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.55);
+    
+    // 6. HOLD (L < E, tapi belum Cut Loss dan belum Re-entry)
+    return { text: "HOLD", className: "sig-hold", icon: "⏸️" };
+  }
+
+  async function loadData() { 
+    const { data, error } = await db
+      .from("portofolio_saham")
+      .select("id, kode, entry_price, highest_price_after_entry, last_price")
+      .order("kode", { ascending: true });
+
+    if (error) {
+      console.error("Gagal load data:", error);
+      summaryRow.innerHTML = `
+        <div class="summary-chip">
+          ❌ Error load: <strong>${error.message}</strong>
+        </div>
+      `;
+      cardsContainer.innerHTML = `<div class="empty-state">Error: ${error.message}</div>`;
+      return;
     }
 
+    currentRows = data || [];
+    if (dashboardContent && dashboardContent.style.display !== "none") {
+      renderDashboard();
+    }
+  }
 
-    .btn-secondary {
-      /* Digunakan jika ada tombol secondary lain yang bukan about/set entry */
-      background: rgba(15, 23, 42, 0.9);
-      color: #e5e7eb;
-      border: 1px solid rgba(148, 163, 184, 0.7);
-    }
-    .btn-ghost {
-      padding: 5px 12px;
-      font-size: 12px;
-      background: transparent;
-      color: #bfdbfe;
-      border: 1px dashed rgba(96, 165, 250, 0.7);
-    }
-    .btn-ghost[hidden] {
-      display: none;
-    }
-
-    .summary-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-    /* GAYA BARU untuk Sinyal Cepat */
-    .summary-chip-urgent {
-        background: linear-gradient(135deg, #f87171, #ef4444);
-        color: #fee2e2;
-        border: 1px solid #fca5a5;
-        font-weight: 700;
-        font-size: 12px;
-        animation: pulse-red 2s infinite;
-    }
-    .summary-chip-urgent strong {
-        color: #fee2e2;
-    }
-    /* Keyframes untuk animasi pulse */
-    @keyframes pulse-red {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  function renderDashboard() {
+    if (!currentRows.length) {
+      summaryRow.innerHTML = `
+        <div class="summary-chip">
+          ℹ️ <span>Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</span>
+        </div>
+      `;
+      cardsContainer.innerHTML = `<div class="empty-state">Belum ada data.</div>`;
+      return;
     }
 
+    let totalGain = 0;
+    let countGain = 0;
+    let countCut = 0;
+    let countTP = 0;
+    let countRun = 0;
+    let countHold = 0;
+    let countAddOn = 0;
+    let countReEntry = 0;
+    let countTsHit = 0;
 
-    .summary-chip {
-      padding: 5px 9px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.5);
-      color: #e5e7eb;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .summary-chip strong {
-      font-weight: 600;
-      color: #f9fafb;
-    }
+    const cards = [];
 
-    .about-dashboard {
-      font-size: 12px;
-      line-height: 1.6;
-      color: #e5e7eb;
-      display: none;
-    }
-    .about-dashboard p {
-      margin: 0 0 6px;
-    }
-    .about-dashboard ul {
-      margin: 4px 0 0 18px;
-      padding: 0;
-    }
-    .about-dashboard li {
-      margin-bottom: 3px;
-    }
-    .about-dashboard strong {
-        color: #f9fafb;
-    }
-    .about-dashboard .action-list {
-        margin-top: 10px;
-        margin-bottom: 10px;
-        border-left: 3px solid #60a5fa;
-        padding-left: 10px;
-    }
-    .action-list h4 {
-        margin: 0 0 5px 0;
-        font-size: 13px;
-        color: #93c5fd;
-    }
+    for (const row of currentRows) {
+      const entry = parseNum(row.entry_price);
+      const last = parseNum(row.last_price);
+      let high = parseNum(row.highest_price_after_entry);
 
+      if (!high && entry) high = entry;
+      const gainPct = entry && last ? ((last - entry) / entry) * 100 : null;
 
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 10px;
-    }
-    .stock-card {
-      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
-      border-radius: 16px;
-      padding: 10px 11px 11px;
-      border: 1px solid rgba(51, 65, 85, 0.9);
-      position: relative;
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .stock-card::before {
-      content: "";
-      position: absolute;
-      inset: -40%;
-      background: conic-gradient(
-        from 220deg,
-        rgba(34, 197, 94, 0.26),
-        transparent,
-        rgba(59, 130, 246, 0.18),
-        transparent,
-        rgba(248, 250, 252, 0.04)
-      );
-      opacity: 0.35;
-      mix-blend-mode: soft-light;
-      pointer-events: none;
-    }
-    .stock-main {
-      position: relative;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 6px;
-    }
-    .stock-code {
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      color: #f9fafb;
-    }
-    .stock-gain {
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .gain-pos { color: #4ade80; }
-    .gain-neg { color: #f97373; }
-    .gain-zero { color: #e5e7eb; }
+      const sig = signalInfo(entry, last, high);
 
-    .signal-pill {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 500;
-      margin-top: 2px;
-    }
-    .sig-cut {
-      background: rgba(248, 113, 113, 0.12);
-      color: #fecaca;
-      border: 1px solid rgba(248, 113, 113, 0.7);
-    }
-    .sig-tp {
-      background: rgba(59, 130, 246, 0.14);
-      color: #bfdbfe;
-      border: 1px solid rgba(59, 130, 246, 0.7);
-    }
-    .sig-run {
-      background: rgba(34, 197, 94, 0.14);
-      color: #bbf7d0;
-      border: 1px solid rgba(34, 197, 94, 0.7);
-    }
-    .sig-hold {
-      background: rgba(75, 85, 99, 0.4);
-      color: #e5e7eb;
-      border: 1px solid rgba(107, 114, 128, 0.8);
-    }
-    /* GAYA SINYAL: RE-ENTRY (Kuning) */
-    .sig-reentry {
-      background: rgba(251, 191, 36, 0.25);
-      color: #fcd34d;
-      border: 1px solid rgba(251, 191, 36, 0.9);
-    }
-    /* GAYA SINYAL: ADD-ON (Pyramiding - Biru Muda) */
-    .sig-addon {
-      background: rgba(37, 99, 235, 0.2);
-      color: #93c5fd;
-      border: 1px solid rgba(59, 130, 246, 0.8);
-    }
-    /* GAYA SINYAL: TS HIT (Peringatan - Oranye Merah) */
-    .sig-tshit {
-      background: rgba(255, 127, 80, 0.25); /* Coral */
-      color: #ffa07a;
-      border: 1px solid rgba(255, 127, 80, 0.9);
+      if (entry && last) {
+        totalGain += (last - entry) / entry;
+        countGain++;
+
+        // Menghitung Sinyal untuk Summary
+        switch (sig.text) {
+          case "LOSS -5%":
+            countCut++;
+            break;
+          case "TP +10%":
+            countTP++;
+            break;
+          case "ADD-ON":
+            countAddOn++;
+            break;
+          case "PROFIT":
+            countRun++;
+            break;
+          case "RE-ENTRY":
+            countReEntry++;
+            break;
+          case "TS HIT (TS1)":
+          case "TS HIT (TS2)":
+            countTsHit++;
+            break;
+          case "HOLD":
+          case "DATA KURANG":
+          default:
+            countHold++;
+            break;
+        }
+      }
+
+      const ts1 = high ? high * (1 - TS1_PCT) : null;
+      const ts2 = high ? high * (1 - TS2_PCT) : null;
+      
+
+      cards.push({
+        id: row.id,
+        kode: row.kode,
+        entry,
+        last,
+        high,
+        gainPct,
+        ts1,
+        ts2,
+        sig
+      });
     }
 
+    cards.sort((a, b) => {
+      const ga = (a.gainPct === null || Number.isNaN(a.gainPct)) ? -Infinity : a.gainPct;
+      const gb = (b.gainPct === null || Number.isNaN(b.gainPct)) ? -Infinity : b.gainPct;
+      return gb - ga;
+    });
 
-    .stock-rows {
-      position: relative;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 4px;
-      margin-top: 6px;
-      font-size: 11px;
-      color: #9ca3af;
-    }
-    .row-label {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #6b7280;
-      margin-bottom: 1px;
-    }
-    .row-value {
-      font-size: 11px;
-      color: #e5e7eb;
-    }
+    const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
+    const countUrgent = countCut + countTsHit; 
 
-    .stock-rows > div:nth-child(1) { text-align: left; }
-    .stock-rows > div:nth-child(2) { text-align: center; }
-    .stock-rows > div:nth-child(3) { text-align: right; }
-
-    .ts-row {
-      position: relative;
-      display: flex;
-      justify-content: space-between;
-      margin-top: 5px;
-      font-size: 10px;
-      color: #6b7280;
-    }
-    .ts-row span {
-      font-size: 10px;
-    }
-    .ts1 { color: #fde68a; }
-    .ts2 { color: #fda4af; }
-
-    .empty-state {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-top: 4px;
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <div class="header">
-      <div class="title-main">
-        <h1>Dashboard Tren Saham</h1>
-        <span>Aplikasi untuk merekap sekaligus memantau pergerakan saham</span>
+    // Summary Row
+    summaryRow.innerHTML = `
+      <div class="summary-chip summary-chip-urgent">
+        🚨 <span>URGENT: <strong>${countUrgent} Saham</strong></span>
       </div>
-      <div class="chip">
-        <span>Beta</span>
+      <div class="summary-chip">
+        📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
       </div>
-    </div>
-
-    <div class="layout">
-      <div class="card">
-        <div class="card-header">
-          <h2>Update Harga Saham</h2>
-          <div class="badge">Manual Input</div>
-        </div>
-
-        <div class="form-grid">
-          <div>
-            <label>Kode Saham:</label>
-            <input id="kode" placeholder="Misal: TAPG, ANTM." />
-          </div>
-          <div>
-            <label>Harga saat ini:</label>
-            <input id="last_price" type="number" step="0.01" placeholder="Misal: 1025, 263." />
-          </div>
-        </div>
-
-        <div class="form-hint">
-          Klik kartu saham di kanan untuk <strong>edit</strong> kode / last price, lalu tekan Simpan.
-        </div>
-
-        <div class="btn-row-main">
-          <button id="btn-about" class="btn-about" type="button">
-            ℹ️ Tentang
-          </button>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button id="btn-set-entry" class="btn-set-entry" type="button">
-              🔄 New Entry
-            </button>
-            <button id="btn-install" class="btn-ghost" type="button" hidden>
-              📱 Install Aplikasi
-            </button>
-            <button id="btn-save" class="btn-primary" type="button">
-              💾 Save
-            </button>
-          </div>
-        </div>
+      <div class="summary-chip">
+        📈 <span>Average gain: <strong>${formatPct(avgGainPct)}</strong></span>
       </div>
-
-      <div class="card">
-        <div class="card-header">
-          <h2 id="right-title">Tren Semua Saham</h2>
-          <div class="badge" id="right-badge">Sinyal: TS • CL • TP • RE • AD • PR • HO</div>
-        </div>
-
-        <div id="dashboard-content">
-          <div class="summary-row" id="summary-row"></div>
-          <div id="cards-container">
-            <div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>
-          </div>
-        </div>
-
-        <div id="about-dashboard" class="about-dashboard">
-          <p><strong>Dasar Perhitungan Harga</strong></p>
-          <ul>
-            <li><strong>Entry Price</strong>: Harga beli awal/rata-rata yang dijadikan basis perhitungan untung/rugi.</li>
-            <li><strong>Highest Price</strong>: Harga tertinggi yang pernah dicapai saham sejak Entry. Digunakan sebagai dasar penghitungan Trailing Stop.</li>
-            <li><strong>Last Price</strong>: Harga terbaru yang di-input pada kolom sebelah kiri.</li>
-            <li><strong>TS1 ($H - 5\%$) / TS2 ($H - 10\%$)</strong>: Level harga Trailing Stop.</li>
-          </ul>
-
-          <div class="action-list">
-              <h4>Panduan Sinyal Aksi (Action Signals)</h4>
-              <p>Sinyal-sinyal di bawah dirancang untuk memandu pengambilan keputusan Jual/Beli:</p>
-              <ul>
-                  <li>🚨 <strong>URGENT</strong>: Total saham yang menunjukkan sinyal **LOSS -5%** atau **TS HIT** (Perlu segera diperhatikan).</li>
-                  <li>🛑 <strong>LOSS -5%</strong>: Harga jatuh di bawah level Cut Loss -5% dari Entry Price. Sinyal Jual Wajib.</li>
-                  <li>🎯 <strong>TP +10%</strong>: Harga mencapai Target Profit +10% dari Entry Price. Sinyal Jual Target.</li>
-                  <li>⚠️ <strong>TS HIT (TS1/TS2)</strong>: Saham yang sudah pernah untung signifikan, kini turun dan menyentuh level Trailing Stop ($H - 5\%$ atau $H - 10\%$). **Sinyal Jual Cepat** untuk mengamankan keuntungan yang tersisa.</li>
-                  <li>⬆️ <strong>ADD-ON</strong>: Saham sedang Profit $\ge$ 3%. Momentum dianggap cukup kuat untuk dipertimbangkan tambah muatan (*Pyramiding*).</li>
-                  <li>🔄 <strong>RE-ENTRY</strong>: Saham yang pernah naik >5% kini terkoreksi kembali ke zona beli (di bawah $H - 5\%$) namun masih di zona rugi/dekat entry. Mengindikasikan kesempatan untuk beli ulang.</li>
-                  <li>🚀 <strong>PROFIT</strong>: Saham masih profit (>0% dan <3%) atau momentum belum cukup kuat untuk sinyal *Add-on*.</li>
-                  <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data kurang/tidak jelas.</li>
-              </ul>
-          </div>
-          
-          <p><strong>Panduan Penggunaan Tombol</strong></p>
-          <ul>
-            <li><strong>💾 Save (Hijau)</strong>: Gunakan untuk <strong>Update Harga Harian</strong>. Tombol ini tidak akan mengubah Entry Price (harga beli awal Anda), kecuali pada input saham yang benar-benar baru (pembelian pertama).</li>
-            <li><strong>🔄 New Entry (Biru)</strong>: Gunakan secara *SANGAT SPESIFIK* setelah Anda melakukan:
-                <ol>
-                    <li>*Average Up (Pyramiding):* Untuk mencatat harga rata-rata baru.</li>
-                    <li>*Re-entry:* Untuk mencatat harga beli ulang yang baru.</li>
-                </ol>
-                Aksi ini akan *mereset Entry Price dan Highest Price* ke harga yang diinput saat itu.</li>
-            <li><strong>ℹ️ About (Kuning)</strong>: Menampilkan atau menyembunyikan panel penjelasan ini.</li>
-          </ul>
-
-          <p>
-            Kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> (berdasarkan Last Price vs Entry Price) untuk memudahkan prioritas tindakan.
-          </p>
-        </div>
+      <div class="summary-chip">
+        ⏸️ <span>Hold: <strong>${countHold}</strong></span>
       </div>
-    </div>
-  </div>
+      <div class="summary-chip">
+        🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
+      </div>
+      <div class="summary-chip">
+        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
+      <div class="summary-chip">
+        🚀 <span>Profit run: <strong>${countRun}</strong></span>
+      </div>
+      <div class="summary-chip">
+        ⬆️ <span>Add-on: <strong>${countAddOn}</strong></span>
+      </div>
+      <div class="summary-chip">
+        🔄 <span>Re-entry: <strong>${countReEntry}</strong></span>
+      </div>
+      <div class="summary-chip">
+        ⚠️ <span>TS Hit: <strong>${countTsHit}</strong></span>
+      </div>
+    `;
 
-  <script src="app.js"></script>
-</body>
-</html>
+    cardsContainer.innerHTML = `
+      <div class="cards-grid">
+        ${cards
+          .map((c) => {
+            const gainClass = classForGain(c.gainPct);
+            return `
+              <div class="stock-card" data-id="${c.id}">
+                <div class="stock-main">
+                  <div class="stock-code">${c.kode || "-"}</div>
+                  <div class="signal-pill ${c.sig.className}">
+                    <span>${c.sig.icon}</span>
+                    <span>${c.sig.text}</span>
+                  </div>
+                  <div class="stock-gain ${gainClass}">
+                    ${c.gainPct === null ? "-" : formatPct(c.gainPct)}
+                  </div>
+                </div>
+                <div class="stock-rows">
+                  <div>
+                    <div class="row-label">ENTRY</div>
+                    <div class="row-value">${formatNum(c.entry)}</div>
+                  </div>
+                  <div>
+                    <div class="row-label">HIGH</div>
+                    <div class="row-value">${formatNum(c.high)}</div>
+                  </div>
+                  <div>
+                    <div class="row-label">LAST</div>
+                    <div class="row-value">${formatNum(c.last)}</div>
+                  </div>
+                </div>
+                <div class="ts-row">
+                  <span class="ts1">TS1 -5%: ${c.ts1 ? formatNum(c.ts1) : "-"}</span>
+                  <span class="ts2">TS2 -10%: ${c.ts2 ? formatNum(c.ts2) : "-"}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+
+  function resetForm() {
+    currentId = null;
+    kodeEl.value = "";
+    lastPriceEl.value = "";
+  }
+  
+  async function setNewEntryPrice(kode, lastPrice) {
+    const { data: existing, error: queryError } = await db
+      .from("portofolio_saham")
+      .select("id")
+      .eq("kode", kode)
+      .maybeSingle();
+
+    if (queryError) {
+        alert("Gagal cek data existing: " + queryError.message);
+        return;
+    }
+
+    if (!existing) {
+        alert("Kode saham belum ada di portofolio. Silahkan Simpan dulu.");
+        return;
+    }
+
+    // Payload untuk update Entry Price, Last Price, dan High Price (semua disetel sama)
+    const payloadUpdate = {
+      entry_price: lastPrice,
+      last_price: lastPrice, 
+      highest_price_after_entry: lastPrice
+    };
+
+    const { error: updateError } = await db
+      .from("portofolio_saham")
+      .update(payloadUpdate)
+      .eq("id", existing.id);
+
+    if (updateError) {
+      console.error("Gagal update entry price:", updateError);
+      alert("Gagal update Entry Price: " + updateError.message);
+      return;
+    }
+
+    resetForm();
+    await loadData();
+  }
+
+
+  async function saveData() {
+    const kode = (kodeEl.value || "").trim().toUpperCase();
+    const lastPrice = parseNum(lastPriceEl.value);
+
+    if (!kode || !lastPrice) {
+      alert("Isi Kode Saham dan Last Price dulu.");
+      return;
+    }
+
+    if (currentId) {
+      const row = currentRows.find((r) => r.id === currentId);
+      if (!row) {
+        currentId = null;
+        return saveData();
+      }
+
+      const entry = parseNum(row.entry_price) || lastPrice;
+      const oldHigh = parseNum(row.highest_price_after_entry) || entry;
+      const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
+
+      const payloadUpdate = {
+        kode,
+        entry_price: entry, // Entry TIDAK diubah saat SIMPAN
+        last_price: lastPrice,
+        highest_price_after_entry: newHigh
+      };
+
+      const { error: updateError } = await db
+        .from("portofolio_saham")
+        .update(payloadUpdate)
+        .eq("id", currentId);
+
+      if (updateError) {
+        console.error("Gagal update:", updateError);
+        alert("Gagal update data: " + updateError.message);
+        return;
+      }
+
+      resetForm();
+      await loadData();
+      return;
+    }
+
+    const { data: existing, error: queryError } = await db
+      .from("portofolio_saham")
+      .select("id, entry_price, highest_price_after_entry, last_price")
+      .eq("kode", kode)
+      .maybeSingle();
+
+    if (queryError && queryError.code !== "PGRST116") {
+      console.error("Gagal cek existing:", queryError);
+      alert("Gagal cek data existing: " + queryError.message);
+      return;
+    }
+
+    if (existing) {
+      const entry = parseNum(existing.entry_price) || lastPrice;
+      const oldHigh = parseNum(existing.highest_price_after_entry) || entry;
+      const newHigh = lastPrice > oldHigh ? lastPrice : oldHigh;
+
+      const payloadUpdate = {
+        kode,
+        entry_price: entry,
+        last_price: lastPrice,
+        highest_price_after_entry: newHigh
+      };
+
+      const { error: updateError } = await db
+        .from("portofolio_saham")
+        .update(payloadUpdate)
+        .eq("id", existing.id);
+
+      if (updateError) {
+        console.error("Gagal update:", updateError);
+        alert("Gagal update data: " + updateError.message);
+        return;
+      }
+    } else {
+      const payloadInsert = {
+        kode,
+        entry_price: lastPrice,
+        last_price: lastPrice,
+        highest_price_after_entry: lastPrice
+      };
+
+      const { error: insertError } = await db
+        .from("portofolio_saham")
+        .insert(payloadInsert);
+
+      if (insertError) {
+        console.error("Gagal insert:", insertError);
+        alert("Gagal insert data: " + insertError.message);
+        return;
+      }
+    }
+
+    resetForm();
+    await loadData();
+  }
+
+  function toggleAbout() {
+    if (!dashboardContent || !aboutDashboard) return;
+
+    const isDashboardVisible =
+      dashboardContent.style.display === "" || dashboardContent.style.display === "block";
+
+    if (isDashboardVisible) {
+      dashboardContent.style.display = "none";
+      aboutDashboard.style.display = "block";
+      if (rightTitle) rightTitle.textContent = "Tentang Aplikasi";
+      if (rightBadge) rightBadge.textContent = "Penjelasan fitur & cara pakai";
+      if (btnAbout) btnAbout.textContent = "⬅️ Kembali";
+    } else {
+      aboutDashboard.style.display = "none";
+      dashboardContent.style.display = "block";
+      if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
+      if (rightBadge) rightBadge.textContent = "Sinyal: TS • CL • TP • RE • AD • PR • HO";
+      if (btnAbout) btnAbout.textContent = "ℹ️ Tentang";
+      renderDashboard();
+    }
+  }
+
+  // FIX: Mengubah listener menjadi async dan menambahkan await saveData()
+  btnSave.addEventListener("click", async (e) => {
+    e.preventDefault();
+    await saveData();
+  });
+  
+  if (btnSetEntry) {
+    // FIX: Mengubah listener menjadi async dan menambahkan await setNewEntryPrice()
+    btnSetEntry.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const kode = (kodeEl.value || "").trim().toUpperCase();
+      const lastPrice = parseNum(lastPriceEl.value);
+
+      if (!kode || !lastPrice) {
+        alert("Isi Kode Saham dan Harga saat ini (Entry Baru) dulu.");
+        return;
+      }
+      
+      if (!confirm(`Yakin ingin menyetel ulang Entry Price ${kode} menjadi ${formatNum(lastPrice)}? Semua data HIGH akan direset (Entry = Last = High).`)) {
+          return;
+      }
+      
+      await setNewEntryPrice(kode, lastPrice);
+    });
+  }
+
+
+  if (btnAbout) {
+    btnAbout.addEventListener("click", (e) => {
+      e.preventDefault();
+      toggleAbout();
+    });
+  }
+
+  cardsContainer.addEventListener("click", (e) => {
+    const card = e.target.closest(".stock-card");
+    if (!card) return;
+
+    const id = card.getAttribute("data-id");
+    const row = currentRows.find((r) => r.id === id);
+    if (!row) return;
+
+    currentId = row.id;
+    kodeEl.value = row.kode || "";
+    lastPriceEl.value = row.last_price || "";
+  });
+
+  loadData();
+})();
