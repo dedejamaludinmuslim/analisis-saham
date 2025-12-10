@@ -131,23 +131,7 @@
       margin-top: 4px;
       gap: 8px;
     }
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 7px 14px;
-      border: none;
-      font-size: 13px;
-      cursor: pointer;
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: #ecfdf5;
-      box-shadow: 0 10px 25px rgba(22, 163, 74, 0.45);
-    }
-    .btn-primary:active {
-      transform: translateY(1px);
-      box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
-    }
+    .btn-primary,
     .btn-secondary {
       display: inline-flex;
       align-items: center;
@@ -157,6 +141,18 @@
       border: none;
       font-size: 13px;
       cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #ecfdf5;
+      box-shadow: 0 10px 25px rgba(22, 163, 74, 0.45);
+    }
+    .btn-primary:active {
+      transform: translateY(1px);
+      box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
+    }
+    .btn-secondary {
       background: rgba(15, 23, 42, 0.9);
       color: #e5e7eb;
       border: 1px solid rgba(148, 163, 184, 0.7);
@@ -185,15 +181,28 @@
     }
 
     .about-panel {
-      margin-top: 10px;
+      margin-top: 8px;
       font-size: 11px;
       line-height: 1.5;
       color: #d1d5db;
       background: rgba(15, 23, 42, 0.85);
       border-radius: 12px;
-      padding: 8px 10px;
+      padding: 0 10px;
       border: 1px dashed rgba(148, 163, 184, 0.7);
-      display: none;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition:
+        max-height 0.25s ease,
+        opacity 0.2s ease,
+        transform 0.2s ease;
+    }
+    .about-panel.open {
+      padding: 8px 10px;
+      max-height: 220px; /* cukup untuk isi teks */
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .cards-grid {
@@ -357,10 +366,10 @@
         </div>
 
         <div class="btn-row">
-          <button id="btn-about" class="btn-secondary">
+          <button id="btn-about" class="btn-secondary" type="button">
             ℹ️ Tentang
           </button>
-          <button id="btn-save" class="btn-primary">
+          <button id="btn-save" class="btn-primary" type="button">
             💾 Simpan
           </button>
         </div>
@@ -382,9 +391,7 @@
           <div class="badge">Sinyal: Cut • TP • Run • Hold</div>
         </div>
 
-        <div class="summary-row" id="summary-row">
-          <!-- chip ringkasan via JS -->
-        </div>
+        <div class="summary-row" id="summary-row"></div>
 
         <div id="cards-container">
           <div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>
