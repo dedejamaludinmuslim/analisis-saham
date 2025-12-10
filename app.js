@@ -112,7 +112,7 @@
       return { text: "CUT LOSS -5%", className: "sig-cut", icon: "🛑" };
     }
     if (last >= tpLevel) {
-      return { text: "ZONA TP +10%", className: "sig-tp", icon: "🎯" };
+      return { text: "TP +10%", className: "sig-tp", icon: "🎯" };
     }
     if (gainPct > 0) {
       return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
