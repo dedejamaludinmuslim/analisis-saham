@@ -278,7 +278,7 @@
     // Summary Row
     summaryRow.innerHTML = `
       <div class="summary-chip summary-chip-urgent">
-        🚨 <span>SINYAL URGENT: <strong>${countUrgent} Saham</strong></span>
+        🚨 <span>URGENT: <strong>${countUrgent} Saham</strong></span>
       </div>
       <div class="summary-chip">
         📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
