@@ -180,29 +180,22 @@
       color: #f9fafb;
     }
 
-    .about-panel {
-      margin-top: 8px;
-      font-size: 11px;
-      line-height: 1.5;
-      color: #d1d5db;
-      background: rgba(15, 23, 42, 0.85);
-      border-radius: 12px;
-      padding: 0 10px;
-      border: 1px dashed rgba(148, 163, 184, 0.7);
-      max-height: 0;
-      overflow: hidden;
-      opacity: 0;
-      transform: translateY(-4px);
-      transition:
-        max-height 0.25s ease,
-        opacity 0.2s ease,
-        transform 0.2s ease;
+    /* Panel tentang di sisi kanan (gantikan dashboard) */
+    .about-dashboard {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #e5e7eb;
+      display: none;
     }
-    .about-panel.open {
-      padding: 8px 10px;
-      max-height: 220px; /* cukup untuk isi teks */
-      opacity: 1;
-      transform: translateY(0);
+    .about-dashboard p {
+      margin: 0 0 6px;
+    }
+    .about-dashboard ul {
+      margin: 4px 0 0 18px;
+      padding: 0;
+    }
+    .about-dashboard li {
+      margin-bottom: 3px;
     }
 
     .cards-grid {
@@ -297,6 +290,7 @@
       font-size: 11px;
       color: #9ca3af;
     }
+
     .row-label {
       font-size: 10px;
       text-transform: uppercase;
@@ -307,6 +301,17 @@
     .row-value {
       font-size: 11px;
       color: #e5e7eb;
+    }
+
+    /* Alignment: ENTRY kiri, HIGH tengah, LAST kanan */
+    .stock-rows > div:nth-child(1) {
+      text-align: left;
+    }
+    .stock-rows > div:nth-child(2) {
+      text-align: center;
+    }
+    .stock-rows > div:nth-child(3) {
+      text-align: right;
     }
 
     .ts-row {
@@ -373,28 +378,39 @@
             💾 Simpan
           </button>
         </div>
-
-        <div id="about-panel" class="about-panel">
-          <strong>Tentang Aplikasi:</strong><br />
-          • Catat harga terakhir tiap saham pada jam 12 dan 18.<br />
-          • Entry price diambil dari harga pertama kali saham dicatat.<br />
-          • Sistem otomatis menyimpan harga tertinggi (high) setelah entry.<br />
-          • TS1 = -5% dari high, TS2 = -10% dari high sebagai panduan trailing stop.<br />
-          • Sinyal: <em>Cut Loss -5%</em>, <em>Zona TP +10%</em>, <em>Profit Run</em>, atau <em>Hold</em> berdasarkan entry vs last price.
-        </div>
       </div>
 
-      <!-- PANEL DASHBOARD -->
+      <!-- PANEL KANAN: DASHBOARD / TENTANG -->
       <div class="card">
         <div class="card-header">
-          <h2>Tren Semua Saham</h2>
-          <div class="badge">Sinyal: Cut • TP • Run • Hold</div>
+          <h2 id="right-title">Tren Semua Saham</h2>
+          <div class="badge" id="right-badge">Sinyal: Cut • TP • Run • Hold</div>
         </div>
 
-        <div class="summary-row" id="summary-row"></div>
+        <!-- MODE DASHBOARD -->
+        <div id="dashboard-content">
+          <div class="summary-row" id="summary-row"></div>
+          <div id="cards-container">
+            <div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>
+          </div>
+        </div>
 
-        <div id="cards-container">
-          <div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>
+        <!-- MODE TENTANG (menggantikan dashboard) -->
+        <div id="about-dashboard" class="about-dashboard">
+          <p><strong>Tentang Aplikasi Dashboard Tren Saham</strong></p>
+          <p>
+            Aplikasi ini membantu mencatat dan memantau tren saham pribadi secara sederhana namun terstruktur.
+          </p>
+          <ul>
+            <li><strongEntry price</strong> diambil dari harga pertama kali kode saham dicatat.</li>
+            <li><strong>Highest price</strong> otomatis diperbarui setiap kali harga baru lebih tinggi dari sebelumnya.</li>
+            <li><strong>Last price</strong> adalah harga terbaru yang Anda input pada jam 12 atau 18.</li>
+            <li><strong>TS1</strong> = high - 5%, <strong>TS2</strong> = high - 10% sebagai panduan trailing stop.</li>
+            <li>Sinyal: <em>Cut Loss -5%</em>, <em>Zona TP +10%</em>, <em>Profit Run</em>, atau <em>Hold</em> berdasarkan perbandingan entry vs last.</li>
+          </ul>
+          <p>
+            Urutan kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> untuk memudahkan prioritas keputusan.
+          </p>
         </div>
       </div>
     </div>
