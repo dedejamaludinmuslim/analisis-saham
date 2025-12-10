@@ -248,7 +248,8 @@
       position: relative;
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
+      align-items: center;
+      gap: 6px;
       margin-bottom: 6px;
     }
     .stock-code {
@@ -256,10 +257,13 @@
       font-weight: 600;
       letter-spacing: 0.06em;
       color: #f9fafb;
+      flex: 1;
     }
     .stock-gain {
       font-size: 13px;
       font-weight: 600;
+      min-width: 64px;
+      text-align: right;
     }
     .gain-pos { color: #4ade80; }
     .gain-neg { color: #f97373; }
@@ -269,12 +273,14 @@
       position: relative;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
       padding: 3px 8px;
       border-radius: 999px;
       font-size: 11px;
       font-weight: 500;
-      margin-top: 2px;
+      margin-top: 0;
+      flex-shrink: 0;
     }
     .sig-cut {
       background: rgba(248, 113, 113, 0.12);
@@ -382,14 +388,12 @@
           <button id="btn-about" class="btn-secondary" type="button">
             ℹ️ Tentang
           </button>
-          <div>
-            <button id="btn-install" class="btn-ghost" type="button" hidden>
-              📱 Install Aplikasi
-            </button>
-            <button id="btn-save" class="btn-primary" type="button">
-              💾 Simpan
-            </button>
-          </div>
+          <button id="btn-install" class="btn-ghost" type="button" hidden>
+            📱 Install Aplikasi
+          </button>
+          <button id="btn-save" class="btn-primary" type="button">
+            💾 Simpan
+          </button>
         </div>
       </div>
 
