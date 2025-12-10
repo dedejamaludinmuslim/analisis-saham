@@ -135,7 +135,11 @@
       margin-top: 4px;
       gap: 8px;
     }
+    
+    /* Tombol Utama: Menetapkan format (shape, padding) yang seragam */
     .btn-primary,
+    .btn-set-entry, /* Diubah untuk menyertakan format primary */
+    .btn-about, /* Diubah untuk menyertakan format primary */
     .btn-secondary,
     .btn-ghost {
       display: inline-flex;
@@ -148,6 +152,8 @@
       cursor: pointer;
       white-space: nowrap;
     }
+
+    /* GAYA UTAMA: SIMPAN (HIJAU) */
     .btn-primary {
       background: linear-gradient(135deg, #22c55e, #16a34a);
       color: #ecfdf5;
@@ -158,18 +164,7 @@
       box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
     }
 
-    /* Tombol 'Tentang' (Kuning) */
-    .btn-about {
-        background: linear-gradient(135deg, #fcd34d, #fbbf24);
-        color: #3f2700;
-        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.45);
-    }
-    .btn-about:active {
-        transform: translateY(1px);
-        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.55);
-    }
-
-    /* Tombol 'Set Entry Baru' (Biru) */
+    /* GAYA UTAMA: SET ENTRY BARU (BIRU) - Format sama, warna beda */
     .btn-set-entry {
       background: linear-gradient(135deg, #3b82f6, #2563eb);
       color: #eff6ff;
@@ -180,8 +175,20 @@
       box-shadow: 0 6px 18px rgba(37, 99, 235, 0.55);
     }
 
+    /* GAYA UTAMA: TENTANG (KUNING) - Format sama, warna beda */
+    .btn-about {
+        background: linear-gradient(135deg, #fcd34d, #fbbf24);
+        color: #3f2700;
+        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.45);
+    }
+    .btn-about:active {
+        transform: translateY(1px);
+        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.55);
+    }
+
 
     .btn-secondary {
+      /* Digunakan jika ada tombol secondary lain yang bukan about/set entry */
       background: rgba(15, 23, 42, 0.9);
       color: #e5e7eb;
       border: 1px solid rgba(148, 163, 184, 0.7);
@@ -203,14 +210,14 @@
       gap: 8px;
       margin-bottom: 10px;
     }
-    /* NEW: GAYA BARU untuk Sinyal Cepat */
+    /* GAYA BARU untuk Sinyal Cepat */
     .summary-chip-urgent {
-        background: linear-gradient(135deg, #f87171, #ef4444); /* Red Gradient */
+        background: linear-gradient(135deg, #f87171, #ef4444);
         color: #fee2e2;
         border: 1px solid #fca5a5;
         font-weight: 700;
         font-size: 12px;
-        animation: pulse-red 2s infinite; /* Tambahkan sedikit animasi */
+        animation: pulse-red 2s infinite;
     }
     .summary-chip-urgent strong {
         color: #fee2e2;
@@ -478,8 +485,7 @@
         </div>
 
         <div id="dashboard-content">
-          <div class="summary-row" id="summary-row">
-            </div>
+          <div class="summary-row" id="summary-row"></div>
           <div id="cards-container">
             <div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>
           </div>
