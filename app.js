@@ -160,6 +160,21 @@
     }
   }
 
+  async function updateStatusInDatabase(id, status) {
+    const { data, error } = await db
+      .from('portofolio_saham')
+      .update({
+        status: status, 
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);  // Menggunakan id saham untuk memperbarui status
+
+    if (error) {
+      console.error("Gagal memperbarui status:", error);
+      alert("Gagal memperbarui status saham.");
+    }
+  }
+
   function renderDashboard() {
     if (!currentRows.length) {
       summaryRow.innerHTML = `
@@ -216,6 +231,13 @@
         ts2,
         sig
       });
+
+      // Update status in database if signal changes
+      if (sig.text === "RE-ENTRY (after drop)") {
+        await updateStatusInDatabase(row.id, 'RE-ENTRY');
+      } else if (sig.text === "ADD-ON POSITION") {
+        await updateStatusInDatabase(row.id, 'ADD-ON');
+      }
     }
 
     cards.sort((a, b) => {
