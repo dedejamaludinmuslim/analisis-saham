@@ -5,11 +5,9 @@
   <title>Dashboard Tren Saham</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- PWA: manifest & theme-color -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#0f172a" />
 
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -296,6 +294,19 @@
       color: #e5e7eb;
       border: 1px solid rgba(107, 114, 128, 0.8);
     }
+    /* GAYA BARU: RE-ENTRY (Kuning) */
+    .sig-reentry {
+      background: rgba(251, 191, 36, 0.25);
+      color: #fcd34d;
+      border: 1px solid rgba(251, 191, 36, 0.9);
+    }
+    /* GAYA BARU: ADD-ON (Pyramiding - Biru Muda) */
+    .sig-addon {
+      background: rgba(37, 99, 235, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.8);
+    }
+
 
     .stock-rows {
       position: relative;
@@ -356,7 +367,6 @@
     </div>
 
     <div class="layout">
-      <!-- PANEL INPUT -->
       <div class="card">
         <div class="card-header">
           <h2>Update Harga Saham</h2>
@@ -393,14 +403,12 @@
         </div>
       </div>
 
-      <!-- PANEL KANAN: DASHBOARD / TENTANG -->
       <div class="card">
         <div class="card-header">
           <h2 id="right-title">Tren Semua Saham</h2>
-          <div class="badge" id="right-badge">Sinyal: Hold • Cut • Run • TP</div>
+          <div class="badge" id="right-badge">Sinyal: Cut • TP • Run • Hold</div>
         </div>
 
-        <!-- MODE DASHBOARD -->
         <div id="dashboard-content">
           <div class="summary-row" id="summary-row"></div>
           <div id="cards-container">
@@ -408,7 +416,6 @@
           </div>
         </div>
 
-        <!-- MODE TENTANG -->
         <div id="about-dashboard" class="about-dashboard">
           <p><strong>Tentang Aplikasi Dashboard Tren Saham</strong></p>
           <p>
@@ -420,6 +427,12 @@
             <li><strong>Last price</strong> adalah harga terbaru yang Anda input pada jam 12 atau 18.</li>
             <li><strong>TS1</strong> = high - 5%, <strong>TS2</strong> = high - 10% sebagai panduan trailing stop.</li>
             <li>Sinyal: <em>Cut Loss -5%</em>, <em>Zona TP +10%</em>, <em>Profit Run</em>, atau <em>Hold</em> berdasarkan perbandingan entry vs last.</li>
+            <li>**Sinyal Baru:**
+                <ul>
+                    <li>**ADD-ON (PYR.)**: Muncul saat saham sedang profit $\ge$ 3%, mengindikasikan momentum untuk *Pyramiding* (Average Up).</li>
+                    <li>**RE-ENTRY**: Muncul saat saham yang pernah profit signifikan (>+5%) terkoreksi kembali ke zona beli (di bawah *High - 5%*) tetapi masih aman dari Cut Loss.</li>
+                </ul>
+            </li>
           </ul>
           <p>
             Urutan kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> untuk memudahkan prioritas keputusan.
