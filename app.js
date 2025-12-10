@@ -29,7 +29,7 @@
 
   let currentRows = [];
   let currentId = null;
-  let deferredPrompt = null; // for PWA install
+  let deferredPrompt = null;
 
   // ===== PWA: REGISTER SERVICE WORKER =====
   if ("serviceWorker" in navigator) {
@@ -42,13 +42,27 @@
     });
   }
 
+  // Cek kalau sudah jalan sebagai PWA -> hide tombol install
+  const isStandalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true;
+
+  if (isStandalone && btnInstall) {
+    btnInstall.hidden = true;
+  }
+
   // ===== PWA: HANDLE beforeinstallprompt & install button =====
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    if (btnInstall) {
+    if (btnInstall && !isStandalone) {
       btnInstall.hidden = false;
     }
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredPrompt = null;
+    if (btnInstall) btnInstall.hidden = true;
   });
 
   if (btnInstall) {
@@ -56,11 +70,7 @@
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const choiceResult = await deferredPrompt.userChoice;
-      if (choiceResult.outcome === "accepted") {
-        console.log("PWA install accepted");
-      } else {
-        console.log("PWA install dismissed");
-      }
+      console.log("User choice:", choiceResult.outcome);
       deferredPrompt = null;
       btnInstall.hidden = true;
     });
@@ -89,7 +99,7 @@
     return "gain-zero";
   }
 
-  function signalInfo(entry, last, high) {
+  function signalInfo(entry, last) {
     if (!entry || !last) {
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
@@ -128,7 +138,6 @@
     }
 
     currentRows = data || [];
-    // hanya render kalau sedang di mode dashboard
     if (dashboardContent && dashboardContent.style.display !== "none") {
       renderDashboard();
     }
@@ -177,7 +186,7 @@
 
       const ts1 = high ? high * (1 - TS1_PCT) : null;
       const ts2 = high ? high * (1 - TS2_PCT) : null;
-      const sig = signalInfo(entry, last, high);
+      const sig = signalInfo(entry, last);
 
       cards.push({
         id: row.id,
@@ -228,12 +237,10 @@
             return `
               <div class="stock-card" data-id="${c.id}">
                 <div class="stock-main">
-                  <div>
-                    <div class="stock-code">${c.kode || "-"}</div>
-                    <div class="signal-pill ${c.sig.className}">
-                      <span>${c.sig.icon}</span>
-                      <span>${c.sig.text}</span>
-                    </div>
+                  <div class="stock-code">${c.kode || "-"}</div>
+                  <div class="signal-pill ${c.sig.className}">
+                    <span>${c.sig.icon}</span>
+                    <span>${c.sig.text}</span>
                   </div>
                   <div class="stock-gain ${gainClass}">
                     ${c.gainPct === null ? "-" : formatPct(c.gainPct)}
