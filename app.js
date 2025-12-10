@@ -152,10 +152,10 @@
     if (gainPct > 0) {
         // Cek apakah profitnya >= 3% untuk sinyal Add-on (Pyramiding)
         if (gainPct >= ADD_ON_PCT) {
-            return { text: "ADD-ON (PYR.)", className: "sig-addon", icon: "⬆️" };
+            return { text: "ADD-ON", className: "sig-addon", icon: "⬆️" };
         }
         // Jika profit > 0% tapi < 3%
-        return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
+        return { text: "PROFIT", className: "sig-run", icon: "🚀" };
     }
     
     // 6. HOLD (L < E, tapi belum Cut Loss dan belum Re-entry)
@@ -230,17 +230,17 @@
           case "TP +10%":
             countTP++;
             break;
-          case "ADD-ON (PYR.)":
+          case "ADD-ON":
             countAddOn++;
             break;
-          case "PROFIT RUN":
+          case "PROFIT":
             countRun++;
             break;
           case "RE-ENTRY":
             countReEntry++;
             break;
-          case "TS HIT (TS1)":
-          case "TS HIT (TS2)":
+          case "TS1 HIT":
+          case "TS2 HIT":
             countTsHit++;
             break;
           case "HOLD":
