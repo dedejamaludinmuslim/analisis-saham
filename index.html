@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard Portofolio Saham (Entry / Partial / High)</title>
+  <title>Dashboard Portofolio Saham (TS1 & TS2)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Supabase JS v2 -->
@@ -52,7 +52,7 @@
     }
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 10px;
       margin-bottom: 12px;
     }
@@ -63,7 +63,7 @@
       display: block;
       margin-bottom: 4px;
     }
-    input, textarea, select {
+    input {
       width: 100%;
       padding: 6px 8px;
       border-radius: 8px;
@@ -71,13 +71,9 @@
       font-size: 13px;
       outline: none;
     }
-    input:focus, textarea:focus {
+    input:focus {
       border-color: #2563eb;
       box-shadow: 0 0 0 1px #2563eb33;
-    }
-    textarea {
-      resize: vertical;
-      min-height: 40px;
     }
     .btn-row {
       display: flex;
@@ -103,11 +99,7 @@
     .btn-danger {
       background: #dc2626;
       color: white;
-    }
-    .btn-ghost {
-      background: transparent;
-      border: 1px solid #d1d5db;
-      color: #374151;
+      margin-left: auto;
     }
     .table-wrapper {
       overflow-x: auto;
@@ -151,7 +143,6 @@
     .pill-profit { background: #dcfce7; color: #166534; }
     .pill-loss { background: #fee2e2; color: #b91c1c; }
     .pill-hold { background: #e5e7eb; color: #374151; }
-    .pill-cut { background: #fee2e2; color: #b91c1c; }
     .pill-tp { background: #dbeafe; color: #1d4ed8; }
     .summary-row {
       display: flex;
@@ -171,7 +162,7 @@
     <div class="card">
       <div class="card-header">
         <h1>📈 Portofolio Saham</h1>
-        <div class="badge">Mode: Entry / Partial / Highest</div>
+        <div class="badge">Entry • Last • High (auto) • TS1/TS2</div>
       </div>
 
       <div class="form-grid">
@@ -180,28 +171,8 @@
           <input id="kode" placeholder="MISAL: TAPG.JK" />
         </div>
         <div>
-          <label>Tanggal Entry</label>
-          <input id="entry_date" type="date" />
-        </div>
-        <div>
           <label>Entry Price</label>
           <input id="entry_price" type="number" step="0.01" />
-        </div>
-        <div>
-          <label>Qty (lot / lembar)</label>
-          <input id="qty" type="number" />
-        </div>
-        <div>
-          <label>Partial Sell Price</label>
-          <input id="partial_price" type="number" step="0.01" />
-        </div>
-        <div>
-          <label>Partial Sell Qty</label>
-          <input id="partial_qty" type="number" />
-        </div>
-        <div>
-          <label>Highest Price After Entry</label>
-          <input id="highest_price" type="number" step="0.01" />
         </div>
         <div>
           <label>Last Price (terkini)</label>
@@ -209,14 +180,10 @@
         </div>
       </div>
 
-      <label>Catatan</label>
-      <textarea id="catatan" placeholder="Catatan strategi, misal: +10% jual 50%, -5% cut full"></textarea>
-
       <div class="btn-row">
         <button id="btn-save" class="btn-primary">💾 Simpan / Update</button>
         <button id="btn-reset" class="btn-secondary">🧹 Reset Form</button>
-        <button id="btn-new-high" class="btn-ghost">⬆️ Update Highest = Last Price</button>
-        <button id="btn-delete" class="btn-danger" style="margin-left:auto;">🗑️ Hapus Record</button>
+        <button id="btn-delete" class="btn-danger">🗑️ Hapus Record</button>
       </div>
     </div>
 
@@ -236,11 +203,11 @@
             <tr>
               <th>Kode</th>
               <th>Entry</th>
-              <th>Partial</th>
-              <th>High</th>
+              <th>High (auto)</th>
               <th>Last</th>
               <th>Gain %</th>
-              <th>TS Price</th>
+              <th>TS1 (-5% High)</th>
+              <th>TS2 (-10% High)</th>
               <th>Sinyal</th>
             </tr>
           </thead>
