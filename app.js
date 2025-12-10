@@ -138,10 +138,10 @@
     if (gainPct > 0) {
         // Cek apakah profitnya >= 3% untuk sinyal Add-on (Pyramiding)
         if (gainPct >= ADD_ON_PCT) {
-            return { text: "ADD-ON (PYR.)", className: "sig-addon", icon: "⬆️" };
+            return { text: "ADD-ON", className: "sig-addon", icon: "⬆️" };
         }
         // Jika profit > 0% tapi < 3%
-        return { text: "PROFIT RUN", className: "sig-run", icon: "🚀" };
+        return { text: "PROFIT", className: "sig-run", icon: "🚀" };
     }
     
     // 5. HOLD (L < E, tapi belum Cut Loss dan belum Re-entry)
