@@ -233,9 +233,9 @@
       });
 
       // Update status in database if signal changes
-      if (sig.text === "RE-ENTRY (after drop)") {
+      if (sig.text === "RE-ENTRY") {
         await updateStatusInDatabase(row.id, 'RE-ENTRY');
-      } else if (sig.text === "ADD-ON POSITION") {
+      } else if (sig.text === "ADD-ON") {
         await updateStatusInDatabase(row.id, 'ADD-ON');
       }
     }
@@ -262,7 +262,7 @@
         🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
       </div>
       <div class="summary-chip">
-        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
+        🎯 <span>TP +10%: <strong>${countTP}</strong></span></div>
       <div class="summary-chip">
         🚀 <span>Profit run: <strong>${countRun}</strong></span>
       </div>
