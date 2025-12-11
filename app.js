@@ -433,7 +433,7 @@
 
         <div class="summary-line">
             <div class="summary-chip">
-                📈 <span>Avg gain (Owned): <strong>${formatPct(avgGainOwnedPct)}</strong></span>
+                📈 <span>Avg gain: <strong>${formatPct(avgGainOwnedPct)}</strong></span>
             </div>
             ${showUrgentChip ? `
             <div class="summary-chip summary-chip-urgent">
@@ -471,11 +471,6 @@
             </div>
         </div>
 
-        <div class="summary-line">
-             <div class="summary-chip summary-chip-watching">
-                🟢 <span>Watching: <strong>${countWatching}</strong></span>
-            </div>
-        </div>
     `;
 
     cardsContainer.innerHTML = `
