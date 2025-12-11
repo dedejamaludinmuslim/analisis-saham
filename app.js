@@ -18,6 +18,7 @@
 
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
+  const autocompleteListEl = document.getElementById("autocomplete-list"); // <--- BARU
   const btnSave = document.getElementById("btn-save");
   const btnSetEntry = document.getElementById("btn-set-entry"); 
   const btnAbout = document.getElementById("btn-about");
@@ -95,6 +96,112 @@
     const sign = n > 0 ? "+" : (n < 0 ? "" : "");
     return sign + n.toFixed(2) + "%";
   }
+  // ... (setelah fungsi formatPct)
+
+  let activeItemIndex = -1; // Untuk navigasi keyboard
+
+  function showAutocomplete() {
+    const inputVal = (kodeEl.value || "").trim().toUpperCase();
+    if (!inputVal) {
+      autocompleteListEl.innerHTML = "";
+      autocompleteListEl.style.display = "none";
+      activeItemIndex = -1;
+      return;
+    }
+
+    const filteredCodes = currentRows
+      .map(row => row.kode)
+      .filter(kode => kode && kode.includes(inputVal))
+      .sort()
+      .slice(0, 8); // Batasi hingga 8 rekomendasi
+
+    if (filteredCodes.length === 0) {
+      autocompleteListEl.innerHTML = "";
+      autocompleteListEl.style.display = "none";
+      activeItemIndex = -1;
+      return;
+    }
+
+    autocompleteListEl.innerHTML = filteredCodes
+      .map((kode, index) => {
+        const classActive = index === activeItemIndex ? "active" : "";
+        return `<div class="autocomplete-item ${classActive}" data-kode="${kode}">${kode}</div>`;
+      })
+      .join("");
+      
+    autocompleteListEl.style.display = "block";
+    activeItemIndex = 0; // Setel ke item pertama
+  }
+  
+  function selectAutocompleteItem(kode) {
+      if (kode) {
+          kodeEl.value = kode;
+          // Cari data saham ini untuk mode EDIT
+          const row = currentRows.find((r) => r.kode === kode);
+          if (row) {
+              currentId = row.id;
+              lastPriceEl.value = row.last_price || "";
+          } else {
+              currentId = null;
+          }
+      }
+      autocompleteListEl.innerHTML = "";
+      autocompleteListEl.style.display = "none";
+      activeItemIndex = -1;
+      kodeEl.focus();
+  }
+
+  function handleKeydown(e) {
+    const items = autocompleteListEl.querySelectorAll(".autocomplete-item");
+    if (items.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeItemIndex = (activeItemIndex + 1) % items.length;
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeItemIndex = (activeItemIndex - 1 + items.length) % items.length;
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeItemIndex > -1) {
+        selectAutocompleteItem(items[activeItemIndex].getAttribute("data-kode"));
+        return; // Hentikan dari memicu tombol save
+      }
+    }
+    
+    // Update kelas active
+    items.forEach((item, index) => {
+        if (index === activeItemIndex) {
+            item.classList.add('active');
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.classList.remove('active');
+        }
+    });
+  }
+
+  // Listener untuk input kode saham
+  kodeEl.addEventListener("input", showAutocomplete);
+  kodeEl.addEventListener("keydown", handleKeydown); // Tambahkan listener keydown untuk navigasi
+  
+  // Listener untuk klik pada item rekomendasi
+  autocompleteListEl.addEventListener("click", (e) => {
+      const item = e.target.closest(".autocomplete-item");
+      if (item) {
+          selectAutocompleteItem(item.getAttribute("data-kode"));
+      }
+  });
+  
+  // Sembunyikan rekomendasi saat klik di luar
+  document.addEventListener("click", (e) => {
+      if (!kodeEl.contains(e.target) && !autocompleteListEl.contains(e.target)) {
+          autocompleteListEl.innerHTML = "";
+          autocompleteListEl.style.display = "none";
+          activeItemIndex = -1;
+      }
+  });
+
+  // ... (lanjut ke loadData)
 
   function classForGain(n) {
     if (n === null || Number.isNaN(n)) return "gain-zero";
@@ -395,16 +502,39 @@
     await loadData();
   }
 
-
   async function saveData() {
-    const kode = (kodeEl.value || "").trim().toUpperCase();
-    const lastPrice = parseNum(lastPriceEl.value);
-
-    if (!kode || !lastPrice) {
-      alert("Isi Kode Saham dan Last Price dulu.");
-      return;
-    }
-
+      const kode = (kodeEl.value || "").trim().toUpperCase();
+      const lastPrice = parseNum(lastPriceEl.value);
+      
+      // ===== LOGIKA HAPUS DATA (BARU) =====
+      if (currentId && !kode) {
+        if (confirm("Kode saham dikosongkan. Yakin ingin menghapus data ini dari portofolio?")) {
+          const { error: deleteError } = await db
+            .from("portofolio_saham")
+            .delete()
+            .eq("id", currentId);
+  
+          if (deleteError) {
+            console.error("Gagal hapus:", deleteError);
+            alert("Gagal hapus data: " + deleteError.message);
+          } else {
+            alert("Data berhasil dihapus!");
+          }
+          
+          resetForm();
+          await loadData();
+          return;
+        } else {
+            // Jika batal hapus, jangan lanjutkan proses save
+            return;
+        }
+      }
+      // ===== AKHIR LOGIKA HAPUS DATA =====
+  
+      if (!kode || !lastPrice) {
+        alert("Isi Kode Saham dan Last Price dulu.");
+        return;
+      }
     if (currentId) {
       const row = currentRows.find((r) => r.id === currentId);
       if (!row) {
