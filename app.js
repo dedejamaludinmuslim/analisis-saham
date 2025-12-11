@@ -293,7 +293,7 @@
 
     currentRows = data || [];
     
-    // FIX 1: Memastikan Dashboard terlihat di awal load
+    // Memastikan Dashboard terlihat di awal load
     if (dashboardContent && aboutDashboard) {
       dashboardContent.style.display = "block";
       aboutDashboard.style.display = "none";
@@ -301,7 +301,6 @@
       if (rightBadge) rightBadge.textContent = "Sinyal: TS • CL • TP • RE • AD • PR • HO";
       if (btnAbout) btnAbout.textContent = "ℹ️ Tentang";
     }
-    // Akhir FIX 1
 
     if (dashboardContent && dashboardContent.style.display !== "none") {
       renderDashboard();
@@ -383,22 +382,20 @@
       });
     }
 
-    // FITUR 2: Pengurutan Saham (Owned dulu, baru Watchlist, di dalamnya berdasarkan Gain)
+    // Pengurutan Saham: Owned dulu, baru Watchlist, di dalamnya berdasarkan Gain
     cards.sort((a, b) => {
-      // 1. Primary Sort: Owned (1) vs Watchlist (0). Sort descending (Owned first).
       const statusA = a.status === 'owned' ? 1 : 0;
       const statusB = b.status === 'owned' ? 1 : 0;
       
       if (statusA !== statusB) {
-        return statusB - statusA;
+        return statusB - statusA; // Owned (1) di atas Watchlist (0)
       }
       
-      // 2. Secondary Sort: By gainPct descending
+      // Secondary Sort: By gainPct descending
       const ga = (a.gainPct === null || Number.isNaN(a.gainPct)) ? -Infinity : a.gainPct;
       const gb = (b.gainPct === null || Number.isNaN(b.gainPct)) ? -Infinity : b.gainPct;
-      return gb - ga; // Sort by gainPct descending (best to worst)
+      return gb - ga; 
     });
-    // Akhir FITUR 2
 
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
     const countUrgent = countCut + countTsHit; 
