@@ -117,39 +117,6 @@
       border-color: #60a5fa;
       box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
     }
-    
-    /* GAYA BARU UNTUK REKOMENDASI/AUTOCOMPLETE */
-    .input-group {
-      position: relative; 
-    }
-    .autocomplete-list {
-      position: absolute;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      border-top: none;
-      z-index: 99;
-      width: 100%;
-      top: 100%; 
-      left: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      background: #0f172a; 
-      border-radius: 0 0 8px 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-      display: none; /* Default hidden */
-    }
-    .autocomplete-item {
-      padding: 8px 9px;
-      cursor: pointer;
-      font-size: 13px;
-      color: #e5e7eb;
-      background-color: transparent;
-    }
-    .autocomplete-item:hover, .autocomplete-item.active {
-      background-color: #1e293b;
-      color: #93c5fd;
-    }
-    /* END GAYA BARU */
-    
     .form-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
@@ -165,12 +132,13 @@
     
     .btn-row-main {
       display: flex;
-      justify-content: space-between; 
+      justify-content: space-between; /* PENTING: Untuk memisahkan 3 elemen menjadi Kiri-Tengah-Kanan */
       align-items: center;
       margin-top: 4px;
       gap: 8px;
     }
     
+    /* Tombol Utama: Menetapkan format (shape, padding) yang seragam */
     .btn-primary,
     .btn-set-entry,
     .btn-about,
@@ -180,6 +148,7 @@
       align-items: center;
       gap: 6px;
       border-radius: 999px;
+      /* Default size untuk tombol yang lebih kecil/secondary */
       padding: 7px 14px;
       border: none;
       font-size: 13px;
@@ -187,11 +156,12 @@
       white-space: nowrap;
     }
 
+    /* PENTING: Menyamakan ukuran ketiga tombol utama (Simpan, Set Entry, Tentang) */
     .btn-primary,
     .btn-set-entry,
     .btn-about {
-        padding: 9px 14px; 
-        font-size: 14px; 
+        padding: 9px 14px; /* Padding yang lebih besar */
+        font-size: 14px; /* Ukuran font yang lebih besar */
     }
 
     /* GAYA UTAMA: SIMPAN (HIJAU) */
@@ -229,6 +199,7 @@
 
 
     .btn-secondary {
+      /* Digunakan jika ada tombol secondary lain */
       background: rgba(15, 23, 42, 0.9);
       color: #e5e7eb;
       border: 1px solid rgba(148, 163, 184, 0.7);
@@ -239,7 +210,8 @@
       background: transparent;
       color: #bfdbfe;
       border: 1px dashed rgba(96, 165, 250, 0.7);
-      margin-bottom: 14px; 
+      /* JIKA DIPINDAHKAN KE LUAR BUTTON ROW */
+      margin-bottom: 14px; /* Memberi jarak ke div.layout */
     }
     .btn-ghost[hidden] {
       display: none;
@@ -491,10 +463,9 @@
         </div>
 
         <div class="form-grid">
-          <div class="input-group">
+          <div>
             <label>Kode Saham:</label>
-            <input id="kode" placeholder="Misal: TAPG, ANTM." autocomplete="off" />
-            <div id="autocomplete-list" class="autocomplete-list"></div>
+            <input id="kode" placeholder="Misal: TAPG, ANTM." />
           </div>
           <div>
             <label>Harga saat ini:</label>
@@ -503,8 +474,7 @@
         </div>
 
         <div class="form-hint">
-          Klik kartu saham di kanan untuk <strong>edit</strong> kode/last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga. <br> 
-          Fitur Baru: Kosongkan Kode Saham saat edit lalu Simpan untuk <strong>Hapus</strong> data.
+          Klik kartu saham di kanan untuk <strong>edit</strong> kode/last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga.
         </div>
 
         <div class="btn-row-main">
@@ -562,12 +532,12 @@
           <p><strong>Panduan Penggunaan Tombol</strong></p>
           <ul>
             <li><strong>💾 Simpan (Hijau)</strong>: Gunakan untuk <strong>Update Harga Harian</strong>. Tombol ini tidak akan mengubah Entry Price (harga beli awal Anda), kecuali pada input saham yang benar-benar baru (pembelian pertama).</li>
-            <li><strong>🔄 Set Entry Baru (Biru)</strong>: Gunakan secara **SANGAT SPESIFIK** setelah Anda melakukan:
+            <li><strong>🔄 Set Entry Baru (Biru)</strong>: Gunakan secara SANGAT SPESIFIK setelah Anda melakukan:
                 <ol>
-                    <li>Average Up (Pyramiding): Untuk mencatat harga rata-rata baru.</li>
-                    <li>Re-entry: Untuk mencatat harga beli ulang yang baru.</li>
+                    <li>*Add-on: Untuk mencatat harga rata-rata baru.</li>
+                    <li>*Re-entry:* Untuk mencatat harga beli ulang yang baru.</li>
                 </ol>
-                Aksi ini akan **mereset Entry Price dan Highest Price** ke harga yang diinput saat itu.</li>
+                Aksi ini akan mereset Entry Price dan Highest Price ke harga yang diinput saat itu.</li>
             <li><strong>ℹ️ Tentang (Kuning)</strong>: Menampilkan atau menyembunyikan panel penjelasan ini.</li>
           </ul>
 
