@@ -117,6 +117,39 @@
       border-color: #60a5fa;
       box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
     }
+    
+    /* GAYA BARU UNTUK REKOMENDASI/AUTOCOMPLETE */
+    .input-group {
+      position: relative; 
+    }
+    .autocomplete-list {
+      position: absolute;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      border-top: none;
+      z-index: 99;
+      width: 100%;
+      top: 100%; 
+      left: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #0f172a; 
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      display: none; /* Default hidden */
+    }
+    .autocomplete-item {
+      padding: 8px 9px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #e5e7eb;
+      background-color: transparent;
+    }
+    .autocomplete-item:hover, .autocomplete-item.active {
+      background-color: #1e293b;
+      color: #93c5fd;
+    }
+    /* END GAYA BARU */
+    
     .form-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
@@ -463,9 +496,10 @@
         </div>
 
         <div class="form-grid">
-          <div>
+          <div class="input-group">
             <label>Kode Saham:</label>
-            <input id="kode" placeholder="Misal: TAPG, ANTM." />
+            <input id="kode" placeholder="Misal: TAPG, ANTM." autocomplete="off" />
+            <div id="autocomplete-list" class="autocomplete-list"></div>
           </div>
           <div>
             <label>Harga saat ini:</label>
@@ -474,7 +508,8 @@
         </div>
 
         <div class="form-hint">
-          Klik kartu saham di kanan untuk <strong>edit</strong> kode/last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga.
+          Klik kartu saham di kanan untuk <strong>edit</strong> kode/last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga. <br> 
+          **Fitur Baru:** Kosongkan Kode Saham saat edit lalu Simpan untuk <strong>Hapus</strong> data.
         </div>
 
         <div class="btn-row-main">
