@@ -11,19 +11,22 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    /* Styling Anda yang lengkap di sini */
+    /* Global Reset & Base */
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: radial-gradient(circle at top, #0f172a 0, #020617 45%, #020617 100%);
       color: #e5e7eb;
+      min-height: 100vh;
     }
     .app {
       max-width: 1100px;
       margin: 0 auto;
       padding: 16px;
     }
+
+    /* Header & Titles */
     .header {
       display: flex;
       align-items: center;
@@ -37,434 +40,360 @@
     }
     .title-main h1 {
       margin: 0;
-      font-size: 22px;
-      color: #f9fafb;
-      letter-spacing: 0.02em;
+      font-size: 24px;
+      font-weight: 700;
+      color: #f1f5f9;
     }
-    .title-main span {
-      font-size: 12px;
-      color: #9ca3af;
-    }
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
+    .title-main .badge-text {
       font-size: 11px;
-      background: rgba(15, 118, 110, 0.15);
-      color: #5eead4;
-      border: 1px solid rgba(45, 212, 191, 0.35);
-    }
-    .layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 2.2fr);
-      gap: 14px;
-    }
-    @media (max-width: 840px) {
-      .layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-    .card {
-      background: radial-gradient(circle at top left, #1e293b 0, #020617 65%);
-      border-radius: 18px;
-      padding: 14px 14px 16px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.55);
-    }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    .card-header h2 {
-      margin: 0;
-      font-size: 15px;
-      color: #e5e7eb;
-      letter-spacing: 0.02em;
-    }
-    .badge {
-      font-size: 11px;
+      font-weight: 500;
+      color: #94a3b8;
+      background: #1e293b;
       padding: 2px 8px;
       border-radius: 999px;
-      background: rgba(37, 99, 235, 0.12);
-      color: #93c5fd;
-      border: 1px solid rgba(59, 130, 246, 0.5);
+      width: max-content;
     }
-    label {
-      font-size: 12px;
-      font-weight: 500;
-      color: #9ca3af;
-      display: block;
-      margin-bottom: 5px;
+
+    /* Layout (Main Grid) */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
     }
-    input {
-      width: 100%;
-      padding: 7px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(15, 23, 42, 0.9);
-      color: #e5e7eb;
-      font-size: 13px;
-      outline: none;
+    @media (max-width: 768px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
     }
-    input::placeholder {
-      color: #6b7280;
+
+    /* Left Panel (Form) */
+    .left-panel {
+      background: #1e293b;
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 16px;
+      height: fit-content;
     }
-    input:focus {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.35);
-    }
-    .input-group {
-      position: relative; /* Penting untuk penempatan dropdown */
-    }
-    .autocomplete-list {
-      position: absolute;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      border-top: none;
-      z-index: 99;
-      /* Menyesuaikan lebar input */
-      width: 100%;
-      top: 100%; /* Agar muncul tepat di bawah input */
-      left: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      background: #0f172a; /* Warna latar belakang sama dengan kartu */
-      border-radius: 0 0 8px 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    }
-    .autocomplete-item {
-      padding: 8px 9px;
-      cursor: pointer;
-      font-size: 13px;
-      color: #e5e7eb;
-      background-color: transparent;
-    }
-    .autocomplete-item:hover, .autocomplete-item.active {
-      background-color: #1e293b;
-      color: #93c5fd;
+    .left-panel h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #e2e8f0;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
     }
     .form-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-bottom: 8px;
     }
-    .form-hint {
-      font-size: 11px;
-      color: #9ca3af;
-      margin-bottom: 6px;
-    }
-
-    
-    .btn-row-main {
+    .input-group {
       display: flex;
-      justify-content: space-between; /* PENTING: Untuk memisahkan 3 elemen menjadi Kiri-Tengah-Kanan */
-      align-items: center;
-      margin-top: 4px;
-      gap: 8px;
+      flex-direction: column;
+      position: relative;
+    }
+    .input-group label {
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    .input-group input:not([type="checkbox"]) {
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #f8fafc;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-group input:focus {
+      border-color: #3b82f6;
+    }
+
+    /* Autocomplete List */
+    #autocomplete-list {
+        position: absolute;
+        top: 100%; /* Di bawah input */
+        left: 0;
+        right: 0;
+        z-index: 10;
+        background-color: #1e293b;
+        border: 1px solid #475569;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .autocomplete-item {
+        padding: 8px 10px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #e2e8f0;
+        transition: background-color 0.1s;
+    }
+
+    .autocomplete-item.active,
+    .autocomplete-item:hover {
+        background-color: #334155;
     }
     
-    /* Tombol Utama: Menetapkan format (shape, padding) yang seragam */
-    .btn-primary,
-    .btn-set-entry,
-    .btn-about,
-    .btn-secondary,
-    .btn-ghost {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      /* Default size untuk tombol yang lebih kecil/secondary */
-      padding: 7px 14px;
+    /* Checkbox Styling */
+    input[type="checkbox"] {
+        /* Styling dasar untuk input checkbox */
+        appearance: none;
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border: 1px solid #475569;
+        border-radius: 4px;
+        background-color: #0f172a;
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    input[type="checkbox"]:checked {
+        background-color: #22c55e; /* Hijau saat checked */
+        border-color: #16a34a;
+    }
+    
+    /* Tombol */
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      margin-top: 15px;
+    }
+    .btn {
+      padding: 10px 12px;
       border: none;
-      font-size: 13px;
+      border-radius: 6px;
+      font-weight: 600;
       cursor: pointer;
-      white-space: nowrap;
+      transition: background-color 0.2s;
+      flex-grow: 1;
+      font-size: 14px;
     }
-
-    /* PENTING: Menyamakan ukuran ketiga tombol utama (Simpan, Set Entry, Tentang) */
-    .btn-primary,
-    .btn-set-entry,
-    .btn-about {
-        padding: 9px 14px; /* Padding yang lebih besar */
-        font-size: 14px; /* Ukuran font yang lebih besar */
+    .btn-save {
+      background-color: #10b981;
+      color: #064e3b;
     }
-
-    /* GAYA UTAMA: SIMPAN (HIJAU) */
-    .btn-primary {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      color: #ecfdf5;
-      box-shadow: 0 10px 25px rgba(22, 163, 74, 0.45);
+    .btn-save:hover {
+      background-color: #059669;
     }
-    .btn-primary:active {
-      transform: translateY(1px);
-      box-shadow: 0 6px 18px rgba(22, 163, 74, 0.55);
-    }
-
-    /* GAYA UTAMA: SET ENTRY BARU (BIRU) */
     .btn-set-entry {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      background-color: #3b82f6;
       color: #eff6ff;
-      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
     }
-    .btn-set-entry:active {
-      transform: translateY(1px);
-      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.55);
+    .btn-set-entry:hover {
+      background-color: #2563eb;
     }
-
-    /* GAYA UTAMA: TENTANG (KUNING) */
     .btn-about {
-        background: linear-gradient(135deg, #fcd34d, #fbbf24);
-        color: #3f2700;
-        box-shadow: 0 10px 25px rgba(251, 191, 36, 0.45);
+      background-color: #facc15;
+      color: #854d0e;
+      flex-grow: 0;
     }
-    .btn-about:active {
-        transform: translateY(1px);
-        box-shadow: 0 6px 18px rgba(251, 191, 36, 0.55);
+    .btn-about:hover {
+      background-color: #eab308;
+    }
+    .btn-install {
+      background-color: #7c3aed;
+      color: #f3e8ff;
+      flex-grow: 0;
+    }
+    .btn-install:hover {
+        background-color: #6d28d9;
     }
 
-
-    .btn-secondary {
-      /* Digunakan jika ada tombol secondary lain */
-      background: rgba(15, 23, 42, 0.9);
-      color: #e5e7eb;
-      border: 1px solid rgba(148, 163, 184, 0.7);
+    /* Right Panel (Dashboard) */
+    .dashboard-content {
+      display: block;
     }
-    .btn-ghost {
-      padding: 5px 12px;
-      font-size: 12px;
-      background: transparent;
-      color: #bfdbfe;
-      border: 1px dashed rgba(96, 165, 250, 0.7);
-      /* JIKA DIPINDAHKAN KE LUAR BUTTON ROW */
-      margin-bottom: 14px; /* Memberi jarak ke div.layout */
-    }
-    .btn-ghost[hidden] {
+    .about-dashboard {
       display: none;
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .about-dashboard h3 {
+      color: #e2e8f0;
+      margin-top: 0;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 8px;
+    }
+    .about-dashboard ul {
+      list-style-type: '— ';
+      padding-left: 20px;
+    }
+    .about-dashboard li {
+      margin-bottom: 8px;
+      color: #cbd5e1;
     }
 
+
+    /* Summary Chips */
     .summary-row {
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-bottom: 10px;
-    }
-    /* GAYA BARU untuk Sinyal Cepat */
-    .summary-chip-urgent {
-        background: linear-gradient(135deg, #f87171, #ef4444);
-        color: #fee2e2;
-        border: 1px solid #fca5a5;
-        font-weight: 700;
-        font-size: 12px;
-        animation: pulse-red 2s infinite;
-    }
-    .summary-chip-urgent strong {
-        color: #fee2e2;
-    }
-    /* Keyframes untuk animasi pulse */
-    @keyframes pulse-red {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-
-
-    .summary-chip {
-      padding: 5px 9px;
-      border-radius: 999px;
-      font-size: 11px;
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.5);
-      color: #e5e7eb;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .summary-chip strong {
-      font-weight: 600;
-      color: #f9fafb;
-    }
-
-    .about-dashboard {
-      font-size: 12px;
-      line-height: 1.6;
-      color: #e5e7eb;
-      display: none;
-    }
-    .about-dashboard p {
-      margin: 0 0 6px;
-    }
-    .about-dashboard ul {
-      margin: 4px 0 0 18px;
+      margin-bottom: 20px;
       padding: 0;
     }
-    .about-dashboard li {
-      margin-bottom: 3px;
+    .summary-chip {
+      background: #1e293b;
+      color: #e5e7eb;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      border: 1px solid #334155;
     }
-    .about-dashboard strong {
-        color: #f9fafb;
+    .summary-chip-urgent {
+      background: #ef4444;
+      color: #fee2e2;
+      border-color: #b91c1c;
+      font-weight: 700;
     }
-    .about-dashboard .action-list {
-        margin-top: 10px;
-        margin-bottom: 10px;
-        border-left: 3px solid #60a5fa;
-        padding-left: 10px;
-    }
-    .action-list h4 {
-        margin: 0 0 5px 0;
-        font-size: 13px;
-        color: #93c5fd;
+    .summary-chip strong {
+        font-weight: 700;
     }
 
-
+    /* Stock Cards Grid */
     .cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-      gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
     }
     .stock-card {
-      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
-      border-radius: 16px;
-      padding: 10px 11px 11px;
-      border: 1px solid rgba(51, 65, 85, 0.9);
-      position: relative;
-      overflow: hidden;
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      border: 1px solid #334155;
       cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    .stock-card::before {
-      content: "";
-      position: absolute;
-      inset: -40%;
-      background: conic-gradient(
-        from 220deg,
-        rgba(34, 197, 94, 0.26),
-        transparent,
-        rgba(59, 130, 246, 0.18),
-        transparent,
-        rgba(248, 250, 252, 0.04)
-      );
-      opacity: 0.35;
-      mix-blend-mode: soft-light;
-      pointer-events: none;
+    .stock-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     }
+
+    /* Card Main Row */
     .stock-main {
-      position: relative;
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 6px;
-    }
-    .stock-code {
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      color: #f9fafb;
-    }
-    .stock-gain {
-      font-size: 13px;
-      font-weight: 600;
-    }
-    .gain-pos { color: #4ade80; }
-    .gain-neg { color: #f97373; }
-    .gain-zero { color: #e5e7eb; }
-
-    .signal-pill {
-      position: relative;
-      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 500;
-      margin-top: 2px;
-    }
-    .sig-cut {
-      background: rgba(248, 113, 113, 0.12);
-      color: #fecaca;
-      border: 1px solid rgba(248, 113, 113, 0.7);
-    }
-    .sig-tp {
-      background: rgba(59, 130, 246, 0.14);
-      color: #bfdbfe;
-      border: 1px solid rgba(59, 130, 246, 0.7);
-    }
-    .sig-run {
-      background: rgba(34, 197, 94, 0.14);
-      color: #bbf7d0;
-      border: 1px solid rgba(34, 197, 94, 0.7);
-    }
-    .sig-hold {
-      background: rgba(75, 85, 99, 0.4);
-      color: #e5e7eb;
-      border: 1px solid rgba(107, 114, 128, 0.8);
-    }
-    /* GAYA SINYAL: RE-ENTRY (Kuning) */
-    .sig-reentry {
-      background: rgba(251, 191, 36, 0.25);
-      color: #fcd34d;
-      border: 1px solid rgba(251, 191, 36, 0.9);
-    }
-    /* GAYA SINYAL: ADD-ON (Pyramiding - Biru Muda) */
-    .sig-addon {
-      background: rgba(37, 99, 235, 0.2);
-      color: #93c5fd;
-      border: 1px solid rgba(59, 130, 246, 0.8);
-    }
-    /* GAYA SINYAL: TS HIT (Peringatan - Oranye Merah) */
-    .sig-tshit {
-      background: rgba(255, 127, 80, 0.25); /* Coral */
-      color: #ffa07a;
-      border: 1px solid rgba(255, 127, 80, 0.9);
+      gap: 8px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid #334155;
+      padding-bottom: 6px;
     }
 
+    /* KODE SAHAM STYLING BERDASARKAN STATUS (PERUBAHAN UTAMA) */
+    .stock-code {
+        font-size: 18px;
+        font-weight: 600;
+        /* Default color (akan ditimpa oleh class di bawah) */
+        color: #e5e7eb; 
+    }
+    .stock-code.code-owned {
+        color: #ffffff; /* Putih terang untuk OWNED */
+        font-weight: 700; 
+    }
+    .stock-code.code-watchlist {
+        color: #94a3b8; /* Abu-abu (slate) untuk WATCHLIST */
+        font-weight: 500;
+    }
 
-    .stock-rows {
-      position: relative;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Card Gain */
+    .stock-gain {
+      font-size: 16px;
+      font-weight: 700;
+      margin-left: auto;
+      padding: 0 5px;
+      border-radius: 4px;
+    }
+    .gain-pos { color: #10b981; }
+    .gain-neg { color: #ef4444; }
+    .gain-zero { color: #facc15; }
+
+    /* Signal Pill */
+    .signal-pill {
+      display: flex;
+      align-items: center;
       gap: 4px;
-      margin-top: 6px;
       font-size: 11px;
-      color: #9ca3af;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 999px;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+    .sig-cut { background: #fee2e2; color: #b91c1c; }
+    .sig-tp { background: #dbeafe; color: #1e40af; }
+    .sig-tshit { background: #fef3c7; color: #92400e; }
+    .sig-reentry { background: #ecfdf5; color: #065f46; }
+    .sig-addon { background: #bfdbfe; color: #1e40af; }
+    .sig-run { background: #d1fae5; color: #047857; }
+    .sig-hold { background: #e5e7eb; color: #4b5563; }
+    .sig-waitingbuy { background: #fefce8; color: #a16207; }
+    .sig-watching { background: #dcfce7; color: #15803d; }
+
+    /* Price Rows */
+    .stock-rows {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .stock-rows > div {
+      text-align: center;
+      padding: 4px;
+      border-radius: 4px;
+      background: #334155;
     }
     .row-label {
-      font-size: 10px;
+      font-size: 9px;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #6b7280;
-      margin-bottom: 1px;
+      color: #94a3b8;
+      font-weight: 500;
+      line-height: 1;
+      margin-bottom: 2px;
     }
     .row-value {
-      font-size: 11px;
-      color: #e5e7eb;
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
+      line-height: 1;
     }
 
-    .stock-rows > div:nth-child(1) { text-align: left; }
-    .stock-rows > div:nth-child(2) { text-align: center; }
-    .stock-rows > div:nth-child(3) { text-align: right; }
-
+    /* TS Row */
     .ts-row {
-      position: relative;
       display: flex;
       justify-content: space-between;
-      margin-top: 5px;
       font-size: 10px;
-      color: #6b7280;
+      font-weight: 500;
+      color: #94a3b8;
+      border-top: 1px dashed #475569;
+      padding-top: 6px;
     }
-    .ts-row span {
-      font-size: 10px;
-    }
-    .ts1 { color: #fde68a; }
-    .ts2 { color: #fda4af; }
+    .ts1 { color: #facc15; }
+    .ts2 { color: #f97316; }
 
+    /* Empty State */
     .empty-state {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-top: 4px;
+        text-align: center;
+        padding: 40px;
+        color: #94a3b8;
+        font-size: 16px;
     }
   </style>
 </head>
@@ -472,93 +401,94 @@
   <div class="app">
     <div class="header">
       <div class="title-main">
-        <h1>Dashboard Tren Saham</h1>
-        <span>Aplikasi untuk merekap sekaligus memantau pergerakan saham</span>
+        <h1 id="right-title">Tren Semua Saham</h1>
+        <div id="right-badge" class="badge-text">
+          Sinyal: TS • CL • TP • RE • AD • PR • HO
+        </div>
       </div>
-      <div class="chip">
-        <span>Beta</span>
+      <div style="display: flex; gap: 8px;">
+          <button class="btn btn-install" id="btn-install" hidden>Install App ⬇️</button>
+          <button class="btn btn-about" id="btn-about">ℹ️ Tentang</button>
       </div>
     </div>
 
-    <button id="btn-install" class="btn-ghost" type="button" hidden>
-      📱 Install Aplikasi
-    </button>
-    
-    <div class="layout">
-      <div class="card">
-        <div class="card-header">
-          <h2>Update Harga Saham</h2>
-          <div class="badge">Manual Input</div>
-        </div>
-
-        <div class="form-grid">
-          <div class="input-group">
-            <label>Kode Saham:</label>
-            <input id="kode" placeholder="Misal: TAPG, ANTM." autocomplete="off" />
-            <div id="autocomplete-list" class="autocomplete-list"></div>
-          </div>
-          <div>
-            <label>Harga saat ini:</label>
-            <input id="last_price" type="number" step="0.01" placeholder="Misal: 1025, 263." />
-          </div>
-        </div>
-        
-        <div class="form-hint">
-          Klik kartu saham di kanan untuk <strong>edit</strong> kode/last price. Gunakan tombol di bawah untuk <strong>Set Entry Baru</strong> atau <strong>Simpan</strong> update harga.
-        </div>
-
-        <div class="btn-row-main">
-          <button id="btn-about" class="btn-about" type="button">
-            ℹ️ About
-          </button>
-          
-          <button id="btn-set-entry" class="btn-set-entry" type="button">
-            🔄 New Entry
-          </button>  
-          
-          <button id="btn-save" class="btn-primary" type="button">
-            💾 Save
-          </button>
-        </div>
+    <div class="summary-row" id="summary-row">
+      <div class="summary-chip">
+        ⏳ Loading data...
       </div>
-      
-      <div class="card">
-        <div class="card-header">
-          <h2 id="right-title">Tren Semua Saham</h2>
-          <div class="badge" id="right-badge">Sinyal: TS • CL • TP • RE • AD • PR • HO</div>
-        </div>
+    </div>
 
+    <div class="content-grid">
+      <div class="left-panel">
+        <h2>Input Saham</h2>
+        <form id="input-form">
+          <div class="form-grid">
+            <div class="input-group" style="grid-column: 1 / span 2;">
+              <label for="kode">Kode Saham:</label>
+              <input type="text" id="kode" placeholder="Misal: BBRI" autocomplete="off" required />
+              <div id="autocomplete-list"></div>
+            </div>
+            <div class="input-group">
+              <label for="last_price">Harga Saat Ini:</label>
+              <input type="number" id="last_price" placeholder="Misal: 4000" step="1" required />
+            </div>
+          </div>
+          
+          <div style="grid-column: 1 / span 2; display: flex; align-items: center; padding-top: 10px; padding-bottom: 5px;"> 
+            <input type="checkbox" id="status_saham" style="margin-right: 8px; transform: scale(1.2);" />
+            <label for="status_saham" style="font-size: 14px; font-weight: 500; color: #e2e8f0; cursor: pointer;">Saya **memiliki** saham ini (Owned)</label>
+          </div>
+          
+          <div class="btn-group">
+            <button type="submit" class="btn btn-save" id="btn-save" title="Simpan Harga Harian / Update Data Saham">
+              💾 Simpan / Update
+            </button>
+            <button type="button" class="btn btn-set-entry" id="btn-set-entry" title="Set Entry Price & High = Harga Saat Ini (Untuk Re-entry/Add-on)">
+              🔄 Set Entry Baru
+            </button>
+          </div>
+          <p style="font-size: 11px; color: #94a3b8; margin: 10px 0 0 0;">Kosongkan Kode Saham dan klik Simpan untuk Hapus Data.</p>
+        </form>
+      </div>
+
+      <div class="right-panel">
         <div id="dashboard-content">
-          <div class="summary-row" id="summary-row"></div>
           <div id="cards-container">
-            <div class="empty-state">Belum ada data. Tambahkan minimal satu saham lewat panel kiri.</div>
+            <div class="empty-state">Memuat kartu saham...</div>
           </div>
         </div>
 
-        <div id="about-dashboard" class="about-dashboard">
-          <p><strong>Dasar Perhitungan Harga</strong></p>
+        <div id="about-dashboard">
+          <h3>Panduan Sinyal Saham</h3>
+          <p>Aplikasi ini menyediakan sinyal sederhana berdasarkan perhitungan Trailing Stop (TS) dan Cut Loss (CL) untuk membantu manajemen risiko.</p>
+          
+          <p><strong>Level Penting</strong></p>
           <ul>
-            <li><strong>Entry Price</strong>: Harga beli awal/rata-rata yang dijadikan basis perhitungan untung/rugi.</li>
-            <li><strong>Highest Price</strong>: Harga tertinggi yang pernah dicapai saham sejak Entry. Digunakan sebagai dasar penghitungan Trailing Stop.</li>
-            <li><strong>Last Price</strong>: Harga terbaru yang di-input pada kolom sebelah kiri.</li>
-            <li><strong>TS1 ($H - 5\%$) / TS2 ($H - 10\%$)</strong>: Level harga Trailing Stop.</li>
+              <li><strong>ENTRY</strong>: Harga beli awal Anda.</li>
+              <li><strong>HIGH</strong>: Harga tertinggi yang pernah dicapai setelah ENTRY (digunakan untuk menghitung TS).</li>
+              <li><strong>LAST</strong>: Harga terakhir yang Anda input (harga penutupan atau harga saat ini).</li>
           </ul>
 
-          <div class="action-list">
-              <h4>Panduan Sinyal Aksi (Action Signals)</h4>
-              <p>Sinyal-sinyal di bawah dirancang untuk memandu pengambilan keputusan Jual/Beli:</p>
-              <ul>
-                  <li>🚨 <strong>URGENT</strong>: Total saham yang menunjukkan sinyal LOSS -5% atau TS HIT (Perlu segera diperhatikan).</li>
-                  <li>🛑 <strong>LOSS -5%</strong>: Harga jatuh di bawah level Cut Loss -5% dari Entry Price. Sinyal Jual Wajib.</li>
-                  <li>🎯 <strong>TP +10%</strong>: Harga mencapai Target Profit +10% dari Entry Price. Sinyal Jual Target.</li>
-                  <li>⚠️ <strong>TS HIT (TS1/TS2)</strong>: Saham yang sudah pernah untung signifikan, kini turun dan menyentuh level Trailing Stop ($H - 5\%$ atau $H - 10\%$). Sinyal Jual Cepat untuk mengamankan keuntungan yang tersisa.</li>
-                  <li>⬆️ <strong>ADD-ON</strong>: Saham sedang Profit $\ge$ 3%. Momentum dianggap cukup kuat untuk dipertimbangkan tambah muatan (Pyramiding).</li>
-                  <li>🔄 <strong>RE-ENTRY</strong>: Saham yang pernah naik >5% kini terkoreksi kembali ke zona beli (di bawah $H - 5\%$) namun masih di zona rugi/dekat entry. Mengindikasikan kesempatan untuk beli ulang.</li>
+          <p><strong>Sinyal Utama</strong></p>
+          <ul>
+                  <li>🛑 <strong>LOSS -5% (Cut Loss)</strong>: Harga turun ke level -5% dari Entry Price.</li>
+                  <li>🎯 <strong>TP +10% (Target Profit)</strong>: Harga mencapai level +10% dari Entry Price.</li>
+                  <li>🚨 <strong>TS HIT (TS2)</strong>: Harga telah naik signifikan (>+5% dari Entry), tetapi turun hingga -10% dari High Price. Sinyal Jual/Take Profit.</li>
+                  <li>⚠️ <strong>TS HIT (TS1)</strong>: Harga telah naik signifikan (>+5% dari Entry), tetapi turun hingga -5% dari High Price. Sinyal Waspada.</li>
+                  <li>⬆️ <strong>ADD-ON</strong>: Harga profit ≥ +3% dari Entry Price. Momentum bagus untuk *pyramiding* atau penambahan posisi.</li>
+                  <li>🔄 <strong>RE-ENTRY</strong>: Harga pernah naik signifikan (>+5%) tetapi kini floating loss (di bawah Entry Price) dan berada di zona *re-entry* (di bawah TS1). Sinyal untuk beli ulang.</li>
                   <li>🚀 <strong>PROFIT</strong>: Saham masih profit (>0% dan <3%) atau momentum belum cukup kuat untuk sinyal *Add-on*.</li>
-                  <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data kurang/tidak jelas.</li>
+                  <li>⏸️ <strong>HOLD / DATA KURANG</strong>: Saham berada di antara Entry dan Cut Loss, atau data (Entry/Last/High) tidak lengkap.</li>
+                  <li>⭐ <strong>WAITING BUY</strong>: (Khusus Watchlist) Saham telah naik signifikan (>+5%) dan mengalami koreksi sehat ke zona beli (di bawah H-5%).</li>
+                  <li>🟢 <strong>WATCHING</strong>: (Khusus Watchlist) Semua kondisi lain.</li>
               </ul>
-          </div>
           
+          <p><strong>Pembeda Warna Kode Saham</strong></p>
+          <ul>
+            <li>**PUTIH**: Status **Owned** (Checkbox diceklis).</li>
+            <li>**ABU-ABU**: Status **Watchlist** (Checkbox tidak diceklis).</li>
+          </ul>
+
           <p><strong>Panduan Penggunaan Tombol</strong></p>
           <ul>
             <li><strong>💾 Simpan (Hijau)</strong>: Gunakan untuk <strong>Update Harga Harian</strong>. Tombol ini tidak akan mengubah Entry Price (harga beli awal Anda), kecuali pada input saham yang benar-benar baru (pembelian pertama).</li>
@@ -567,7 +497,7 @@
                     <li>Add-on: Untuk mencatat harga rata-rata baru.</li>
                     <li>Re-entry: Untuk mencatat harga beli ulang yang baru.</li>
                 </ol>
-                Aksi ini akan mereset Entry Price dan Highest Price ke harga yang diinput saat itu.</li>
+                Aksi ini akan mereset Entry Price dan Highest Price ke harga yang diinput saat itu, **dan status saham akan otomatis diubah menjadi 'Owned'**.</li>
             <li><strong>ℹ️ Tentang (Kuning)</strong>: Menampilkan atau menyembunyikan panel penjelasan ini.</li>
           </ul>
 
