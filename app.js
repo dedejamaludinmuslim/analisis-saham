@@ -1,4 +1,4 @@
-// app.js (Isi sama dengan perbaikan terakhir Anda)
+// app.js (Full Code dengan penambahan fitur status_saham)
 (function () {
   const { createClient } = supabase;
 
@@ -18,7 +18,8 @@
 
   const kodeEl = document.getElementById("kode");
   const lastPriceEl = document.getElementById("last_price");
-  const autocompleteListEl = document.getElementById("autocomplete-list"); // <--- BARU
+  const statusSahamEl = document.getElementById("status_saham"); // <--- BARU: Ambil Element Status Saham
+  const autocompleteListEl = document.getElementById("autocomplete-list"); 
   const btnSave = document.getElementById("btn-save");
   const btnSetEntry = document.getElementById("btn-set-entry"); 
   const btnAbout = document.getElementById("btn-about");
@@ -96,7 +97,6 @@
     const sign = n > 0 ? "+" : (n < 0 ? "" : "");
     return sign + n.toFixed(2) + "%";
   }
-  // ... (setelah fungsi formatPct)
 
   let activeItemIndex = -1; // Untuk navigasi keyboard
 
@@ -141,8 +141,11 @@
           if (row) {
               currentId = row.id;
               lastPriceEl.value = row.last_price || "";
+              statusSahamEl.value = row.status_saham || 'watchlist'; // <--- BARU: Muat status
           } else {
               currentId = null;
+              // Set default status jika kode baru
+              statusSahamEl.value = 'watchlist'; 
           }
       }
       autocompleteListEl.innerHTML = "";
@@ -165,7 +168,7 @@
       e.preventDefault();
       if (activeItemIndex > -1) {
         selectAutocompleteItem(items[activeItemIndex].getAttribute("data-kode"));
-        return; // Hentikan dari memicu tombol save
+        return; 
       }
     }
     
@@ -182,7 +185,7 @@
 
   // Listener untuk input kode saham
   kodeEl.addEventListener("input", showAutocomplete);
-  kodeEl.addEventListener("keydown", handleKeydown); // Tambahkan listener keydown untuk navigasi
+  kodeEl.addEventListener("keydown", handleKeydown); 
   
   // Listener untuk klik pada item rekomendasi
   autocompleteListEl.addEventListener("click", (e) => {
@@ -201,7 +204,6 @@
       }
   });
 
-  // ... (lanjut ke loadData)
 
   function classForGain(n) {
     if (n === null || Number.isNaN(n)) return "gain-zero";
@@ -210,20 +212,32 @@
     return "gain-zero";
   }
 
-  function signalInfo(entry, last, high) {
+  // BARU: Fungsi sinyal menerima status_saham
+  function signalInfo(entry, last, high, status_saham) {
     if (!entry || !last || !high) {
       return { text: "DATA KURANG", className: "sig-hold", icon: "⚪" };
     }
 
     const gainPct = (last - entry) / entry;
-    const cutLevel = entry * (1 + CUT_PCT); // Entry -5%
-    const tpLevel = entry * (1 + TP_PCT); // Entry +10%
+    const cutLevel = entry * (1 + CUT_PCT); 
+    const tpLevel = entry * (1 + TP_PCT); 
 
-    // Level untuk Re-entry dan TS Hit
-    const highCheckLevel = entry * (1 + RE_ENTRY_CHECK_PCT); // Entry +5% (High harus melebihi ini)
-    const ts1Level = high * (1 - TS1_PCT); // High -5%
-    const ts2Level = high * (1 - TS2_PCT); // High -10%
+    const highCheckLevel = entry * (1 + RE_ENTRY_CHECK_PCT); 
+    const ts1Level = high * (1 - TS1_PCT); 
+    const ts2Level = high * (1 - TS2_PCT); 
 
+    // LOGIKA KHUSUS UNTUK WATCHLIST
+    if (status_saham === 'watchlist') {
+        // 1. WAITING BUY: Saham yang sudah pernah naik >5% dan koreksi ke zona beli (di bawah H-5%)
+        if (high >= highCheckLevel && last < ts1Level) {
+            return { text: "WAITING BUY", className: "sig-waitingbuy", icon: "⭐" };
+        }
+        
+        // 2. WATCHING: Semua kondisi lain (di atas Cut Loss/Entry, di bawah TS)
+        return { text: "WATCHING", className: "sig-watching", icon: "🟢" };
+    }
+
+    // LOGIKA UTAMA UNTUK OWNED (Kode yang sudah ada)
     // 1. CUT LOSS
     if (last <= cutLevel) {
       return { text: "LOSS -5%", className: "sig-cut", icon: "🛑" };
@@ -247,7 +261,7 @@
     
     // 4. RE-ENTRY
     // Kondisi: Sudah pernah naik signifikan (>+5%) DAN koreksi di bawah TS1 (H-5%)
-    // TAPI sekarang floating loss (gainPct < 0), yang berarti saham ini menarik untuk dibeli ulang.
+    // TAPI sekarang floating loss (gainPct < 0).
     if (high >= highCheckLevel && last < ts1Level && gainPct < 0) {
         return { text: "RE-ENTRY", className: "sig-reentry", icon: "🔄" };
     }
@@ -269,7 +283,8 @@
   async function loadData() { 
     const { data, error } = await db
       .from("portofolio_saham")
-      .select("id, kode, entry_price, highest_price_after_entry, last_price")
+      // BARU: Ambil status_saham
+      .select("id, kode, entry_price, highest_price_after_entry, last_price, status_saham") 
       .order("kode", { ascending: true });
 
     if (error) {
@@ -309,6 +324,9 @@
     let countAddOn = 0;
     let countReEntry = 0;
     let countTsHit = 0;
+    // BARU: Hitungan sinyal watchlist
+    let countWaitingBuy = 0;
+    let countWatching = 0;
 
     const cards = [];
 
@@ -316,11 +334,14 @@
       const entry = parseNum(row.entry_price);
       const last = parseNum(row.last_price);
       let high = parseNum(row.highest_price_after_entry);
+      // BARU: Dapatkan status, default ke 'watchlist'
+      const status = row.status_saham || 'watchlist'; 
 
       if (!high && entry) high = entry;
       const gainPct = entry && last ? ((last - entry) / entry) * 100 : null;
 
-      const sig = signalInfo(entry, last, high);
+      // BARU: Kirim status saham ke signalInfo
+      const sig = signalInfo(entry, last, high, status);
 
       if (entry && last) {
         totalGain += (last - entry) / entry;
@@ -347,6 +368,12 @@
           case "TS HIT (TS2)":
             countTsHit++;
             break;
+          case "WAITING BUY": // <--- KASUS BARU
+            countWaitingBuy++;
+            break;
+          case "WATCHING": // <--- KASUS BARU
+            countWatching++;
+            break;
           case "HOLD":
           case "DATA KURANG":
           default:
@@ -368,7 +395,8 @@
         gainPct,
         ts1,
         ts2,
-        sig
+        sig,
+        status: status // <--- TAMBAHKAN STATUS KE OBJEK KARTU
       });
     }
 
@@ -412,6 +440,12 @@
       <div class="summary-chip">
         ⚠️ <span>TS Hit: <strong>${countTsHit}</strong></span>
       </div>
+      <div class="summary-chip">
+        ⭐ <span>Waiting Buy: <strong>${countWaitingBuy}</strong></span>
+      </div>
+      <div class="summary-chip">
+        🟢 <span>Watching: <strong>${countWatching}</strong></span>
+      </div>
     `;
 
     cardsContainer.innerHTML = `
@@ -419,11 +453,16 @@
         ${cards
           .map((c) => {
             const gainClass = classForGain(c.gainPct);
+            // BARU: Badge Status Owned/Watchlist
+            const statusBadge = `<div class="badge badge-${c.status}">
+                                    ${c.status === 'owned' ? 'Owned' : 'Watchlist'}
+                                 </div>`;
+                                 
             return `
               <div class="stock-card" data-id="${c.id}">
                 <div class="stock-main">
                   <div class="stock-code">${c.kode || "-"}</div>
-                  <div class="signal-pill ${c.sig.className}">
+                  ${statusBadge} <div class="signal-pill ${c.sig.className}" style="margin-left: auto;">
                     <span>${c.sig.icon}</span>
                     <span>${c.sig.text}</span>
                   </div>
@@ -461,6 +500,7 @@
     currentId = null;
     kodeEl.value = "";
     lastPriceEl.value = "";
+    statusSahamEl.value = "watchlist"; // BARU: Reset Status ke Watchlist
   }
   
   async function setNewEntryPrice(kode, lastPrice) {
@@ -484,7 +524,8 @@
     const payloadUpdate = {
       entry_price: lastPrice,
       last_price: lastPrice, 
-      highest_price_after_entry: lastPrice
+      highest_price_after_entry: lastPrice,
+      status_saham: 'owned' // <--- PENTING: Set Status ke 'owned' saat Entry Baru
     };
 
     const { error: updateError } = await db
@@ -505,8 +546,10 @@
   async function saveData() {
       const kode = (kodeEl.value || "").trim().toUpperCase();
       const lastPrice = parseNum(lastPriceEl.value);
+      // BARU: Ambil status saham dari form
+      const statusSaham = statusSahamEl.value || 'watchlist'; 
       
-      // ===== LOGIKA HAPUS DATA (BARU) =====
+      // ===== LOGIKA HAPUS DATA (SAMA) =====
       if (currentId && !kode) {
         if (confirm("Kode saham dikosongkan. Yakin ingin menghapus data ini dari portofolio?")) {
           const { error: deleteError } = await db
@@ -525,7 +568,6 @@
           await loadData();
           return;
         } else {
-            // Jika batal hapus, jangan lanjutkan proses save
             return;
         }
       }
@@ -535,6 +577,7 @@
         alert("Isi Kode Saham dan Last Price dulu.");
         return;
       }
+      
     if (currentId) {
       const row = currentRows.find((r) => r.id === currentId);
       if (!row) {
@@ -548,9 +591,10 @@
 
       const payloadUpdate = {
         kode,
-        entry_price: entry, // Entry TIDAK diubah saat SIMPAN
+        entry_price: entry, 
         last_price: lastPrice,
-        highest_price_after_entry: newHigh
+        highest_price_after_entry: newHigh,
+        status_saham: statusSaham // <--- BARU: Update Status
       };
 
       const { error: updateError } = await db
@@ -569,9 +613,11 @@
       return;
     }
 
+    // Cek data existing
     const { data: existing, error: queryError } = await db
       .from("portofolio_saham")
-      .select("id, entry_price, highest_price_after_entry, last_price")
+      // BARU: Ambil status_saham di query
+      .select("id, entry_price, highest_price_after_entry, last_price, status_saham")
       .eq("kode", kode)
       .maybeSingle();
 
@@ -590,7 +636,8 @@
         kode,
         entry_price: entry,
         last_price: lastPrice,
-        highest_price_after_entry: newHigh
+        highest_price_after_entry: newHigh,
+        status_saham: statusSaham // <--- BARU: Update Status
       };
 
       const { error: updateError } = await db
@@ -604,11 +651,13 @@
         return;
       }
     } else {
+      // Data baru (Insert)
       const payloadInsert = {
         kode,
         entry_price: lastPrice,
         last_price: lastPrice,
-        highest_price_after_entry: lastPrice
+        highest_price_after_entry: lastPrice,
+        status_saham: statusSaham // <--- BARU: Insert Status
       };
 
       const { error: insertError } = await db
@@ -648,14 +697,12 @@
     }
   }
 
-  // FIX: Mengubah listener menjadi async dan menambahkan await saveData()
   btnSave.addEventListener("click", async (e) => {
     e.preventDefault();
     await saveData();
   });
   
   if (btnSetEntry) {
-    // FIX: Mengubah listener menjadi async dan menambahkan await setNewEntryPrice()
     btnSetEntry.addEventListener("click", async (e) => {
       e.preventDefault();
       const kode = (kodeEl.value || "").trim().toUpperCase();
@@ -666,7 +713,7 @@
         return;
       }
       
-      if (!confirm(`Yakin ingin menyetel ulang Entry Price ${kode} menjadi ${formatNum(lastPrice)}? Semua data HIGH akan direset (Entry = Last = High).`)) {
+      if (!confirm(`Yakin ingin menyetel ulang Entry Price ${kode} menjadi ${formatNum(lastPrice)}? Semua data HIGH akan direset (Entry = Last = High) dan status akan diubah menjadi 'Owned'.`)) {
           return;
       }
       
@@ -693,6 +740,7 @@
     currentId = row.id;
     kodeEl.value = row.kode || "";
     lastPriceEl.value = row.last_price || "";
+    statusSahamEl.value = row.status_saham || 'watchlist'; // <--- BARU: Muat Status
   });
 
   loadData();
