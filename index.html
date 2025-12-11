@@ -152,12 +152,6 @@
       gap: 10px;
       margin-bottom: 8px;
     }
-    .form-grid > div:nth-child(3) { /* Tambahan div untuk Status Saham */
-      grid-column: 1 / 2; /* Kolom 1 dari baris kedua */
-    }
-    .form-grid > div:nth-child(4) { 
-      grid-column: 2 / 3; /* Kolom 2 dari baris kedua (jika ada) */
-    }
     .form-hint {
       font-size: 11px;
       color: #9ca3af;
@@ -426,29 +420,7 @@
       color: #ffa07a;
       border: 1px solid rgba(255, 127, 80, 0.9);
     }
-    /* GAYA SINYAL: WAITING BUY (Emas) */
-    .sig-waitingbuy {
-      background: rgba(253, 230, 138, 0.2);
-      color: #fcd34d;
-      border: 1px solid rgba(251, 191, 36, 0.9);
-    }
-    /* GAYA SINYAL: WATCHING (Cyan) */
-    .sig-watching {
-      background: rgba(45, 212, 191, 0.2);
-      color: #5eead4;
-      border: 1px solid rgba(45, 212, 191, 0.8);
-    }
-    /* GAYA BADGE UTAMA */
-    .badge-owned {
-        background: rgba(34, 197, 94, 0.12);
-        color: #4ade80;
-        border: 1px solid rgba(34, 197, 94, 0.5);
-    }
-    .badge-watchlist {
-        background: rgba(251, 191, 36, 0.12);
-        color: #fcd34d;
-        border: 1px solid rgba(251, 191, 36, 0.5);
-    }
+
 
     .stock-rows {
       position: relative;
@@ -529,9 +501,6 @@
             <label>Harga saat ini:</label>
             <input id="last_price" type="number" step="0.01" placeholder="Misal: 1025, 263." />
           </div>
-          <div style="grid-column: 1 / span 2; display: flex; align-items: center; padding-top: 5px;"> 
-            <input type="checkbox" id="status_saham" style="margin-right: 8px; transform: scale(1.2);" />
-          </div>
         </div>
         
         <div class="form-hint">
@@ -585,10 +554,8 @@
                   <li>⚠️ <strong>TS HIT (TS1/TS2)</strong>: Saham yang sudah pernah untung signifikan, kini turun dan menyentuh level Trailing Stop ($H - 5\%$ atau $H - 10\%$). Sinyal Jual Cepat untuk mengamankan keuntungan yang tersisa.</li>
                   <li>⬆️ <strong>ADD-ON</strong>: Saham sedang Profit $\ge$ 3%. Momentum dianggap cukup kuat untuk dipertimbangkan tambah muatan (Pyramiding).</li>
                   <li>🔄 <strong>RE-ENTRY</strong>: Saham yang pernah naik >5% kini terkoreksi kembali ke zona beli (di bawah $H - 5\%$) namun masih di zona rugi/dekat entry. Mengindikasikan kesempatan untuk beli ulang.</li>
-                  <li>⭐ <strong>WAITING BUY</strong>: Hanya untuk saham **Watchlist**. Saham berada di zona Re-entry/beli ulang (high > entry + 5%, last < high - 5%), mengindikasikan waktu yang tepat untuk mulai *entry* pertama.</li>
-                  <li>🟢 <strong>WATCHING</strong>: Hanya untuk saham **Watchlist**. Saham di zona Entry Price sampai potensi TP.</li>
                   <li>🚀 <strong>PROFIT</strong>: Saham masih profit (>0% dan <3%) atau momentum belum cukup kuat untuk sinyal *Add-on*.</li>
-                  <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data kurang/tidak jelas.</li>              
+                  <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data kurang/tidak jelas.</li>
               </ul>
           </div>
           
