@@ -1,7 +1,8 @@
-// app.js (Full Code dengan perbaikan tampilan dashboard)
+// app.js (Full Code dengan Perbaikan Tampilan, Pengurutan Saham, dan Logika Checkbox)
 (function () {
   const { createClient } = supabase;
 
+  // GANTI DENGAN KREDENSIAL SUPABASE ANDA
   const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
 
@@ -291,6 +292,17 @@
     }
 
     currentRows = data || [];
+    
+    // FIX 1: Memastikan Dashboard terlihat di awal load
+    if (dashboardContent && aboutDashboard) {
+      dashboardContent.style.display = "block";
+      aboutDashboard.style.display = "none";
+      if (rightTitle) rightTitle.textContent = "Tren Semua Saham";
+      if (rightBadge) rightBadge.textContent = "Sinyal: TS • CL • TP • RE • AD • PR • HO";
+      if (btnAbout) btnAbout.textContent = "ℹ️ Tentang";
+    }
+    // Akhir FIX 1
+
     if (dashboardContent && dashboardContent.style.display !== "none") {
       renderDashboard();
     }
@@ -316,7 +328,6 @@
     let countAddOn = 0;
     let countReEntry = 0;
     let countTsHit = 0;
-    // Hitungan sinyal watchlist
     let countWaitingBuy = 0;
     let countWatching = 0;
 
@@ -339,36 +350,18 @@
 
         // Menghitung Sinyal untuk Summary
         switch (sig.text) {
-          case "LOSS -5%":
-            countCut++;
-            break;
-          case "TP +10%":
-            countTP++;
-            break;
-          case "ADD-ON":
-            countAddOn++;
-            break;
-          case "PROFIT":
-            countRun++;
-            break;
-          case "RE-ENTRY":
-            countReEntry++;
-            break;
+          case "LOSS -5%": countCut++; break;
+          case "TP +10%": countTP++; break;
+          case "ADD-ON": countAddOn++; break;
+          case "PROFIT": countRun++; break;
+          case "RE-ENTRY": countReEntry++; break;
           case "TS HIT (TS1)":
-          case "TS HIT (TS2)":
-            countTsHit++;
-            break;
-          case "WAITING BUY": 
-            countWaitingBuy++;
-            break;
-          case "WATCHING": 
-            countWatching++;
-            break;
+          case "TS HIT (TS2)": countTsHit++; break;
+          case "WAITING BUY": countWaitingBuy++; break;
+          case "WATCHING": countWatching++; break;
           case "HOLD":
           case "DATA KURANG":
-          default:
-            countHold++;
-            break;
+          default: countHold++; break;
         }
       }
 
@@ -390,16 +383,27 @@
       });
     }
 
+    // FITUR 2: Pengurutan Saham (Owned dulu, baru Watchlist, di dalamnya berdasarkan Gain)
     cards.sort((a, b) => {
+      // 1. Primary Sort: Owned (1) vs Watchlist (0). Sort descending (Owned first).
+      const statusA = a.status === 'owned' ? 1 : 0;
+      const statusB = b.status === 'owned' ? 1 : 0;
+      
+      if (statusA !== statusB) {
+        return statusB - statusA;
+      }
+      
+      // 2. Secondary Sort: By gainPct descending
       const ga = (a.gainPct === null || Number.isNaN(a.gainPct)) ? -Infinity : a.gainPct;
       const gb = (b.gainPct === null || Number.isNaN(b.gainPct)) ? -Infinity : b.gainPct;
-      return gb - ga;
+      return gb - ga; // Sort by gainPct descending (best to worst)
     });
+    // Akhir FITUR 2
 
     const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
     const countUrgent = countCut + countTsHit; 
 
-    // Summary Row (Tidak diubah, tetap menampilkan hitungan sinyal baru)
+    // Summary Row
     summaryRow.innerHTML = `
       <div class="summary-chip summary-chip-urgent">
         🚨 <span>Urgent: <strong>${countUrgent} Saham</strong></span>
@@ -443,7 +447,6 @@
         ${cards
           .map((c) => {
             const gainClass = classForGain(c.gainPct);
-            // BARU: Tentukan class warna untuk kode saham
             const codeColorClass = c.status === 'owned' ? 'code-owned' : 'code-watchlist';
                                  
             return `
