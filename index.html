@@ -7,6 +7,7 @@
 
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#0f172a" />
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -224,6 +225,247 @@
         transform: translateY(1px);
         box-shadow: 0 6px 18px rgba(251, 191, 36, 0.55);
     }
+
+
+    .btn-secondary {
+      /* Digunakan jika ada tombol secondary lain */
+      background: rgba(15, 23, 42, 0.9);
+      color: #e5e7eb;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+    }
+    .btn-ghost {
+      padding: 5px 12px;
+      font-size: 12px;
+      background: transparent;
+      color: #bfdbfe;
+      border: 1px dashed rgba(96, 165, 250, 0.7);
+      /* JIKA DIPINDAHKAN KE LUAR BUTTON ROW */
+      margin-bottom: 14px; /* Memberi jarak ke div.layout */
+    }
+    .btn-ghost[hidden] {
+      display: none;
+    }
+
+    .summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    /* GAYA BARU untuk Sinyal Cepat */
+    .summary-chip-urgent {
+        background: linear-gradient(135deg, #f87171, #ef4444);
+        color: #fee2e2;
+        border: 1px solid #fca5a5;
+        font-weight: 700;
+        font-size: 12px;
+        animation: pulse-red 2s infinite;
+    }
+    .summary-chip-urgent strong {
+        color: #fee2e2;
+    }
+    /* Keyframes untuk animasi pulse */
+    @keyframes pulse-red {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+
+    .summary-chip {
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: #e5e7eb;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .summary-chip strong {
+      font-weight: 600;
+      color: #f9fafb;
+    }
+
+    .about-dashboard {
+      font-size: 12px;
+      line-height: 1.6;
+      color: #e5e7eb;
+      display: none;
+    }
+    .about-dashboard p {
+      margin: 0 0 6px;
+    }
+    .about-dashboard ul {
+      margin: 4px 0 0 18px;
+      padding: 0;
+    }
+    .about-dashboard li {
+      margin-bottom: 3px;
+    }
+    .about-dashboard strong {
+        color: #f9fafb;
+    }
+    .about-dashboard .action-list {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        border-left: 3px solid #60a5fa;
+        padding-left: 10px;
+    }
+    .action-list h4 {
+        margin: 0 0 5px 0;
+        font-size: 13px;
+        color: #93c5fd;
+    }
+
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+    }
+    .stock-card {
+      background: radial-gradient(circle at top left, #020617 0, #020617 40%, #020617 100%);
+      border-radius: 16px;
+      padding: 10px 11px 11px;
+      border: 1px solid rgba(51, 65, 85, 0.9);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .stock-card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      background: conic-gradient(
+        from 220deg,
+        rgba(34, 197, 94, 0.26),
+        transparent,
+        rgba(59, 130, 246, 0.18),
+        transparent,
+        rgba(248, 250, 252, 0.04)
+      );
+      opacity: 0.35;
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+    .stock-main {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .stock-code {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #f9fafb;
+    }
+    .stock-gain {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .gain-pos { color: #4ade80; }
+    .gain-neg { color: #f97373; }
+    .gain-zero { color: #e5e7eb; }
+
+    .signal-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 2px;
+    }
+    .sig-cut {
+      background: rgba(248, 113, 113, 0.12);
+      color: #fecaca;
+      border: 1px solid rgba(248, 113, 113, 0.7);
+    }
+    .sig-tp {
+      background: rgba(59, 130, 246, 0.14);
+      color: #bfdbfe;
+      border: 1px solid rgba(59, 130, 246, 0.7);
+    }
+    .sig-run {
+      background: rgba(34, 197, 94, 0.14);
+      color: #bbf7d0;
+      border: 1px solid rgba(34, 197, 94, 0.7);
+    }
+    .sig-hold {
+      background: rgba(75, 85, 99, 0.4);
+      color: #e5e7eb;
+      border: 1px solid rgba(107, 114, 128, 0.8);
+    }
+    /* GAYA SINYAL: RE-ENTRY (Kuning) */
+    .sig-reentry {
+      background: rgba(251, 191, 36, 0.25);
+      color: #fcd34d;
+      border: 1px solid rgba(251, 191, 36, 0.9);
+    }
+    /* GAYA SINYAL: ADD-ON (Pyramiding - Biru Muda) */
+    .sig-addon {
+      background: rgba(37, 99, 235, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(59, 130, 246, 0.8);
+    }
+    /* GAYA SINYAL: TS HIT (Peringatan - Oranye Merah) */
+    .sig-tshit {
+      background: rgba(255, 127, 80, 0.25); /* Coral */
+      color: #ffa07a;
+      border: 1px solid rgba(255, 127, 80, 0.9);
+    }
+
+
+    .stock-rows {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .row-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 1px;
+    }
+    .row-value {
+      font-size: 11px;
+      color: #e5e7eb;
+    }
+
+    .stock-rows > div:nth-child(1) { text-align: left; }
+    .stock-rows > div:nth-child(2) { text-align: center; }
+    .stock-rows > div:nth-child(3) { text-align: right; }
+
+    .ts-row {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      margin-top: 5px;
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .ts-row span {
+      font-size: 10px;
+    }
+    .ts1 { color: #fde68a; }
+    .ts2 { color: #fda4af; }
+
+    .empty-state {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -310,7 +552,7 @@
                   <li>🛑 <strong>LOSS -5%</strong>: Harga jatuh di bawah level Cut Loss -5% dari Entry Price. Sinyal Jual Wajib.</li>
                   <li>🎯 <strong>TP +10%</strong>: Harga mencapai Target Profit +10% dari Entry Price. Sinyal Jual Target.</li>
                   <li>⚠️ <strong>TS HIT (TS1/TS2)</strong>: Saham yang sudah pernah untung signifikan, kini turun dan menyentuh level Trailing Stop ($H - 5\%$ atau $H - 10\%$). Sinyal Jual Cepat untuk mengamankan keuntungan yang tersisa.</li>
-                  <li>⬆️ <strong>ADD-ON</strong>: Saham sedang Profit $\ge$ 3%. Momentum dianggap cukup kuat untuk dipertimbangkan tambah muatan (*Pyramiding*).</li>
+                  <li>⬆️ <strong>ADD-ON</strong>: Saham sedang Profit $\ge$ 3%. Momentum dianggap cukup kuat untuk dipertimbangkan tambah muatan (Pyramiding).</li>
                   <li>🔄 <strong>RE-ENTRY</strong>: Saham yang pernah naik >5% kini terkoreksi kembali ke zona beli (di bawah $H - 5\%$) namun masih di zona rugi/dekat entry. Mengindikasikan kesempatan untuk beli ulang.</li>
                   <li>🚀 <strong>PROFIT</strong>: Saham masih profit (>0% dan <3%) atau momentum belum cukup kuat untuk sinyal *Add-on*.</li>
                   <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data kurang/tidak jelas.</li>
@@ -322,8 +564,8 @@
             <li><strong>💾 Simpan (Hijau)</strong>: Gunakan untuk <strong>Update Harga Harian</strong>. Tombol ini tidak akan mengubah Entry Price (harga beli awal Anda), kecuali pada input saham yang benar-benar baru (pembelian pertama).</li>
             <li><strong>🔄 Set Entry Baru (Biru)</strong>: Gunakan secara SANGAT SPESIFIK setelah Anda melakukan:
                 <ol>
-                    <li>*Add-on: Untuk mencatat harga rata-rata baru.</li>
-                    <li>*Re-entry:* Untuk mencatat harga beli ulang yang baru.</li>
+                    <li>Add-on: Untuk mencatat harga rata-rata baru.</li>
+                    <li>Re-entry: Untuk mencatat harga beli ulang yang baru.</li>
                 </ol>
                 Aksi ini akan mereset Entry Price dan Highest Price ke harga yang diinput saat itu.</li>
             <li><strong>ℹ️ Tentang (Kuning)</strong>: Menampilkan atau menyembunyikan panel penjelasan ini.</li>
