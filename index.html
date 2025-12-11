@@ -119,7 +119,7 @@
     /* Autocomplete List */
     #autocomplete-list {
         position: absolute;
-        top: 100%; /* Di bawah input */
+        top: 100%; 
         left: 0;
         right: 0;
         z-index: 10;
@@ -146,7 +146,6 @@
     
     /* Checkbox Styling */
     input[type="checkbox"] {
-        /* Styling dasar untuk input checkbox */
         appearance: none;
         -webkit-appearance: none;
         width: 16px;
@@ -297,19 +296,18 @@
       padding-bottom: 6px;
     }
 
-    /* KODE SAHAM STYLING BERDASARKAN STATUS (PERUBAHAN UTAMA) */
+    /* KODE SAHAM STYLING BERDASARKAN STATUS */
     .stock-code {
         font-size: 18px;
         font-weight: 600;
-        /* Default color (akan ditimpa oleh class di bawah) */
         color: #e5e7eb; 
     }
     .stock-code.code-owned {
-        color: #ffffff; /* Putih terang untuk OWNED */
+        color: #ffffff; 
         font-weight: 700; 
     }
     .stock-code.code-watchlist {
-        color: #94a3b8; /* Abu-abu (slate) untuk WATCHLIST */
+        color: #94a3b8; 
         font-weight: 500;
     }
 
@@ -423,19 +421,23 @@
         <h2>Input Saham</h2>
         <form id="input-form">
           <div class="form-grid">
+            
             <div class="input-group" style="grid-column: 1 / span 2;">
               <label for="kode">Kode Saham:</label>
               <input type="text" id="kode" placeholder="Misal: BBRI" autocomplete="off" required />
               <div id="autocomplete-list"></div>
             </div>
+            
             <div class="input-group">
               <label for="last_price">Harga Saat Ini:</label>
               <input type="number" id="last_price" placeholder="Misal: 4000" step="1" required />
             </div>
-            <div style="grid-column: 1 / span 2; display: flex; align-items: center; padding-top: 10px; padding-bottom: 5px;"> 
-              <input type="checkbox" id="status_saham" style="margin-right: 8px; transform: scale(1.2);" />
+            
+            <div class="input-group" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding-top: 25px;"> 
+                <input type="checkbox" id="status_saham" style="transform: scale(1.2);" />
+                <label for="status_saham" style="font-size: 14px; color: #e2e8f0; font-weight: 500; margin-bottom: 0; cursor: pointer;">Owned</label>
             </div>
-          </div>         
+            </div>
           
           <div class="btn-group">
             <button type="submit" class="btn btn-save" id="btn-save" title="Simpan Harga Harian / Update Data Saham">
@@ -476,15 +478,16 @@
                   <li>⬆️ <strong>ADD-ON</strong>: Harga profit ≥ +3% dari Entry Price. Momentum bagus untuk *pyramiding* atau penambahan posisi.</li>
                   <li>🔄 <strong>RE-ENTRY</strong>: Harga pernah naik signifikan (>+5%) tetapi kini floating loss (di bawah Entry Price) dan berada di zona *re-entry* (di bawah TS1). Sinyal untuk beli ulang.</li>
                   <li>🚀 <strong>PROFIT</strong>: Saham masih profit (>0% dan <3%) atau momentum belum cukup kuat untuk sinyal *Add-on*.</li>
-                  <li>⏸️ <strong>HOLD / DATA KURANG</strong>: Saham berada di antara Entry dan Cut Loss, atau data (Entry/Last/High) tidak lengkap.</li>
+                  <li>⏸️ <strong>HOLD</strong>: Saham berada di antara Entry dan Cut Loss, atau data (Entry/Last/High) tidak lengkap.</li>
                   <li>⭐ <strong>WAITING BUY</strong>: (Khusus Watchlist) Saham telah naik signifikan (>+5%) dan mengalami koreksi sehat ke zona beli (di bawah H-5%).</li>
                   <li>🟢 <strong>WATCHING</strong>: (Khusus Watchlist) Semua kondisi lain.</li>
               </ul>
           
-          <p><strong>Pembeda Warna Kode Saham</strong></p>
+          <p><strong>Pembeda Warna Kode Saham & Pengurutan</strong></p>
           <ul>
-            <li>**PUTIH**: Status **Owned** (Checkbox diceklis).</li>
-            <li>**ABU-ABU**: Status **Watchlist** (Checkbox tidak diceklis).</li>
+            <li>Dashboard diurutkan berdasarkan status: **Owned** di atas, lalu **Watchlist** di bawah.</li>
+            <li>**PUTIH**: Status **Owned**.</li>
+            <li>**ABU-ABU**: Status **Watchlist**.</li>
           </ul>
 
           <p><strong>Panduan Penggunaan Tombol</strong></p>
@@ -500,7 +503,7 @@
           </ul>
 
           <p>
-            Kartu di dashboard disusun dari saham dengan <strong>profit terbaik ke terburuk</strong> (berdasarkan Last Price vs Entry Price) untuk memudahkan prioritas tindakan.
+            Kartu di dashboard disusun berdasarkan Status Saham (Owned vs Watchlist) kemudian diurutkan dari profit terbaik ke terburuk (berdasarkan Last Price vs Entry Price) untuk memudahkan prioritas tindakan.
           </p>
         </div>
       </div>
