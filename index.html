@@ -529,11 +529,9 @@
             <label>Harga saat ini:</label>
             <input id="last_price" type="number" step="0.01" placeholder="Misal: 1025, 263." />
           </div>
-          <div class="input-group"> <label>Status Saham:</label>
-            <select id="status_saham" style="width: 100%; padding: 7px 9px; border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.55); background: rgba(15, 23, 42, 0.9); color: #e5e7eb; font-size: 13px; outline: none; appearance: none; cursor: pointer;">
-              <option value="owned">Owned (Dimiliki)</option>
-              <option value="watchlist">Watchlist (Dipantau)</option>
-            </select>
+          <div style="grid-column: 1 / span 2; display: flex; align-items: center; padding-top: 5px;"> 
+            <input type="checkbox" id="status_saham" style="margin-right: 8px; transform: scale(1.2);" />
+            <label for="status_saham" style="font-size: 14px; font-weight: 500;">Saya **memiliki** saham ini (Owned)</label>
           </div>
         </div>
         
