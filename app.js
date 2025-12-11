@@ -1,4 +1,4 @@
-// app.js (Full Code dengan Perbaikan Tampilan, Pengurutan Saham, dan Logika Checkbox)
+// app.js (Full Code dengan Revisi Statistik Summary Chips)
 (function () {
   const { createClient } = supabase;
 
@@ -318,8 +318,11 @@
       return;
     }
 
-    let totalGain = 0;
-    let countGain = 0;
+    let totalOwned = 0;
+    let totalWatchlist = 0;
+    let totalGainOwned = 0; // Hanya hitung dari Owned
+    let countOwnedGain = 0; // Hanya hitung dari Owned
+    
     let countCut = 0;
     let countTP = 0;
     let countRun = 0;
@@ -338,15 +341,23 @@
       let high = parseNum(row.highest_price_after_entry);
       const status = row.status_saham || 'watchlist'; 
 
+      if (status === 'owned') {
+          totalOwned++;
+      } else {
+          totalWatchlist++;
+      }
+
       if (!high && entry) high = entry;
       const gainPct = entry && last ? ((last - entry) / entry) * 100 : null;
 
       const sig = signalInfo(entry, last, high, status);
 
+      if (status === 'owned' && entry && last) {
+        totalGainOwned += (last - entry) / entry;
+        countOwnedGain++;
+      }
+      
       if (entry && last) {
-        totalGain += (last - entry) / entry;
-        countGain++;
-
         // Menghitung Sinyal untuk Summary
         switch (sig.text) {
           case "LOSS -5%": countCut++; break;
@@ -397,46 +408,74 @@
       return gb - ga; 
     });
 
-    const avgGainPct = countGain ? (totalGain / countGain) * 100 : 0;
+    // Hitung average gain (hanya dari Owned)
+    const avgGainOwnedPct = countOwnedGain ? (totalGainOwned / countOwnedGain) * 100 : 0;
+    
+    // Hitung Urgent (Cut Loss + TS Hit)
     const countUrgent = countCut + countTsHit; 
-
-    // Summary Row
+    
+    // Hapus chip Urgent jika nilainya sama dengan Cut Loss (asumsi TS Hit = 0)
+    const showUrgentChip = countUrgent > 0 && countUrgent !== countCut;
+    
+    // Summary Row: Dikelompokkan dalam 4 baris visual
     summaryRow.innerHTML = `
-      <div class="summary-chip summary-chip-urgent">
-        🚨 <span>Urgent: <strong>${countUrgent} Saham</strong></span>
-      </div>
-      <div class="summary-chip">
-        📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
-      </div>
-      <div class="summary-chip">
-        📈 <span>Average gain: <strong>${formatPct(avgGainPct)}</strong></span>
-      </div>
-      <div class="summary-chip">
-        ⏸️ <span>Hold: <strong>${countHold}</strong></span>
-      </div>
-      <div class="summary-chip">
-        🛑 <span>Cut loss -5%: <strong>${countCut}</strong></span>
-      </div>
-      <div class="summary-chip">
-        🎯 <span>Zona TP +10%: <strong>${countTP}</strong></span></div>
-      <div class="summary-chip">
-        🚀 <span>Profit run: <strong>${countRun}</strong></span>
-      </div>
-      <div class="summary-chip">
-        ⬆️ <span>Add-on: <strong>${countAddOn}</strong></span>
-      </div>
-      <div class="summary-chip">
-        🔄 <span>Re-entry: <strong>${countReEntry}</strong></span>
-      </div>
-      <div class="summary-chip">
-        ⚠️ <span>TS Hit: <strong>${countTsHit}</strong></span>
-      </div>
-      <div class="summary-chip">
-        ⭐ <span>Waiting Buy: <strong>${countWaitingBuy}</strong></span>
-      </div>
-      <div class="summary-chip">
-        🟢 <span>Watching: <strong>${countWatching}</strong></span>
-      </div>
+        <div class="summary-line">
+            <div class="summary-chip">
+                📦 <span>Total saham: <strong>${currentRows.length}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-owned">
+                ✅ <span>Owned: <strong>${totalOwned}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-watchlist">
+                👀 <span>Watchlist: <strong>${totalWatchlist}</strong></span>
+            </div>
+        </div>
+
+        <div class="summary-line">
+            <div class="summary-chip">
+                📈 <span>Avg gain (Owned): <strong>${formatPct(avgGainOwnedPct)}</strong></span>
+            </div>
+            ${showUrgentChip ? `
+            <div class="summary-chip summary-chip-urgent">
+                🚨 <span>Urgent: <strong>${countUrgent} Saham</strong></span>
+            </div>` : ''}
+            <div class="summary-chip summary-chip-neg">
+                🛑 <span>Cut Loss (-5%): <strong>${countCut}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-ts">
+                ⚠️ <span>TS Hit: <strong>${countTsHit}</strong></span>
+            </div>
+        </div>
+
+        <div class="summary-line">
+            <div class="summary-chip summary-chip-hold">
+                ⏸️ <span>Hold: <strong>${countHold}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-pos">
+                🚀 <span>Profit Run: <strong>${countRun}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-tp">
+                🎯 <span>Zona TP (+10%): <strong>${countTP}</strong></span>
+            </div>
+        </div>
+
+        <div class="summary-line">
+            <div class="summary-chip summary-chip-addon">
+                ⬆️ <span>Add-on: <strong>${countAddOn}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-reentry">
+                🔄 <span>Re-entry: <strong>${countReEntry}</strong></span>
+            </div>
+            <div class="summary-chip summary-chip-waitingbuy">
+                ⭐ <span>Waiting Buy: <strong>${countWaitingBuy}</strong></span>
+            </div>
+        </div>
+
+        <div class="summary-line">
+             <div class="summary-chip summary-chip-watching">
+                🟢 <span>Watching: <strong>${countWatching}</strong></span>
+            </div>
+        </div>
     `;
 
     cardsContainer.innerHTML = `
