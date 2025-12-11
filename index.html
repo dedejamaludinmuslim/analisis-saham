@@ -145,6 +145,37 @@
     }
     
     /* Checkbox Styling */
+    /* Menyesuaikan tinggi checkbox agar sejajar dengan input */
+    .checkbox-container {
+        display: flex;
+        flex-direction: column;
+    }
+    .checkbox-label-top {
+        font-size: 12px;
+        margin-bottom: 4px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+    .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        /* Padding vertikal dan border input: 8px + 1px = 9px. Total tinggi sekitar 34px (9 + 16 + 9). */
+        /* Padding atas/bawah 8px + tinggi ceklis 16px = 32px. Ditambah border 2px. Total 34px. */
+        padding: 8px 10px; 
+        border: 1px solid #475569; 
+        border-radius: 6px;
+        background: #0f172a;
+        height: 34px; /* Tinggi eksplisit agar sama dengan input number */
+        
+    }
+    .checkbox-wrapper label {
+        font-size: 14px;
+        color: #e2e8f0; 
+        font-weight: 500; 
+        cursor: pointer;
+        margin-bottom: 0; 
+    }
+    
     input[type="checkbox"] {
         appearance: none;
         -webkit-appearance: none;
@@ -158,6 +189,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        margin: 0; /* Reset margin bawaan browser */
     }
 
     input[type="checkbox"]:checked {
@@ -323,10 +355,11 @@
     .gain-neg { color: #ef4444; }
     .gain-zero { color: #facc15; }
 
-    /* Signal Pill */
+    /* Signal Pill (Align Center) */
     .signal-pill {
       display: flex;
       align-items: center;
+      justify-content: center; /* Memastikan isinya di tengah */
       gap: 4px;
       font-size: 11px;
       font-weight: 600;
@@ -334,6 +367,9 @@
       border-radius: 999px;
       white-space: nowrap;
       text-transform: uppercase;
+      text-align: center; /* Tambahan untuk memastikan teks rata tengah */
+      line-height: 1.4;
+      height: 22px; /* Set height agar konsisten */
     }
     .sig-cut { background: #fee2e2; color: #b91c1c; }
     .sig-tp { background: #dbeafe; color: #1e40af; }
@@ -433,11 +469,14 @@
               <input type="number" id="last_price" placeholder="Misal: 4000" step="1" required />
             </div>
             
-            <div class="input-group" style="display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 8px; padding-top: 25px;"> 
-                <input type="checkbox" id="status_saham" style="transform: scale(1.2);" />
-                <label for="status_saham" style="font-size: 14px; color: #e2e8f0; font-weight: 500; margin-bottom: 0; cursor: pointer;">Owned</label>
+            <div class="checkbox-container">
+                <label for="status_saham" class="checkbox-label-top">Status Owned:</label>
+                <div class="checkbox-wrapper">
+                    <input type="checkbox" id="status_saham" />
+                </div>
             </div>
-            </div>
+            
+          </div>
           
           <div class="btn-group">
             <button type="submit" class="btn btn-save" id="btn-save" title="Simpan Harga Harian / Update Data Saham">
@@ -486,8 +525,8 @@
           <p><strong>Pembeda Warna Kode Saham & Pengurutan</strong></p>
           <ul>
             <li>Dashboard diurutkan berdasarkan status: **Owned** di atas, lalu **Watchlist** di bawah.</li>
-            <li>**PUTIH**: Status **Owned**.</li>
-            <li>**ABU-ABU**: Status **Watchlist**.</li>
+            <li>**PUTIH**: Status **Owned** (Checkbox diceklis).</li>
+            <li>**ABU-ABU**: Status **Watchlist** (Checkbox tidak diceklis).</li>
           </ul>
 
           <p><strong>Panduan Penggunaan Tombol</strong></p>
