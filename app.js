@@ -29,6 +29,12 @@ function categorizeSignals(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
     signals.forEach(item => {
+        // Pastikan item memiliki data fundamental sebelum dimasukkan
+        if (!item.data_saham_rel || item.data_saham_rel.length === 0) {
+            // Lewati jika data fundamental tidak ada
+            return; 
+        }
+
         if (item.Sinyal_MA) {
             categorized.maCross.push(item);
         }
@@ -45,10 +51,22 @@ function categorizeSignals(signals) {
     return categorized;
 }
 
+// Fungsi format angka (untuk Volume dan Harga)
+function formatNumber(num, isVolume = false) {
+    if (num === null || num === undefined) return '-';
+    // Format volume dengan K/M jika besar, atau sebagai angka biasa
+    if (isVolume) {
+        if (num >= 1000000) return (num / 1000000).toFixed(2) + ' Jt';
+        if (num >= 1000) return (num / 1000).toFixed(1) + ' Rb';
+        return num.toLocaleString('id-ID');
+    }
+    // Format harga dengan 2 desimal
+    return parseFloat(num).toFixed(2).toLocaleString('id-ID');
+}
+
 // Fungsi untuk me-render data ke dalam kategori tabel
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
-    // Pastikan signalKey sesuai dengan struktur data Supabase
     const signalKey = `Sinyal_${categoryKey.replace('maCross', 'MA').replace('rsi', 'RSI').replace('macd', 'MACD').replace('volume', 'Volume')}`;
     
     tableBody.innerHTML = '';
@@ -63,26 +81,41 @@ function renderCategory(categoryKey, data) {
     tableEl.style.display = 'table'; // Tampilkan tabel
 
     data.forEach(item => {
+        // Asumsi data fundamental ada di item.data_saham_rel[0]
+        const fundamentalData = item.data_saham_rel ? item.data_saham_rel[0] : {};
+
         const row = tableBody.insertRow();
         
         row.insertCell().textContent = item["Kode Saham"];
         row.insertCell().textContent = item["Tanggal"];
+        
+        // --- DATA FUNDAMENTAL BARU ---
+        row.insertCell().textContent = formatNumber(fundamentalData.Penutupan); 
+        row.insertCell().textContent = formatNumber(fundamentalData.Volume, true);
+        
+        // Hitung dan format Persentase Perubahan (Selisih)
+        const percentChange = fundamentalData.Selisih ? parseFloat(fundamentalData.Selisih) : 0;
+        const changeCell = row.insertCell();
+        changeCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
+        changeCell.style.color = percentChange > 0 ? 'var(--buy-color)' : (percentChange < 0 ? 'var(--sell-color)' : 'var(--text-color)');
+        // --- AKHIR DATA FUNDAMENTAL BARU ---
 
-        // Kolom Sinyal (Aksi) - Disesuaikan untuk tampilan modern (membungkus teks sinyal)
+        // Kolom Sinyal (Aksi)
         const signalCell = row.insertCell();
         const signalText = item[signalKey];
-        const signalSpan = document.createElement('span'); // Buat elemen span
+        const signalSpan = document.createElement('span'); 
         signalSpan.textContent = signalText;
-        signalSpan.className = getSignalClass(signalText); // Terapkan kelas CSS ke span
-        signalCell.appendChild(signalSpan); // Masukkan span ke dalam cell
+        signalSpan.className = getSignalClass(signalText); 
+        signalCell.appendChild(signalSpan);
     });
 }
 
 // Fungsi utama untuk mengambil dan menampilkan data
 async function fetchAndRenderSignals() {
-    statusMessage.textContent = 'Mengambil data sinyal dari Supabase...';
+    statusMessage.textContent = 'Mengambil data sinyal dan fundamental dari Supabase...';
     
     try {
+        // *** PERUBAHAN QUERY UTAMA: Menambahkan Relasi data_saham_rel ***
         const { data: signals, error } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
@@ -91,10 +124,12 @@ async function fetchAndRenderSignals() {
                 "Sinyal_MA",
                 "Sinyal_RSI",
                 "Sinyal_MACD",
-                "Sinyal_Volume"
+                "Sinyal_Volume",
+                data_saham_rel:data_saham ( "Penutupan", "Volume", "Selisih" ) 
             `)
             .order('Tanggal', { ascending: false })
-            .limit(100); // Ambil lebih banyak data untuk menemukan tanggal terbaru
+            .limit(100); 
+            // *** CATATAN: Pastikan 'data_saham_rel' adalah nama relasi Anda di Supabase! ***
 
         if (error) throw error;
         
@@ -109,12 +144,12 @@ async function fetchAndRenderSignals() {
         // 2. Filter data untuk Tanggal Terbaru DAN memiliki MINIMAL satu sinyal
         const dailySignals = signals.filter(s => 
             s.Tanggal === latestDate && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)
+            && s.data_saham_rel && s.data_saham_rel.length > 0 // Hanya data yang memiliki data fundamental terkait
         );
 
         if (dailySignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate}. (Pastikan data MACD sudah 26 hari)`;
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate} dengan data fundamental lengkap.`;
             
-            // Sembunyikan semua tabel jika tidak ada sinyal
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
             return;
@@ -126,14 +161,14 @@ async function fetchAndRenderSignals() {
         // 4. Render per Kategori
         renderCategory('maCross', categorizedData.maCross);
         renderCategory('rsi', categorizedData.rsi);
-        renderCategory('volume', categorizedData.volume); // Volume di atas MACD
+        renderCategory('volume', categorizedData.volume);
         renderCategory('macd', categorizedData.macd);
 
         let totalSignals = Object.values(categorizedData).flat().length;
         statusMessage.textContent = `Sinyal untuk ${dailySignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
 
     } catch (error) {
-        statusMessage.textContent = `Error memuat data: ${error.message}`;
+        statusMessage.textContent = `Error memuat data: ${error.message}. Cek apakah relasi 'data_saham' sudah benar.`;
         console.error('Error fetching data:', error);
     }
 }
