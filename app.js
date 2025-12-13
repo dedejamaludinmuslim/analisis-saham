@@ -92,7 +92,7 @@ async function fetchPortfolio() {
     }
 }
 
-// FUNGSI UPDATE STATUS PORTFOLIO (SIMETRI DAN PENGHAPUSAN OPSI TANGGAL BELI)
+// FUNGSI UPDATE STATUS PORTFOLIO (FIXED INPUT DUPLIKAT DAN ADD DATE)
 async function togglePortfolioStatus(stockCode, currentIsOwned) {
     // A. LOGIKA HAPUS (JIKA SUDAH PUNYA)
     if (currentIsOwned) {
@@ -120,37 +120,51 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
             }
         } else { return false; }
 
-    // B. LOGIKA TAMBAH/BELI BARU (Simetri UI dan Hapus Input Duplikat)
+    // B. LOGIKA TAMBAH/BELI BARU (Simetri UI dan Tambah Date Input)
     } else {
         const latestPrice = await getLatestStockPrice(stockCode);
-        const latestDate = dateFilter.value; // Tanggal Beli = Tanggal Analisis Terakhir
+        const latestDate = dateFilter.value; // Tanggal Analisis Terakhir (untuk default max date)
         
         if (!latestPrice) { 
             Swal.fire({ icon: 'error', title: 'Data Tidak Tersedia', text: 'Harga saham ini belum tersedia.' });
             return false; 
         }
 
-        // Popup Input Harga (Satu Input Field Saja)
-        const { value: inputPrice } = await Swal.fire({
+        // Popup Input Harga
+        const { value: formValues } = await Swal.fire({
             title: `Tambah ${stockCode}`,
             html: `
-                <p style="margin-bottom: 10px; color: #6b7280;">Harga penutupan terakhir (${latestDate}): <b>Rp ${formatNumber(latestPrice, false, true)}</b></p>
-                <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
-                    <label for="swal-input-price" style="display:block; text-align:center; font-size:0.9rem; font-weight:600; margin-bottom:5px;">Masukkan Harga Beli:</label>
-                    <input id="swal-input-price" class="swal2-input" type="number" value="${latestPrice}" min="1" step="1" style="width: 80%; margin-top: 0; text-align: center;">
+                <p style="margin-bottom: 15px; color: #6b7280;">Harga penutupan terakhir (${latestDate}): <b>Rp ${formatNumber(latestPrice, false, true)}</b></p>
+                <div style="display: flex; gap: 10px; flex-direction: column; align-items: center; width: 100%;">
+                    
+                    <div style="display: flex; flex-direction: column; width: 80%; text-align: left;">
+                        <label for="swal-input-date" style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">Tanggal Beli:</label>
+                        <input id="swal-input-date" type="date" value="${latestDate}" max="${latestDate}" class="swal2-input" style="text-align: center; height: 40px; padding: 5px;">
+                    </div>
+                    
+                    <div style="display: flex; flex-direction: column; width: 80%; text-align: left;">
+                        <label for="swal-input-price" style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">Harga Beli:</label>
+                        <input id="swal-input-price" type="number" value="${latestPrice}" min="1" step="1" class="swal2-input" style="width: 100%; margin-top: 0; text-align: center; height: 40px; padding: 5px;">
+                    </div>
                 </div>
             `,
-            input: 'text', // Menggunakan 'text' untuk mengontrol input HTML secara penuh
+            // Kita harus menggunakan input: 'text' untuk menonaktifkan input otomatis SweetAlert
+            input: 'text', 
             showCancelButton: true,
             focusConfirm: false,
             preConfirm: () => { 
                 const price = document.getElementById('swal-input-price').value;
+                const date = document.getElementById('swal-input-date').value;
+                
                 if (!price || parseFloat(price) <= 0) {
                     Swal.showValidationMessage('Harga beli harus valid dan lebih dari Rp 0!');
                     return false;
                 }
-                // Mengizinkan harga beli yang berbeda (historis)
-                return parseFloat(price);
+                if (!date) {
+                    Swal.showValidationMessage('Tanggal beli harus diisi!');
+                    return false;
+                }
+                return { price: parseFloat(price), date: date };
             },
             confirmButtonColor: '#4f46e5',
             confirmButtonText: 'Simpan',
@@ -158,20 +172,20 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
         });
         
         // Pengecekan inputPrice setelah preConfirm
-        if (inputPrice && inputPrice > 0) {
+        if (formValues && formValues.price > 0) {
             try {
-                // Saat menyimpan, kita menggunakan harga yang diinput pengguna (inputPrice)
+                // Saat menyimpan, kita menggunakan tanggal dan harga yang diinput pengguna
                 await supabaseClient.from('portofolio_saham').upsert({ 
                     kode_saham: stockCode, 
-                    harga_beli: inputPrice, 
-                    tanggal_beli: latestDate, // Menggunakan tanggal analisis sebagai tanggal beli
-                    harga_tertinggi_sejak_beli: inputPrice 
+                    harga_beli: formValues.price, 
+                    tanggal_beli: formValues.date, 
+                    harga_tertinggi_sejak_beli: formValues.price 
                 }, { onConflict: 'kode_saham' });
                 
-                globalPortfolio.set(stockCode, { hargaBeli: inputPrice });
+                globalPortfolio.set(stockCode, { hargaBeli: formValues.price });
                 await fetchPortfolio();
                 
-                Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${stockCode} disimpan dengan harga Rp ${formatNumber(inputPrice, false, true)}.`, timer: 2000, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${stockCode} disimpan dengan harga Rp ${formatNumber(formValues.price, false, true)} pada ${formValues.date}.`, timer: 2000, showConfirmButton: false });
             } catch (error) { 
                 Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message });
                 return false; 
@@ -183,6 +197,7 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
     categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value));
     return true;
 }
+
 async function getLatestStockPrice(stockCode) {
      const targetDate = dateFilter.value;
      try {
@@ -510,17 +525,11 @@ function renderCategory(key, data) {
 
         // 4. Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
-
-        // 5. Chg% (Selisih)
-        const chg = parseFloat(item.Selisih || 0);
-        const chgCell = row.insertCell();
-        chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
-        chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
         
-        // 6. Avg Price
+        // 5. Avg Price (Harga Beli) - Pindah ke sini
         row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
 
-        // 7. P/L %
+        // 6. P/L %
         const plCell = row.insertCell();
         if (pf) {
             const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
@@ -528,6 +537,12 @@ function renderCategory(key, data) {
             plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
         } else { plCell.textContent = '-'; }
 
+        // 7. Chg% (Selisih) - Pindah ke sini
+        const chg = parseFloat(item.Selisih || 0);
+        const chgCell = row.insertCell();
+        chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
+        chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
+        
         // 8. Status (Smart Badge) 
         const statusCell = row.insertCell();
         if (pf) {
@@ -667,7 +682,7 @@ async function showStockDetailModal(stockCode) {
 function updatePortfolioStatusDisplay(code) { 
     const owned = globalPortfolio.has(code); 
     portfolioStatusToggle.className = owned ? 'owned' : ''; 
-    portfolioStatusToggle.textContent = owned ? `Hapus dari Portofolio` : 'Tambahkan ke Portofolio'; // Perbaikan teks
+    portfolioStatusToggle.textContent = owned ? `Hapus dari Portofolio` : 'Tambahkan ke Portofolio'; 
 }
 
 // ==========================================
