@@ -24,14 +24,29 @@ function getSignalClass(signal) {
     return '';
 }
 
+// Fungsi format angka (untuk Volume dan Harga)
+function formatNumber(num, isVolume = false) {
+    if (num === null || num === undefined) return '-';
+    
+    const number = parseFloat(num);
+    
+    if (isVolume) {
+        if (number >= 1000000000) return (number / 1000000000).toFixed(2) + ' M';
+        if (number >= 1000000) return (number / 1000000).toFixed(2) + ' Jt';
+        if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
+        return number.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+    }
+    // Format harga sebagai IDR tanpa desimal
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+}
+
 // Fungsi untuk mengkategorikan data berdasarkan sinyal non-NULL
 function categorizeSignals(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
     signals.forEach(item => {
-        // Pastikan item memiliki data fundamental sebelum dimasukkan
-        if (!item.data_saham || item.data_saham.length === 0) {
-            // Lewati jika data fundamental tidak ada
+        // Hanya push jika memiliki data fundamental (Close Price)
+        if (!item.Close) { 
             return; 
         }
 
@@ -51,23 +66,6 @@ function categorizeSignals(signals) {
     return categorized;
 }
 
-// Fungsi format angka (untuk Volume dan Harga)
-function formatNumber(num, isVolume = false) {
-    if (num === null || num === undefined) return '-';
-    
-    // Konversi ke angka float (karena format di Supabase adalah numeric/bigint)
-    const number = parseFloat(num);
-    
-    // Format volume dengan K/Jt jika besar, atau sebagai angka biasa
-    if (isVolume) {
-        if (number >= 1000000) return (number / 1000000).toFixed(2) + ' Jt';
-        if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
-        return number.toLocaleString('id-ID');
-    }
-    // Format harga sebagai mata uang IDR
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
-}
-
 // Fungsi untuk me-render data ke dalam kategori tabel
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
@@ -82,26 +80,23 @@ function renderCategory(categoryKey, data) {
     }
 
     statusEl.style.display = 'none';
-    tableEl.style.display = 'table'; // Tampilkan tabel
+    tableEl.style.display = 'table'; 
 
     data.forEach(item => {
-        // PERBAIKAN: Menggunakan item.data_saham[0]
-        const fundamentalData = item.data_saham ? item.data_saham[0] : {};
-
         const row = tableBody.insertRow();
         
         row.insertCell().textContent = item["Kode Saham"];
         row.insertCell().textContent = item["Tanggal"];
         
-        // --- DATA FUNDAMENTAL BARU ---
-        row.insertCell().textContent = formatNumber(fundamentalData.Penutupan); 
-        row.insertCell().textContent = formatNumber(fundamentalData.Volume, true);
+        // --- DATA FUNDAMENTAL ---
+        row.insertCell().textContent = formatNumber(item.Close); 
+        row.insertCell().textContent = formatNumber(item.Volume, true);
         
-        // Hitung dan format Persentase Perubahan (Selisih)
-        const percentChange = fundamentalData.Selisih ? parseFloat(fundamentalData.Selisih) : 0;
+        // Persentase Perubahan (Selisih)
+        const percentChange = item.Selisih ? parseFloat(item.Selisih) : 0;
         const changeCell = row.insertCell();
         changeCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
-        // Terapkan warna berdasarkan perubahan harga
+        
         if (percentChange > 0) {
             changeCell.style.color = 'var(--buy-color)'; // Hijau
         } else if (percentChange < 0) {
@@ -109,8 +104,8 @@ function renderCategory(categoryKey, data) {
         } else {
             changeCell.style.color = 'var(--text-color)'; // Netral
         }
-        changeCell.style.fontWeight = 'bold'; // Tambah bold untuk penekanan
-        // --- AKHIR DATA FUNDAMENTAL BARU ---
+        changeCell.style.fontWeight = 'bold';
+        // --- AKHIR DATA FUNDAMENTAL ---
 
         // Kolom Sinyal (Aksi)
         const signalCell = row.insertCell();
@@ -124,62 +119,85 @@ function renderCategory(categoryKey, data) {
 
 // Fungsi utama untuk mengambil dan menampilkan data
 async function fetchAndRenderSignals() {
-    statusMessage.textContent = 'Mengambil data sinyal dan fundamental dari Supabase...';
+    statusMessage.textContent = 'Langkah 1/3: Mengambil data sinyal terbaru...';
     
     try {
-        // *** PERBAIKAN QUERY: Menggunakan nama relasi default 'data_saham' ***
-        const { data: signals, error } = await supabaseClient 
+        // Query 1: Ambil data sinyal untuk menentukan tanggal terbaru
+        const { data: signalData, error: signalError } = await supabaseClient 
             .from('indikator_teknikal')
-            .select(`
-                "Kode Saham",
-                "Tanggal",
-                "Sinyal_MA",
-                "Sinyal_RSI",
-                "Sinyal_MACD",
-                "Sinyal_Volume",
-                data_saham ( "Penutupan", "Volume", "Selisih" ) 
-            `)
+            .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
             .order('Tanggal', { ascending: false })
             .limit(100); 
 
-        if (error) throw error;
-        
-        if (signals.length === 0) {
-            statusMessage.textContent = 'Tidak ada data ditemukan di tabel indikator_teknikal.';
+        if (signalError) throw signalError;
+        if (signalData.length === 0) {
+            statusMessage.textContent = 'Tidak ada data sinyal ditemukan.';
             return;
         }
 
-        // 1. Tentukan Tanggal Terbaru
-        const latestDate = signals[0].Tanggal;
+        // Tentukan Tanggal Terbaru
+        const latestDate = signalData[0].Tanggal;
         
-        // 2. Filter data untuk Tanggal Terbaru DAN memiliki MINIMAL satu sinyal
-        const dailySignals = signals.filter(s => 
-            s.Tanggal === latestDate && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)
-            && s.data_saham && s.data_saham.length > 0 // Hanya data yang memiliki data fundamental terkait
-        );
+        statusMessage.textContent = `Langkah 2/3: Mengambil data fundamental untuk ${latestDate}...`;
 
-        if (dailySignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate} dengan data fundamental lengkap. (Pastikan data MACD sudah 26 hari)`;
+        // Query 2: Ambil data fundamental pada tanggal terbaru tersebut
+        const { data: fundamentalData, error: fundamentalError } = await supabaseClient
+            .from('data_saham')
+            .select(`"Kode Saham", "Penutupan", "Volume", "Selisih"`)
+            .eq('Tanggal Perdagangan Terakhir', latestDate);
+
+        if (fundamentalError) throw fundamentalError;
+
+        // Map data fundamental ke dalam objek untuk pencarian cepat
+        const fundamentalMap = {};
+        fundamentalData.forEach(item => {
+            const key = item["Kode Saham"];
+            fundamentalMap[key] = {
+                Close: item.Penutupan,
+                Volume: item.Volume,
+                Selisih: item.Selisih
+            };
+        });
+
+        statusMessage.textContent = 'Langkah 3/3: Menggabungkan dan merender data...';
+        
+        // 3. Gabungkan dan Filter Data
+        const combinedSignals = [];
+        signalData.forEach(s => {
+            // Hanya proses data dari tanggal terbaru
+            if (s.Tanggal !== latestDate) return; 
+
+            const fundamental = fundamentalMap[s["Kode Saham"]];
             
+            // Gabungkan jika sinyal dan fundamental ada
+            if (fundamental && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)) {
+                combinedSignals.push({
+                    ...s,
+                    ...fundamental 
+                });
+            }
+        });
+
+        if (combinedSignals.length === 0) {
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate} dengan data fundamental lengkap.`;
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
             return;
         }
         
-        // 3. Kategorikan Data
-        const categorizedData = categorizeSignals(dailySignals);
+        // 4. Kategorikan dan Render Data
+        const categorizedData = categorizeSignals(combinedSignals);
         
-        // 4. Render per Kategori
         renderCategory('maCross', categorizedData.maCross);
         renderCategory('rsi', categorizedData.rsi);
         renderCategory('volume', categorizedData.volume);
         renderCategory('macd', categorizedData.macd);
 
         let totalSignals = Object.values(categorizedData).flat().length;
-        statusMessage.textContent = `Sinyal untuk ${dailySignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
+        statusMessage.textContent = `Sinyal untuk ${combinedSignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
 
     } catch (error) {
-        statusMessage.textContent = `Error memuat data: ${error.message}. Cek apakah relasi 'data_saham' sudah benar.`;
+        statusMessage.textContent = `Error memuat data: ${error.message}. Cek nama kolom dan ketersediaan data.`;
         console.error('Error fetching data:', error);
     }
 }
