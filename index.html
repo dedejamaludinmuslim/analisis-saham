@@ -76,10 +76,10 @@
         }
         .signal-category table { 
             width: 100%; 
-            border-collapse: separate; /* Untuk border-radius di cell */
+            border-collapse: separate; 
             border-spacing: 0; 
             margin-top: 15px; 
-            overflow: hidden; /* Penting untuk border-radius table */
+            overflow: hidden; 
             border-radius: 6px;
         }
         .signal-category th, .signal-category td { 
@@ -129,6 +129,8 @@
             display: inline-block;
             font-size: 0.9rem;
         }
+        
+        /* PERBAIKAN: Set status tersembunyi secara default di CSS */
         .category-status {
             padding: 10px;
             background-color: var(--primary-light);
@@ -136,12 +138,9 @@
             border-left: 4px solid var(--primary-color);
             border-radius: 4px;
             font-style: italic;
+            display: none; /* Disembunyikan secara default */
         }
     </style>
-</head>
-<style>
-/* ... CSS dari respon sebelumnya ... */
-</style>
 </head>
 <body>
     <div class="container">
@@ -150,7 +149,7 @@
 
         <div id="maCrossSection" class="signal-category">
             <h2>📈 MA Cross (Trend Following)</h2>
-            <p class="category-status" id="maStatus" style="display: none;">Tidak ada sinyal MA Cross hari ini.</p>
+            <p class="category-status" id="maStatus">Tidak ada sinyal MA Cross hari ini.</p>
             <table id="maCrossTable" style="display:none;">
                 <thead>
                     <tr>
@@ -168,7 +167,7 @@
 
         <div id="rsiSection" class="signal-category">
             <h2>⚖️ RSI (Kondisi Jenuh Beli/Jual)</h2>
-            <p class="category-status" id="rsiStatus" style="display: none;">Tidak ada sinyal RSI hari ini.</p>
+            <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
             <table id="rsiTable" style="display:none;">
                 <thead>
                     <tr>
@@ -186,7 +185,7 @@
         
         <div id="volumeSection" class="signal-category">
             <h2>💥 Volume Spike (Anomali Volume)</h2>
-            <p class="category-status" id="volumeStatus" style="display: none;">Tidak ada sinyal Volume Spike hari ini.</p>
+            <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
             <table id="volumeTable" style="display:none;">
                 <thead>
                     <tr>
@@ -204,7 +203,7 @@
 
         <div id="macdSection" class="signal-category">
             <h2>⚡ MACD (Momentum)</h2>
-            <p class="category-status" id="macdStatus" style="display: none;">Tidak ada sinyal MACD hari ini.</p>
+            <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
             <table id="macdTable" style="display:none;">
                 <thead>
                     <tr>
