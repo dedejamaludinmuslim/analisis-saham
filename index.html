@@ -3,385 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screener Sinyal Saham Kategorikal</title>
+    <title>Screener & Portofolio Saham Pribadi</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script> 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Variabel CSS untuk kemudahan kustomisasi */
         :root {
-            --primary-color: #4f46e5; /* Indigo */
-            --primary-light: #eef2ff;
-            --text-color: #1f2937; /* Dark Gray */
-            --bg-color: #f9fafb; /* Light Gray Background */
-            --card-bg: #ffffff;
-            --border-color: #e5e7eb;
-            --buy-bg: #dcfce7; /* Light Green */
-            --buy-color: #15803d; /* Dark Green */
-            --sell-bg: #fee2e2; /* Light Red */
-            --sell-color: #b91c1c; /* Dark Red */
-            --watch-bg: #fef9c3; /* Light Yellow */
-            --watch-color: #a16207; /* Dark Yellow */
+            --primary-color: #4f46e5; --primary-light: #eef2ff;
+            --text-color: #1f2937; --bg-color: #f9fafb;
+            --card-bg: #ffffff; --border-color: #e5e7eb;
+            --buy-color: #15803d; --sell-color: #b91c1c;
         }
         
-        body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            padding: 20px;
-            background-color: var(--bg-color); 
-            color: var(--text-color);
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 20px; background-color: var(--bg-color); color: var(--text-color); }
+        .container { max-width: 1200px; margin: auto; background: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h1 { text-align: center; color: var(--primary-color); margin-bottom: 5px; font-weight: 700; }
+        
+        /* SEARCH BAR */
+        .search-wrapper { position: relative; max-width: 500px; margin: 0 auto 20px; }
+        #stockSearchInput {
+            width: 100%; padding: 12px 20px; border: 2px solid var(--border-color);
+            border-radius: 25px; font-size: 1rem; outline: none; transition: border-color 0.3s;
         }
-        .container { 
-            max-width: 1200px; 
-            margin: auto; 
-            background: var(--card-bg); 
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
+        #stockSearchInput:focus { border-color: var(--primary-color); }
+        #searchResults {
+            position: absolute; top: 100%; left: 0; right: 0; background: white;
+            border: 1px solid var(--border-color); border-radius: 8px; margin-top: 5px;
+            max-height: 300px; overflow-y: auto; z-index: 50; display: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        h1 { 
-            text-align: center; 
-            color: var(--primary-color); 
-            margin-bottom: 5px;
-            font-weight: 700;
-        }
-        #statusMessage { 
-            text-align: center; 
-            margin-bottom: 10px; 
-            font-weight: 600; 
-            color: #4b5563; 
-            padding: 10px;
-            border-bottom: 2px solid var(--border-color);
-        }
+        .search-item { padding: 10px 20px; cursor: pointer; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; }
+        .search-item:hover { background-color: var(--primary-light); }
 
-        /* --- Gaya Filter --- */
-        #filterContainer {
-            display: flex; 
-            justify-content: center;
-            align-items: center;
-            gap: 20px; 
-            margin-bottom: 30px;
-            padding: 10px 0;
-            border-bottom: 1px dashed var(--border-color);
-        }
-        #dateFilter, #signalFilter {
-            padding: 10px 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 1rem;
-            color: var(--text-color);
-            background-color: var(--primary-light);
-            cursor: pointer;
-            transition: border-color 0.3s;
-            font-family: 'Inter', sans-serif; 
-        }
-        #dateFilter:hover, #signalFilter:hover {
-            border-color: var(--primary-color);
-        }
+        /* UPLOAD SECTION */
+        details { margin-bottom: 20px; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; }
+        summary { cursor: pointer; font-weight: 600; color: var(--primary-color); padding: 5px; }
+        .upload-controls { display: flex; gap: 10px; align-items: center; margin-top: 10px; padding: 10px; background: var(--bg-color); border-radius: 6px; }
         
-        /* --- Gaya Kustomisasi MA --- */
-        #maCustomization {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            margin: 20px 0 10px;
-            padding: 15px;
-            background-color: var(--primary-light);
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
+        /* FILTERS */
+        #filterContainer { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap;}
+        #dateFilter, #signalFilter, #maCustomization input, button {
+            padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px;
         }
-        #maCustomization input[type="number"] {
-            width: 60px;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            text-align: center;
-        }
-        #applyMaCustom {
-            padding: 8px 15px;
-            background-color: var(--buy-color);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        #applyMaCustom:hover {
-            background-color: #126631; 
-        }
-        
-        /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
-        .signal-category {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 25px;
-            padding: 20px;
-        }
-        .signal-category h2 {
-            margin-top: 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-light);
-            color: var(--primary-color);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .signal-category table { 
-            width: 100%; 
-            border-collapse: separate; 
-            border-spacing: 0; 
-            margin-top: 15px; 
-            overflow: hidden; 
-            border-radius: 6px;
-        }
-        .signal-category th, .signal-category td { 
-            padding: 12px 15px; 
-            text-align: left; 
-            border-bottom: 1px solid var(--border-color); 
-        }
-        
-        /* Gaya Header Tabel untuk Sorting */
-        .signal-category th { 
-            background-color: var(--primary-color); 
-            color: white; 
-            font-weight: 600; 
-            text-transform: uppercase;
-            font-size: 0.85rem;
-            cursor: pointer; 
-            user-select: none;
-            position: relative;
-        }
-        .signal-category th:hover {
-            background-color: #3b30bd; 
-        }
-        .sort-icon {
-            margin-left: 5px;
-            font-size: 0.8em;
-            opacity: 0.7;
-        }
-        .sort-icon.active {
-            opacity: 1;
-        }
-        /* Akhir gaya sorting */
+        button { background-color: var(--primary-color); color: white; border: none; cursor: pointer; font-weight: 600; }
+        button:hover { opacity: 0.9; }
+        button.delete-btn { background-color: var(--sell-color); }
 
-        .signal-category tr:last-child td {
-            border-bottom: none;
+        /* TABLES */
+        .signal-category { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 25px; padding: 20px; overflow-x: auto;}
+        table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+        th { background-color: var(--primary-color); color: white; cursor: pointer; }
+        
+        /* MODAL */
+        #stockDetailModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6); display: none; z-index: 1000;
+            justify-content: center; align-items: center;
         }
-        .signal-category tbody tr:nth-child(even) {
-            background-color: #f9fafb;
+        .modal-content {
+            background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 900px;
+            max-height: 90vh; overflow-y: auto; position: relative;
         }
         
-        /* Gaya Sinyal */
-        .signal-buy { 
-            background-color: var(--buy-bg); 
-            color: var(--buy-color); 
-            font-weight: 600; 
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
+        /* PORTFOLIO FORM IN MODAL */
+        .portfolio-form {
+            background-color: var(--primary-light); padding: 15px; border-radius: 8px;
+            margin-bottom: 20px; border: 1px dashed var(--primary-color);
         }
-        .signal-sell { 
-            background-color: var(--sell-bg); 
-            color: var(--sell-color); 
-            font-weight: 600; 
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .signal-watch { 
-            background-color: var(--watch-bg); 
-            color: var(--watch-color); 
-            font-weight: 600;
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
+        .form-group { margin-bottom: 10px; display: flex; gap: 10px; align-items: center; }
+        .form-group label { width: 120px; font-weight: 600; }
+        .clickable-stock { cursor: pointer; color: var(--primary-color); font-weight: bold; text-decoration: underline; }
         
-        .category-status {
-            padding: 10px;
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            border-left: 4px solid var(--primary-color);
-            border-radius: 4px;
-            font-style: italic;
-            display: none; 
-        }
-
-        /* Gaya Khusus untuk Kode Saham yang Dapat Diklik */
-        .clickable-stock {
-             cursor: pointer; 
-             color: var(--primary-color) !important;
-             font-weight: bold;
-             text-decoration: underline;
-        }
-        
+        /* Utility */
+        .signal-buy { background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+        .signal-sell { background: #fee2e2; color: #b91c1c; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Screener Saham Hari Ini</h1>
-        <p id="statusMessage">Memuat sinyal...</p>
+        <h1>Screener & Portofolio Saham</h1>
+        <p id="statusMessage" style="text-align: center;">Siap memuat data...</p>
+
+        <div class="search-wrapper">
+            <input type="text" id="stockSearchInput" placeholder="Ketik Kode Saham (misal: BBRI)..." autocomplete="off">
+            <div id="searchResults"></div>
+        </div>
+
+        <details>
+            <summary>⚙️ Admin: Upload Data Harga (CSV)</summary>
+            <div class="upload-controls">
+                <input type="file" id="csvFileInput" accept=".csv">
+                <button id="btnUploadCsv">Upload ke Database</button>
+            </div>
+            <p style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                Format CSV harus memiliki header: <code>Kode Saham, Tanggal Perdagangan Terakhir, Penutupan, Volume, Selisih</code> (sesuai database).
+            </p>
+        </details>
 
         <div id="filterContainer">
             <div>
-                <label for="dateFilter">Lihat Tanggal:</label>
-                <select id="dateFilter" disabled>
-                    <option>Memuat Tanggal...</option>
-                </select>
+                <label>Tanggal:</label>
+                <select id="dateFilter" disabled><option>Memuat...</option></select>
             </div>
             <div>
-                <label for="signalFilter">Filter Sinyal:</label>
+                <label>Sinyal:</label>
                 <select id="signalFilter">
-                    <option value="ALL">Tampilkan Semua Sinyal</option>
-                    <option value="BUY">BUY / GOLDEN CROSS / OVERSOLD</option>
-                    <option value="SELL">SELL / DEAD CROSS / OVERBOUGHT</option>
-                    <option value="WATCH">WATCH / VOLUME SPIKE</option>
+                    <option value="ALL">Semua</option>
+                    <option value="BUY">BUY / GOLDEN CROSS</option>
+                    <option value="SELL">SELL / DEAD CROSS</option>
                 </select>
             </div>
         </div>
-        <div id="maCustomization">
-            <span>Kustomisasi MA Cross:</span>
-            <label for="maFast">MA Cepat (hari):</label>
-            <input type="number" id="maFast" value="5" min="1" max="50">
-            <label for="maSlow">MA Lambat (hari):</label>
-            <input type="number" id="maSlow" value="20" min="5" max="200">
-            <button id="applyMaCustom">Terapkan Kustom MA</button>
+
+        <div style="text-align:center; margin-bottom: 20px;" id="maCustomization">
+             MA Cepat: <input type="number" id="maFast" value="5" style="width:50px"> 
+             MA Lambat: <input type="number" id="maSlow" value="20" style="width:50px">
+             <button id="applyMaCustom">Terapkan</button>
         </div>
+
         <div id="maCrossSection" class="signal-category">
-            <h2>📈 MA Cross (Trend Following)</h2>
-            <p class="category-status" id="maStatus">Tidak ada sinyal MA Cross hari ini.</p>
-            <table id="maCrossTable" style="display:none;">
+            <h2>📈 Analisis Teknikal & Portofolio</h2>
+            <table id="mainTable">
                 <thead>
                     <tr>
-                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th data-column="Kode Saham">Kode ↕</th>
                         <th>Status</th>
-                        <th>Harga Beli</th>
-                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal">Sinyal (Aksi)</th>
+                        <th>Beli</th>
+                        <th data-column="Untung/Rugi">P/L (%) ↕</th>
+                        <th data-column="Tanggal">Tanggal ↕</th>
+                        <th data-column="Penutupan">Harga ↕</th>
+                        <th data-column="Volume">Volume ↕</th>
+                        <th data-column="Sinyal">Sinyal</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
             </table>
         </div>
-
-        <div id="rsiSection" class="signal-category">
-            <h2>⚖️ RSI (Kondisi Jenuh Beli/Jual)</h2>
-            <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
-            <table id="rsiTable" style="display:none;">
-                <thead>
-                    <tr>
-                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Harga Beli</th>
-                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal">Sinyal (Aksi)</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        
-        <div id="volumeSection" class="signal-category">
-            <h2>💥 Volume Spike (Anomali Volume)</h2>
-            <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
-            <table id="volumeTable" style="display:none;">
-                <thead>
-                    <tr>
-                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Harga Beli</th>
-                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal">Sinyal (Aksi)</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div id="macdSection" class="signal-category">
-            <h2>⚡ MACD (Momentum)</h2>
-            <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
-            <table id="macdTable" style="display:none;">
-                <thead>
-                    <tr>
-                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Harga Beli</th>
-                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal">Sinyal (Aksi)</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
     </div>
 
-    <div id="stockDetailModal" style="
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-        background-color: rgba(0, 0, 0, 0.6); display: none; z-index: 1000;
-        justify-content: center; align-items: center;
-    ">
-        <div style="
-            background: white; padding: 25px; border-radius: 10px; 
-            width: 90%; max-width: 900px; max-height: 90%; overflow-y: auto;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px;">
-                <h2 id="modalTitle">Detail Saham [KODE]</h2>
-                <button id="closeModalBtn" style="
-                    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #333;
-                ">&times;</button>
+    <div id="stockDetailModal">
+        <div class="modal-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h2 id="modalTitle" style="margin:0;">Detail Saham</h2>
+                <button id="closeModalBtn" style="background:transparent; color:#333; font-size:1.5rem;">&times;</button>
             </div>
-            
-            <h3>📈 Grafik Harga & Indikator</h3>
-            <div style="height: 400px; margin-bottom: 30px;">
+
+            <div class="portfolio-form">
+                <h3>💼 Manajemen Portofolio</h3>
+                <div class="form-group">
+                    <input type="checkbox" id="chkOwned" style="width:20px; height:20px;">
+                    <label for="chkOwned" style="width:auto;">Saham ini saya miliki (Owned)</label>
+                </div>
+                
+                <div id="portfolioInputs" style="display: none; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 10px;">
+                    <div class="form-group">
+                        <label>Tanggal Beli:</label>
+                        <input type="date" id="inputBuyDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Harga Beli (Avg):</label>
+                        <input type="number" id="inputBuyPrice" placeholder="Rp">
+                    </div>
+                    <div style="text-align: right;">
+                        <button id="btnSavePortfolio">Simpan Portofolio</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="height: 350px; margin-bottom: 20px;">
                 <canvas id="priceIndicatorChart"></canvas>
             </div>
 
-            <h3>📊 Nilai Indikator Mentah (30 Hari Terakhir)</h3>
-            <table id="rawIndicatorTable" style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+            <h3>Riwayat 30 Hari</h3>
+            <table id="rawIndicatorTable">
                 <thead>
-                    <tr>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Tanggal</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Harga (Close)</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">RSI</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MACD Line</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Signal Line</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MA 5</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MA 20</th>
-                    </tr>
+                    <tr><th>Tgl</th><th>Close</th><th>RSI</th><th>MACD</th><th>MA5</th><th>MA20</th></tr>
                 </thead>
-                <tbody>
-                    </tbody>
+                <tbody></tbody>
             </table>
-            
         </div>
     </div>
+
     <script src="app.js"></script>
 </body>
 </html>
