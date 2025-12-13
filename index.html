@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Screener Sinyal Saham Kategorikal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script> 
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         /* Variabel CSS untuk kemudahan kustomisasi */
@@ -118,7 +120,6 @@
             border-radius: 8px;
             margin-bottom: 25px;
             padding: 20px;
-            transition: all 0.3s ease;
         }
         .signal-category h2 {
             margin-top: 0;
@@ -144,7 +145,7 @@
             border-bottom: 1px solid var(--border-color); 
         }
         
-        /* Gaya untuk Header Tabel yang Dapat Disortir */
+        /* Gaya Header Tabel untuk Sorting */
         .signal-category th { 
             background-color: var(--primary-color); 
             color: white; 
@@ -213,6 +214,15 @@
             font-style: italic;
             display: none; 
         }
+
+        /* Gaya Khusus untuk Kode Saham yang Dapat Diklik */
+        .clickable-stock {
+             cursor: pointer; 
+             color: var(--primary-color) !important;
+             font-weight: bold;
+             text-decoration: underline;
+        }
+        
     </style>
 </head>
 <body>
@@ -319,6 +329,47 @@
 
     </div>
 
+    <div id="stockDetailModal" style="
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background-color: rgba(0, 0, 0, 0.6); display: none; z-index: 1000;
+        justify-content: center; align-items: center;
+    ">
+        <div style="
+            background: white; padding: 25px; border-radius: 10px; 
+            width: 90%; max-width: 900px; max-height: 90%; overflow-y: auto;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px;">
+                <h2 id="modalTitle">Detail Saham [KODE]</h2>
+                <button id="closeModalBtn" style="
+                    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #333;
+                ">&times;</button>
+            </div>
+            
+            <h3>📈 Grafik Harga & Indikator</h3>
+            <div style="height: 400px; margin-bottom: 30px;">
+                <canvas id="priceIndicatorChart"></canvas>
+            </div>
+
+            <h3>📊 Nilai Indikator Mentah (30 Hari Terakhir)</h3>
+            <table id="rawIndicatorTable" style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                <thead>
+                    <tr>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Tanggal</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Harga (Close)</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">RSI</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MACD Line</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Signal Line</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MA5</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MA20</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+            
+        </div>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>
