@@ -23,7 +23,7 @@ let priceChart = null; // Variabel untuk menyimpan instance Chart.js
 // --- GLOBAL STATE ---
 let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
-let globalPortfolio = new Map(); // BARU: State untuk portofolio (Map untuk lookup cepat)
+let globalPortfolio = new Map(); 
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
 
 // Mendapatkan elemen tabel dan status untuk setiap kategori 
@@ -52,8 +52,7 @@ async function fetchPortfolio() {
         
         return globalPortfolio;
     } catch (error) {
-        console.error('Error fetching portfolio:', error);
-        // Jika gagal, tetap kembalikan Map kosong agar aplikasi tidak error
+        console.error('Error fetching portfolio: Pastikan tabel portofolio_saham ada.', error);
         return new Map(); 
     }
 }
@@ -102,7 +101,7 @@ function mergeSignals(staticSignals, customMASignals) {
         mergedMap.set(cs["Kode Saham"], {
             ...existing, 
             ...cs,       
-            Close: cs.Close,
+            Penutupan: cs.Penutupan, // Menggunakan Penutupan sesuai skema
             Volume: cs.Volume,
             Selisih: cs.Selisih,
             Sinyal_MA: cs.Sinyal_MA 
@@ -120,7 +119,6 @@ async function fetchAndRenderSignals(selectedDate = null) {
     applyMaCustomButton.disabled = true;
 
     try {
-        // PANGGIL FUNGSI PORTOFOLIO BARU SEBELUM AMBIL SINYAL
         await fetchPortfolio(); 
         
         // Kueri 1: Ambil data sinyal statis dari indikator_teknikal
@@ -150,10 +148,11 @@ async function fetchAndRenderSignals(selectedDate = null) {
             dateFilter.value = dateToFilter;
         }
         
-        // Kueri 2: Ambil data fundamental 
+        // Kueri 2: Ambil data fundamental (Penutupan, Volume, Selisih) dari data_saham
+        statusMessage.textContent = `Mengambil data fundamental untuk tanggal ${dateToFilter}...`;
         const { data: fundamentalData, error: fundamentalError } = await supabaseClient
             .from('data_saham')
-            .select(`"Kode Saham", "Penutupan", "Volume", "Selisih"`)
+            .select(`"Kode Saham", "Penutupan", "Volume", "Selisih", "Tanggal Perdagangan Terakhir"`)
             .eq('Tanggal Perdagangan Terakhir', dateToFilter);
 
         if (fundamentalError) throw fundamentalError;
@@ -162,7 +161,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         fundamentalData.forEach(item => {
             const key = item["Kode Saham"];
             fundamentalMap[key] = {
-                Close: item.Penutupan,
+                Penutupan: item.Penutupan, // Diubah ke Penutupan
                 Volume: item.Volume,
                 Selisih: item.Selisih
             };
@@ -211,7 +210,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         categorizeAndRender(filteredSignals);
 
     } catch (error) {
-        statusMessage.textContent = `Error memuat data: ${error.message}. Cek koneksi Supabase atau fungsi RPC.`;
+        statusMessage.textContent = `Error memuat data: ${error.message}. Cek konsistensi nama kolom tabel 'indikator_teknikal' dan 'data_saham'.`;
         console.error('Error fetching data:', error);
     } finally {
         applyMaCustomButton.disabled = false;
@@ -351,8 +350,8 @@ function applySignalFilter(signals, filterType) {
 
 // Logika Penyortiran Kolom (Column Sorting)
 function sortSignals(signals, column, direction) {
-    // Tambahkan 'Untung/Rugi' ke daftar kolom numerik
-    const isNumeric = ['Close', 'Volume', 'Selis', 'Untung/Rugi'].includes(column);
+    // Diubah: 'Close' diganti 'Penutupan'
+    const isNumeric = ['Penutupan', 'Volume', 'Selisih', 'Untung/Rugi'].includes(column);
 
     return signals.sort((a, b) => {
         let valA, valB;
@@ -365,9 +364,9 @@ function sortSignals(signals, column, direction) {
             const buyPriceA = parseFloat(portfolioA.hargaBeli) || 0;
             const buyPriceB = parseFloat(portfolioB.hargaBeli) || 0;
 
-            // Hitung P/L %
-            valA = buyPriceA > 0 ? ((a.Close - buyPriceA) / buyPriceA) * 100 : 0;
-            valB = buyPriceB > 0 ? ((b.Close - buyPriceB) / buyPriceB) * 100 : 0;
+            // Hitung P/L % menggunakan kolom Penutupan
+            valA = buyPriceA > 0 ? ((a.Penutupan - buyPriceA) / buyPriceA) * 100 : 0;
+            valB = buyPriceB > 0 ? ((b.Penutupan - buyPriceB) / buyPriceB) * 100 : 0;
 
         } else {
             valA = a[column];
@@ -400,7 +399,7 @@ function categorizeAndRender(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
     sortedSignals.forEach(item => {
-        if (!item.Close) return; 
+        if (!item.Penutupan) return; // Menggunakan Penutupan
 
         if (item.Sinyal_MA) categorized.maCross.push(item);
         if (item.Sinyal_RSI) categorized.rsi.push(item);
@@ -443,8 +442,8 @@ function renderCategory(categoryKey, data) {
         const row = tableBody.insertRow();
         
         const stockCode = item["Kode Saham"];
-        const isOwned = globalPortfolio.has(stockCode); // Cek kepemilikan
-        const portfolioData = globalPortfolio.get(stockCode) || {}; // Ambil data harga beli
+        const isOwned = globalPortfolio.has(stockCode); 
+        const portfolioData = globalPortfolio.get(stockCode) || {}; 
         
         // Kolom 1: Kode Saham (Clickable)
         const codeCell = row.insertCell();
@@ -466,7 +465,7 @@ function renderCategory(categoryKey, data) {
         const profitLossCell = row.insertCell();
 
         if (isOwned && portfolioData.hargaBeli) {
-            const currentPrice = item.Close;
+            const currentPrice = item.Penutupan; // Menggunakan Penutupan
             const buyPrice = parseFloat(portfolioData.hargaBeli);
             
             buyPriceCell.textContent = formatNumber(buyPrice); 
@@ -488,8 +487,8 @@ function renderCategory(categoryKey, data) {
 
         // Kolom 5: Tanggal
         row.insertCell().textContent = item["Tanggal"];
-        // Kolom 6: Close
-        row.insertCell().textContent = formatNumber(item.Close); 
+        // Kolom 6: Penutupan (Diubah dari Close)
+        row.insertCell().textContent = formatNumber(item.Penutupan); 
         // Kolom 7: Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
         
@@ -566,6 +565,7 @@ function setupModalHandlers() {
 }
 
 function setupStockClickHandlers() {
+    // Memastikan handler klik hanya ditambahkan sekali
     document.querySelectorAll('.clickable-stock').forEach(cell => {
         cell.removeEventListener('click', handleStockClick);
         cell.addEventListener('click', handleStockClick);
@@ -592,35 +592,57 @@ async function showStockDetailModal(stockCode) {
     }
 
     try {
-        const { data: detailData, error } = await supabaseClient 
+        // Kueri 1: Ambil data indikator dari indikator_teknikal
+        const { data: indicatorData, error: indicatorError } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
                 "Tanggal",
-                "Harga_Penutupan", 
                 "RSI", 
                 "MACD_Line", 
                 "Signal_Line", 
-                "MA_Cepat", 
-                "MA_Lambat"
+                "MA_5", 
+                "MA_20"
             `)
             .eq('Kode Saham', stockCode)
             .order('Tanggal', { ascending: false })
             .limit(30); 
 
-        if (error) throw error;
-        if (detailData.length === 0) {
+        if (indicatorError) throw indicatorError;
+        
+        // Kueri 2: Ambil harga penutupan dari data_saham
+        const dates = indicatorData.map(item => item.Tanggal);
+        const { data: priceData, error: priceError } = await supabaseClient
+            .from('data_saham')
+            .select(`"Tanggal Perdagangan Terakhir", "Penutupan"`)
+            .eq('Kode Saham', stockCode)
+            .in('Tanggal Perdagangan Terakhir', dates);
+            
+        if (priceError) throw priceError;
+
+        if (indicatorData.length === 0 || priceData.length === 0) {
             rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Tidak ada data historis ditemukan.</td></tr>';
             return;
         }
 
-        const historicalData = detailData.reverse(); 
+        // Gabungkan data berdasarkan Tanggal
+        const priceMap = new Map(priceData.map(item => [item["Tanggal Perdagangan Terakhir"], item.Penutupan]));
+        
+        const historicalData = indicatorData.map(ind => ({
+            Tanggal: ind.Tanggal,
+            Penutupan: priceMap.get(ind.Tanggal) || null, // Tambahkan harga penutupan
+            RSI: ind.RSI,
+            MACD_Line: ind.MACD_Line,
+            Signal_Line: ind.Signal_Line,
+            MA_Cepat: ind.MA_5, // MA_5 sebagai MA Cepat default
+            MA_Lambat: ind.MA_20 // MA_20 sebagai MA Lambat default
+        })).reverse(); // Balikkan agar urut dari tanggal lama ke baru
 
         renderRawIndicatorTable(historicalData);
         renderPriceIndicatorChart(stockCode, historicalData);
 
     } catch (err) {
         console.error("Error memuat detail saham:", err);
-        rawIndicatorTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${err.message}. Cek apakah kolom indikator mentah sudah benar.</td></tr>`;
+        rawIndicatorTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${err.message}. Cek apakah kolom MA_5/MA_20/RSI/MACD_Line/Signal_Line ada di tabel indikator_teknikal.</td></tr>`;
     }
 }
 
@@ -631,7 +653,7 @@ function renderRawIndicatorTable(data) {
         row.style.borderBottom = '1px solid #eee';
         
         row.insertCell().textContent = item.Tanggal;
-        row.insertCell().textContent = formatNumber(item.Harga_Penutupan);
+        row.insertCell().textContent = formatNumber(item.Penutupan); // Menggunakan Penutupan
         row.insertCell().textContent = item.RSI ? parseFloat(item.RSI).toFixed(2) : '-';
         row.insertCell().textContent = item.MACD_Line ? parseFloat(item.MACD_Line).toFixed(2) : '-';
         row.insertCell().textContent = item.Signal_Line ? parseFloat(item.Signal_Line).toFixed(2) : '-';
@@ -644,7 +666,7 @@ function renderPriceIndicatorChart(stockCode, data) {
     const ctx = document.getElementById('priceIndicatorChart').getContext('2d');
     
     const labels = data.map(item => item.Tanggal); 
-    const priceData = data.map(item => item.Harga_Penutupan);
+    const priceData = data.map(item => item.Penutupan);
     const maFastData = data.map(item => item.MA_Cepat);
     const maSlowData = data.map(item => item.MA_Lambat);
     const rsiData = data.map(item => item.RSI);
