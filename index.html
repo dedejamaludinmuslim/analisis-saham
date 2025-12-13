@@ -8,18 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #4f46e5; 
+            --primary-color: #4f46e5; /* Indigo */
             --primary-light: #eef2ff;
-            --text-color: #1f2937; 
-            --bg-color: #f9fafb; 
+            --text-color: #1f2937; /* Dark Gray */
+            --bg-color: #f9fafb; /* Light Gray Background */
             --card-bg: #ffffff;
             --border-color: #e5e7eb;
-            --buy-bg: #dcfce7; 
-            --buy-color: #15803d; 
-            --sell-bg: #fee2e2; 
-            --sell-color: #b91c1c; 
-            --watch-bg: #fef9c3; 
-            --watch-color: #a16207; 
+            --buy-bg: #dcfce7; /* Light Green */
+            --buy-color: #15803d; /* Dark Green */
+            --sell-bg: #fee2e2; /* Light Red */
+            --sell-color: #b91c1c; /* Dark Red */
+            --watch-bg: #fef9c3; /* Light Yellow */
+            --watch-color: #a16207; /* Dark Yellow */
         }
         
         body { 
@@ -54,10 +54,10 @@
 
         /* --- Gaya Filter --- */
         #filterContainer {
-            display: flex; /* Menggunakan flexbox untuk tata letak yang rapi */
+            display: flex; 
             justify-content: center;
             align-items: center;
-            gap: 20px; /* Jarak antar filter */
+            gap: 20px; 
             margin-bottom: 30px;
             padding: 10px 0;
             border-bottom: 1px dashed var(--border-color);
@@ -76,7 +76,38 @@
         #dateFilter:hover, #signalFilter:hover {
             border-color: var(--primary-color);
         }
-        /* ----------------------------- */
+        
+        /* --- Gaya Kustomisasi MA --- */
+        #maCustomization {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0 10px;
+            padding: 15px;
+            background-color: var(--primary-light);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        #maCustomization input[type="number"] {
+            width: 60px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            text-align: center;
+        }
+        #applyMaCustom {
+            padding: 8px 15px;
+            background-color: var(--buy-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        #applyMaCustom:hover {
+            background-color: #126631; 
+        }
         
         /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
         .signal-category {
@@ -87,7 +118,32 @@
             padding: 20px;
             transition: all 0.3s ease;
         }
-        /* ... Gaya lainnya ... */
+        .signal-category:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .signal-category h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .signal-category table { 
+            width: 100%; 
+            border-collapse: separate; 
+            border-spacing: 0; 
+            margin-top: 15px; 
+            overflow: hidden; 
+            border-radius: 6px;
+        }
+        .signal-category th, .signal-category td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border-color); 
+        }
         
         /* Gaya untuk Header Tabel yang Dapat Disortir */
         .signal-category th { 
@@ -96,12 +152,12 @@
             font-weight: 600; 
             text-transform: uppercase;
             font-size: 0.85rem;
-            cursor: pointer; /* Menandakan bahwa header dapat diklik */
+            cursor: pointer; 
             user-select: none;
             position: relative;
         }
         .signal-category th:hover {
-            background-color: #3b30bd; /* Sedikit lebih gelap saat dihover */
+            background-color: #3b30bd; 
         }
         .sort-icon {
             margin-left: 5px;
@@ -111,9 +167,44 @@
         .sort-icon.active {
             opacity: 1;
         }
-        
-        /* ... Gaya sinyal dan status lainnya (tetap sama) ... */
+        /* Akhir gaya sorting */
 
+        .signal-category tr:last-child td {
+            border-bottom: none;
+        }
+        .signal-category tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        
+        /* Gaya Sinyal */
+        .signal-buy { 
+            background-color: var(--buy-bg); 
+            color: var(--buy-color); 
+            font-weight: 600; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .signal-sell { 
+            background-color: var(--sell-bg); 
+            color: var(--sell-color); 
+            font-weight: 600; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .signal-watch { 
+            background-color: var(--watch-bg); 
+            color: var(--watch-color); 
+            font-weight: 600;
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        
         .category-status {
             padding: 10px;
             background-color: var(--primary-light);
@@ -146,6 +237,14 @@
                     <option value="WATCH">WATCH / VOLUME SPIKE</option>
                 </select>
             </div>
+        </div>
+        <div id="maCustomization">
+            <span>Kustomisasi MA Cross:</span>
+            <label for="maFast">MA Cepat (hari):</label>
+            <input type="number" id="maFast" value="5" min="1" max="50">
+            <label for="maSlow">MA Lambat (hari):</label>
+            <input type="number" id="maSlow" value="20" min="5" max="200">
+            <button id="applyMaCustom">Terapkan Kustom MA</button>
         </div>
         <div id="maCrossSection" class="signal-category">
             <h2>📈 MA Cross (Trend Following)</h2>
