@@ -1,10 +1,10 @@
 {
-  "name": "Aplikasi Analisis Saham",
-  "short_name": "Saham",
-  "start_url": ".",
+  "name": "Screener Saham Pro",
+  "short_name": "SahamPro",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#22c55e",
+  "background_color": "#f3f4f6",
+  "theme_color": "#4f46e5",
   "icons": [
     {
       "src": "saham-192.png",
