@@ -38,7 +38,7 @@ const categories = {
 // FUNGSI UTAMA DAN LOGIKA SUPABASE
 // ********************************************
 
-// FUNGSI BARU: Mengambil semua kode saham yang dimiliki
+// FUNGSI: Mengambil semua kode saham yang dimiliki
 async function fetchPortfolio() {
     try {
         const { data, error } = await supabaseClient
@@ -52,7 +52,8 @@ async function fetchPortfolio() {
         
         return globalPortfolio;
     } catch (error) {
-        console.error('Error fetching portfolio: Pastikan tabel portofolio_saham ada.', error);
+        // Jika tabel belum ada, kita abaikan saja agar aplikasi tetap berjalan
+        console.warn('Info: Tabel portofolio_saham mungkin belum dibuat atau kosong.', error.message);
         return new Map(); 
     }
 }
@@ -76,7 +77,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
 
     } catch (error) {
         console.error('Error saat memanggil RPC MA Kustom:', error);
-        statusMessage.textContent = `Error kustom MA: ${error.message}. Pastikan fungsi 'get_custom_ma_signals' sudah dibuat di Supabase.`;
+        statusMessage.textContent = `Error kustom MA: ${error.message}. Pastikan fungsi RPC sudah dibuat di Supabase.`;
         return [];
     }
 }
@@ -101,7 +102,7 @@ function mergeSignals(staticSignals, customMASignals) {
         mergedMap.set(cs["Kode Saham"], {
             ...existing, 
             ...cs,       
-            Penutupan: cs.Penutupan, // Menggunakan Penutupan sesuai skema
+            Penutupan: cs.Close || cs.Penutupan, // Handle kemungkinan nama kolom dari RPC
             Volume: cs.Volume,
             Selisih: cs.Selisih,
             Sinyal_MA: cs.Sinyal_MA 
@@ -119,9 +120,11 @@ async function fetchAndRenderSignals(selectedDate = null) {
     applyMaCustomButton.disabled = true;
 
     try {
+        // 1. Ambil data Portofolio
         await fetchPortfolio(); 
         
-        // Kueri 1: Ambil data sinyal statis dari indikator_teknikal
+        // 2. Kueri data Sinyal dari indikator_teknikal
+        // Perhatikan: Menggunakan "Tanggal" sesuai skema indikator_teknikal
         let signalQuery = supabaseClient 
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
@@ -136,7 +139,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         const { data: signalData, error: signalError } = await signalQuery;
 
         if (signalError) throw signalError;
-        if (signalData.length === 0) {
+        if (!signalData || signalData.length === 0) {
             statusMessage.textContent = 'Tidak ada data sinyal ditemukan.';
             return;
         }
@@ -148,8 +151,9 @@ async function fetchAndRenderSignals(selectedDate = null) {
             dateFilter.value = dateToFilter;
         }
         
-        // Kueri 2: Ambil data fundamental (Penutupan, Volume, Selisih) dari data_saham
-        statusMessage.textContent = `Mengambil data fundamental untuk tanggal ${dateToFilter}...`;
+        // 3. Kueri Data Fundamental dari data_saham
+        // Perhatikan: Menggunakan "Tanggal Perdagangan Terakhir" dan "Penutupan" sesuai skema data_saham
+        statusMessage.textContent = `Mengambil data harga untuk tanggal ${dateToFilter}...`;
         const { data: fundamentalData, error: fundamentalError } = await supabaseClient
             .from('data_saham')
             .select(`"Kode Saham", "Penutupan", "Volume", "Selisih", "Tanggal Perdagangan Terakhir"`)
@@ -157,17 +161,20 @@ async function fetchAndRenderSignals(selectedDate = null) {
 
         if (fundamentalError) throw fundamentalError;
 
+        // Map data fundamental untuk akses cepat
         const fundamentalMap = {};
-        fundamentalData.forEach(item => {
-            const key = item["Kode Saham"];
-            fundamentalMap[key] = {
-                Penutupan: item.Penutupan, // Diubah ke Penutupan
-                Volume: item.Volume,
-                Selisih: item.Selisih
-            };
-        });
+        if (fundamentalData) {
+            fundamentalData.forEach(item => {
+                const key = item["Kode Saham"];
+                fundamentalMap[key] = {
+                    Penutupan: item.Penutupan, 
+                    Volume: item.Volume,
+                    Selisih: item.Selisih
+                };
+            });
+        }
         
-        // Gabungkan Sinyal Statis + Fundamental
+        // 4. Gabungkan Sinyal + Fundamental
         const staticCombinedSignals = [];
         signalData.filter(s => s.Tanggal === dateToFilter).forEach(s => {
             const fundamental = fundamentalMap[s["Kode Saham"]];
@@ -179,7 +186,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
             }
         });
         
-        // Terapkan MA Kustom
+        // 5. Terapkan MA Kustom (jika ada)
         let finalSignals;
         if (globalCustomMASignals.length > 0 && dateToFilter === globalCustomMASignals[0].Tanggal) {
             finalSignals = mergeSignals(staticCombinedSignals, globalCustomMASignals);
@@ -190,9 +197,8 @@ async function fetchAndRenderSignals(selectedDate = null) {
             );
         }
         
-
         if (finalSignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data fundamental lengkap.`;
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data harga lengkap.`;
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
             return;
@@ -210,7 +216,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         categorizeAndRender(filteredSignals);
 
     } catch (error) {
-        statusMessage.textContent = `Error memuat data: ${error.message}. Cek konsistensi nama kolom tabel 'indikator_teknikal' dan 'data_saham'.`;
+        statusMessage.textContent = `Error: ${error.message}`;
         console.error('Error fetching data:', error);
     } finally {
         applyMaCustomButton.disabled = false;
@@ -267,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort)
 // ********************************************
 
-// FUNGSI UNTUK MENGAMBIL DAN MENGISI FILTER TANGGAL
 async function populateDateFilter(latestDate) {
     if (!dateFilter) return; 
     statusMessage.textContent = 'Memuat daftar tanggal yang tersedia...';
@@ -325,7 +330,6 @@ function formatNumber(num, isVolume = false) {
 }
 
 
-// Logika Penyaringan Sinyal (Signal Filtering)
 function applySignalFilter(signals, filterType) {
     if (filterType === 'ALL') {
         return signals;
@@ -348,9 +352,7 @@ function applySignalFilter(signals, filterType) {
     return filtered;
 }
 
-// Logika Penyortiran Kolom (Column Sorting)
 function sortSignals(signals, column, direction) {
-    // Diubah: 'Close' diganti 'Penutupan'
     const isNumeric = ['Penutupan', 'Volume', 'Selisih', 'Untung/Rugi'].includes(column);
 
     return signals.sort((a, b) => {
@@ -364,7 +366,6 @@ function sortSignals(signals, column, direction) {
             const buyPriceA = parseFloat(portfolioA.hargaBeli) || 0;
             const buyPriceB = parseFloat(portfolioB.hargaBeli) || 0;
 
-            // Hitung P/L % menggunakan kolom Penutupan
             valA = buyPriceA > 0 ? ((a.Penutupan - buyPriceA) / buyPriceA) * 100 : 0;
             valB = buyPriceB > 0 ? ((b.Penutupan - buyPriceB) / buyPriceB) * 100 : 0;
 
@@ -392,14 +393,13 @@ function sortSignals(signals, column, direction) {
     });
 }
 
-// Fungsi untuk mengkategorikan data
 function categorizeAndRender(signals) {
     const sortedSignals = sortSignals([...signals], sortState.column, sortState.direction);
 
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
     sortedSignals.forEach(item => {
-        if (!item.Penutupan) return; // Menggunakan Penutupan
+        if (!item.Penutupan) return; 
 
         if (item.Sinyal_MA) categorized.maCross.push(item);
         if (item.Sinyal_RSI) categorized.rsi.push(item);
@@ -418,11 +418,9 @@ function categorizeAndRender(signals) {
     statusMessage.textContent = `Sinyal untuk ${totalStocks} saham terdeteksi pada ${date} (Setelah Filter). Total ${totalSignals} Sinyal.`;
     
     updateSortIcons();
-
     setupStockClickHandlers(); 
 }
 
-// Fungsi untuk me-render data ke dalam kategori tabel (Hanya UI rendering)
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
     const signalKey = `Sinyal_${categoryKey.replace('maCross', 'MA').replace('rsi', 'RSI').replace('macd', 'MACD').replace('volume', 'Volume')}`;
@@ -445,12 +443,12 @@ function renderCategory(categoryKey, data) {
         const isOwned = globalPortfolio.has(stockCode); 
         const portfolioData = globalPortfolio.get(stockCode) || {}; 
         
-        // Kolom 1: Kode Saham (Clickable)
+        // Kolom 1: Kode Saham
         const codeCell = row.insertCell();
         codeCell.textContent = stockCode;
         codeCell.classList.add('clickable-stock'); 
 
-        // Kolom 2: Status Kepemilikan (BARU)
+        // Kolom 2: Status
         const statusCell = row.insertCell(); 
         if (isOwned) {
             statusCell.innerHTML = `<span style="background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-weight: 600;">OWNED</span>`;
@@ -458,14 +456,14 @@ function renderCategory(categoryKey, data) {
             statusCell.innerHTML = `<span style="background-color: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px;">WATCHLIST</span>`;
         }
         
-        // Kolom 3: Harga Beli (BARU)
+        // Kolom 3: Harga Beli
         const buyPriceCell = row.insertCell(); 
         
-        // Kolom 4: P/L (%) (BARU)
+        // Kolom 4: P/L (%)
         const profitLossCell = row.insertCell();
 
         if (isOwned && portfolioData.hargaBeli) {
-            const currentPrice = item.Penutupan; // Menggunakan Penutupan
+            const currentPrice = item.Penutupan; 
             const buyPrice = parseFloat(portfolioData.hargaBeli);
             
             buyPriceCell.textContent = formatNumber(buyPrice); 
@@ -487,12 +485,12 @@ function renderCategory(categoryKey, data) {
 
         // Kolom 5: Tanggal
         row.insertCell().textContent = item["Tanggal"];
-        // Kolom 6: Penutupan (Diubah dari Close)
+        // Kolom 6: Penutupan
         row.insertCell().textContent = formatNumber(item.Penutupan); 
         // Kolom 7: Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
         
-        // Kolom 8: Perubahan Harian (%)
+        // Kolom 8: Perubahan
         const percentChange = item.Selisih ? parseFloat(item.Selisih) : 0;
         const changeDailyCell = row.insertCell();
         changeDailyCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
@@ -565,7 +563,6 @@ function setupModalHandlers() {
 }
 
 function setupStockClickHandlers() {
-    // Memastikan handler klik hanya ditambahkan sekali
     document.querySelectorAll('.clickable-stock').forEach(cell => {
         cell.removeEventListener('click', handleStockClick);
         cell.addEventListener('click', handleStockClick);
@@ -579,7 +576,7 @@ function handleStockClick(event) {
 
 
 // ********************************************
-// FUNGSI UTAMA DETAIL SAHAM
+// FUNGSI UTAMA DETAIL SAHAM (FIXED untuk Dual Fetch)
 // ********************************************
 
 async function showStockDetailModal(stockCode) {
@@ -592,7 +589,7 @@ async function showStockDetailModal(stockCode) {
     }
 
     try {
-        // Kueri 1: Ambil data indikator dari indikator_teknikal
+        // 1. Ambil data INDIKATOR (Tanpa Harga)
         const { data: indicatorData, error: indicatorError } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
@@ -609,8 +606,14 @@ async function showStockDetailModal(stockCode) {
 
         if (indicatorError) throw indicatorError;
         
-        // Kueri 2: Ambil harga penutupan dari data_saham
+        if (!indicatorData || indicatorData.length === 0) {
+             rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Tidak ada data indikator ditemukan.</td></tr>';
+             return;
+        }
+
+        // 2. Ambil data HARGA (Penutupan) dari data_saham
         const dates = indicatorData.map(item => item.Tanggal);
+        
         const { data: priceData, error: priceError } = await supabaseClient
             .from('data_saham')
             .select(`"Tanggal Perdagangan Terakhir", "Penutupan"`)
@@ -619,41 +622,43 @@ async function showStockDetailModal(stockCode) {
             
         if (priceError) throw priceError;
 
-        if (indicatorData.length === 0 || priceData.length === 0) {
-            rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Tidak ada data historis ditemukan.</td></tr>';
-            return;
+        // Map data harga untuk lookup cepat berdasarkan tanggal
+        const priceMap = new Map();
+        if(priceData) {
+            priceData.forEach(p => {
+                priceMap.set(p["Tanggal Perdagangan Terakhir"], p.Penutupan);
+            });
         }
-
-        // Gabungkan data berdasarkan Tanggal
-        const priceMap = new Map(priceData.map(item => [item["Tanggal Perdagangan Terakhir"], item.Penutupan]));
         
+        // 3. Gabungkan Data (Merge)
         const historicalData = indicatorData.map(ind => ({
             Tanggal: ind.Tanggal,
-            Penutupan: priceMap.get(ind.Tanggal) || null, // Tambahkan harga penutupan
+            Penutupan: priceMap.get(ind.Tanggal) || null, // Ambil harga dari map, null jika tidak ada
             RSI: ind.RSI,
             MACD_Line: ind.MACD_Line,
             Signal_Line: ind.Signal_Line,
-            MA_Cepat: ind.MA_5, // MA_5 sebagai MA Cepat default
-            MA_Lambat: ind.MA_20 // MA_20 sebagai MA Lambat default
-        })).reverse(); // Balikkan agar urut dari tanggal lama ke baru
+            MA_Cepat: ind.MA_5, // Mapping ke MA Cepat
+            MA_Lambat: ind.MA_20 // Mapping ke MA Lambat
+        })).reverse(); // Balikkan agar urut kronologis untuk chart
 
         renderRawIndicatorTable(historicalData);
         renderPriceIndicatorChart(stockCode, historicalData);
 
     } catch (err) {
         console.error("Error memuat detail saham:", err);
-        rawIndicatorTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${err.message}. Cek apakah kolom MA_5/MA_20/RSI/MACD_Line/Signal_Line ada di tabel indikator_teknikal.</td></tr>`;
+        rawIndicatorTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${err.message}.</td></tr>`;
     }
 }
 
 function renderRawIndicatorTable(data) {
     rawIndicatorTableBody.innerHTML = '';
+    // Data di-reverse lagi untuk tampilan tabel (terbaru di atas)
     data.slice().reverse().forEach(item => { 
         const row = rawIndicatorTableBody.insertRow();
         row.style.borderBottom = '1px solid #eee';
         
         row.insertCell().textContent = item.Tanggal;
-        row.insertCell().textContent = formatNumber(item.Penutupan); // Menggunakan Penutupan
+        row.insertCell().textContent = formatNumber(item.Penutupan); 
         row.insertCell().textContent = item.RSI ? parseFloat(item.RSI).toFixed(2) : '-';
         row.insertCell().textContent = item.MACD_Line ? parseFloat(item.MACD_Line).toFixed(2) : '-';
         row.insertCell().textContent = item.Signal_Line ? parseFloat(item.Signal_Line).toFixed(2) : '-';
@@ -692,7 +697,7 @@ function renderPriceIndicatorChart(stockCode, data) {
                     pointRadius: 2
                 },
                 {
-                    label: `MA Cepat (${maFastInput.value} Hari)`,
+                    label: `MA 5 (${maFastInput.value} Hari)`,
                     data: maFastData,
                     borderColor: 'rgba(255, 99, 132, 1)',
                     yAxisID: 'yPrice',
@@ -700,7 +705,7 @@ function renderPriceIndicatorChart(stockCode, data) {
                     pointRadius: 0
                 },
                 {
-                    label: `MA Lambat (${maSlowInput.value} Hari)`,
+                    label: `MA 20 (${maSlowInput.value} Hari)`,
                     data: maSlowData,
                     borderColor: 'rgba(54, 162, 235, 1)',
                     yAxisID: 'yPrice',
