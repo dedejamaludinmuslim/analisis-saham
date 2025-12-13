@@ -55,7 +55,7 @@
         /* Style Khusus Tombol Install */
         #installAppBtn {
             background-color: #fff; color: #4f46e5; font-weight: 800; border: 2px solid rgba(255,255,255,0.8);
-            display: none; /* Default sembunyi, muncul via JS */
+            display: none; 
         }
         #installAppBtn:hover { background-color: #eef2ff; }
 
@@ -87,7 +87,7 @@
         .signal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background-color: #fcfcfc; } 
         .signal-header h2 { margin: 0; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;}
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 0.9rem; } /* Min width ditambah untuk kolom Score */
+        table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 0.9rem; }
         th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
         th { background-color: #f9fafb; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); cursor: pointer;}
         
@@ -115,7 +115,7 @@
         #portfolioStatusToggle { background: white; color: var(--primary); padding: 8px 16px; border: 2px solid var(--primary); border-radius: 50px; font-weight: 600; cursor: pointer; font-size: 0.85rem; margin-top: 10px;}
         #portfolioStatusToggle.owned { background: #dcfce7; color: #166534; border-color: transparent; }
         
-        /* Tambahan Style Fundamental (Tahap 1) */
+        /* Style Fundamental (Tahap 1) */
         .fundamental-tag {
             background-color: #e5e7eb;
             padding: 2px 8px;
@@ -210,7 +210,8 @@
                 <table id="maCrossTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
                         <th>Avg Price</th>
                         <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
@@ -230,7 +231,8 @@
                 <table id="rsiTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
                         <th>Avg Price</th>
                         <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
@@ -250,7 +252,8 @@
                 <table id="volumeTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
                         <th>Avg Price</th>
                         <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
@@ -270,7 +273,8 @@
                 <table id="macdTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
                         <th>Avg Price</th>
                         <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
@@ -294,6 +298,7 @@
                     
                     <div id="fundamentalRatios" style="margin-top: 10px; display: flex; gap: 10px; font-size: 0.85rem;">
                         </div>
+                    
                     <button id="portfolioStatusToggle">Tambahkan ke Portofolio</button>
                 </div>
                 <button id="closeModalBtn" class="btn-close">&times;</button>
@@ -306,7 +311,7 @@
                 <h3 style="font-size:1rem; color:var(--text-muted);">Data Historis (60 Hari)</h3>
                 <div class="table-responsive">
                     <table id="rawIndicatorTable" style="font-size: 0.85rem;">
-                        <thead><tr><th>Tanggal</th><th>Close</th><th>RSI</th><th>MACD</th><th>Signal</th><th>MA Fast</th><th>MA Slow</th></tr></thead>
+                        <thead><tr><th>Tanggal</th><th>Close</th><th>RSI</th><th>MACD</th><th>Signal</th><th>MA Fast</th><th>MA Slow</th><th>ATR</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -324,6 +329,7 @@
                 <div class="about-section">
                     <h3>✅ Fitur Terbaru (V2.2)</h3>
                     <ul>
+                        <li><b>Smart Trailing Stop:</b> Trailing Stop berbasis ATR (Volatilitas) yang adaptif, bukan hanya 5% kaku.</li>
                         <li><b>Power Score (Rating):</b> Rating gabungan yang menilai kekuatan sinyal beli/jual dari 4 indikator (skala 0-100).</li>
                         <li><b>Konteks Fundamental:</b> Menampilkan rasio PER & PBV di detail saham.</li>
                         <li><b>PWA Install:</b> Tombol Install App agar bisa diakses dari home screen.</li>
@@ -333,9 +339,9 @@
                     <h3>💼 Smart Portfolio</h3>
                     <p>Sistem otomatis memantau saham Anda:</p>
                     <ul>
-                        <li><b style="color:#dc2626">CUT LOSS:</b> Rugi > 7% dari harga beli.</li>
-                        <li><b style="color:#d97706">TRAILING STOP:</b> Turun 5% dari harga tertinggi sejak beli.</li>
-                        <li><b style="color:#16a34a">ADD ON:</b> Sinyal breakout + volume tinggi.</li>
+                        <li><b style="color:#dc2626">CUT LOSS:</b> Rugi > 7% dari harga beli (Batas Risiko Absolut).</li>
+                        <li><b style="color:#d97706">TRAILING STOP:</b> Turun 2.5x ATR dari harga tertinggi sejak beli (Batas Risiko Adaptif).</li>
+                        <li><b style="color:#16a34a">ADD ON:</b> Sinyal beli kuat (Golden Cross/Breakout).</li>
                     </ul>
                 </div>
 
