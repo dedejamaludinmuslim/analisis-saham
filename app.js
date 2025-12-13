@@ -1,15 +1,12 @@
 // KREDENSIAL SUPABASE ANDA
-const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co"; //
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs"; //
+const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs"; 
 
-// --- PERBAIKAN INISIALISASI ---
 const { createClient } = window.supabase; 
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
-// ------------------------------
 
 const statusMessage = document.getElementById('statusMessage');
 
-// Mendapatkan elemen tabel dan status untuk setiap kategori
 const categories = {
     maCross: { tableBody: document.querySelector('#maCrossTable tbody'), statusEl: document.getElementById('maStatus'), tableEl: document.getElementById('maCrossTable') },
     rsi: { tableBody: document.querySelector('#rsiTable tbody'), statusEl: document.getElementById('rsiStatus'), tableEl: document.getElementById('rsiTable') },
@@ -17,7 +14,6 @@ const categories = {
     volume: { tableBody: document.querySelector('#volumeTable tbody'), statusEl: document.getElementById('volumeStatus'), tableEl: document.getElementById('volumeTable') }
 };
 
-// Fungsi pembantu untuk menentukan kelas warna sinyal
 function getSignalClass(signal) {
     if (!signal) return '';
     if (signal.includes('BUY') || signal.includes('OVERSOLD')) return 'signal-buy';
@@ -26,7 +22,6 @@ function getSignalClass(signal) {
     return '';
 }
 
-// Fungsi untuk mengkategorikan data berdasarkan sinyal non-NULL
 function categorizeSignals(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
@@ -47,7 +42,6 @@ function categorizeSignals(signals) {
     return categorized;
 }
 
-// FUNGSI RENDERING DENGAN HARGA & VOLUME
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
     const signalKey = `Sinyal_${categoryKey.replace('maCross', 'MA').replace('rsi', 'RSI').replace('macd', 'MACD').replace('volume', 'Volume')}`;
@@ -66,7 +60,7 @@ function renderCategory(categoryKey, data) {
     data.forEach(item => {
         const row = tableBody.insertRow();
         
-        // Ambil data harga dan volume dari hasil join (asumsi 1-to-1 relasi)
+        // Ambil data harga dan volume dari hasil join. data_saham adalah array di sini.
         const priceData = item.data_saham ? item.data_saham[0] : null; 
         
         row.insertCell().textContent = item["Kode Saham"];
@@ -88,7 +82,7 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// FUNGSI UTAMA DENGAN QUERY JOIN
+// FUNGSI UTAMA DENGAN QUERY JOIN YANG SUDAH DIPERBAIKI
 async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan harga...';
     
@@ -103,8 +97,8 @@ async function fetchAndRenderSignals() {
                 "Sinyal_MACD",
                 "Sinyal_Volume",
                 
-                -- JOIN KE TABEL DATA SAHAM UNTUK HARGA DAN VOLUME
-                data_saham ("Penutupan", "Volume")
+                -- QUERY JOIN YANG DIPERBAIKI (tanpa komentar)
+                data_saham (Penutupan, Volume)
             `)
             .order('Tanggal', { ascending: false })
             .limit(100); 
@@ -149,5 +143,4 @@ async function fetchAndRenderSignals() {
     }
 }
 
-// Jalankan fungsi ketika halaman dimuat
 document.addEventListener('DOMContentLoaded', fetchAndRenderSignals);
