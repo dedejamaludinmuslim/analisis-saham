@@ -3,10 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Screener Saham Pro</title>
+    <title>Screener Saham Pro v2.0</title>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
@@ -270,36 +273,36 @@
     <div id="aboutModal" class="modal-overlay">
         <div class="modal-content" style="max-height: 80vh;">
             <div class="modal-header">
-                <h2 style="color: var(--text-main); font-size: 1.25rem;">ℹ️ Panduan Aplikasi</h2>
+                <h2 style="color: var(--text-main); font-size: 1.25rem;">ℹ️ Panduan Aplikasi v2.0</h2>
                 <button id="closeAboutBtn" class="btn-close">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="about-section">
-                    <h3>🎯 Fungsi Utama</h3>
-                    <p>Aplikasi ini membantu Anda menyaring (screening) saham berdasarkan sinyal teknikal harian dan memantau portofolio Anda.</p>
-                </div>
-                
-                <div class="about-section">
-                    <h3>🔍 Cara Menggunakan</h3>
+                    <h3>💼 Smart Portfolio (BARU)</h3>
+                    <p>Fitur ini otomatis menganalisa saham yang Anda miliki:</p>
                     <ul>
-                        <li><b>Pilih Tanggal:</b> Gunakan pemilih tanggal untuk melihat sinyal pada hari tertentu.</li>
-                        <li><b>Filter Sinyal:</b> Filter saham berdasarkan potensi BUY, SELL, atau saham yang ada di Portfolio Anda.</li>
-                        <li><b>Kustomisasi MA:</b> Ubah periode Moving Average (Cepat/Lambat) sesuai preferensi, lalu klik "Set".</li>
+                        <li><b style="color:#dc2626">CUT LOSS:</b> Peringatan jika kerugian melebihi 7%.</li>
+                        <li><b style="color:#d97706">TRAILING STOP:</b> Peringatan amankan profit jika harga turun 5% dari titik tertingginya.</li>
+                        <li><b style="color:#16a34a">ADD ON (BREAKOUT):</b> Sinyal tambah muatan jika harga tembus resisten 20 hari + Volume tinggi.</li>
                     </ul>
                 </div>
 
                 <div class="about-section">
-                    <h3>💼 Fitur Portofolio</h3>
-                    <p>Klik pada nama saham untuk membuka detail. Klik tombol <b>"Tambahkan ke Portofolio"</b> untuk mencatat harga beli Anda. Aplikasi akan otomatis menghitung keuntungan/kerugian (P/L) harian.</p>
+                    <h3>🔍 Sinyal Pasar</h3>
+                    <ul>
+                        <li><b>MA Cross:</b> Deteksi tren (Golden/Dead Cross).</li>
+                        <li><b>Volume Spike:</b> Deteksi ledakan volume beli/jual.</li>
+                        <li><b>RSI:</b> Deteksi area jenuh beli (Overbought) atau jenuh jual (Oversold).</li>
+                    </ul>
                 </div>
 
                 <div class="about-section">
-                    <h3>📂 Update Data (Upload CSV)</h3>
-                    <p>Klik tombol <b>Upload CSV</b> di atas. Pastikan format CSV sesuai dengan struktur tabel <code>temp_saham</code>. Data akan diproses otomatis oleh sistem backend.</p>
+                    <h3>📂 Upload Data</h3>
+                    <p>Gunakan tombol <b>Upload CSV</b> untuk memperbarui data harian. Gunakan template standar yang sudah ditentukan.</p>
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px; font-size: 0.8rem; color: #9ca3af;">
-                    Screener Saham Pro v1.2
+                    Screener Saham Pro v2.0 - Powered by Supabase
                 </div>
             </div>
         </div>
