@@ -61,6 +61,7 @@ function renderCategory(categoryKey, data) {
         const row = tableBody.insertRow();
         
         // Ambil data harga dan volume dari hasil join (data_saham adalah array)
+        // Kita gunakan [0] karena diasumsikan hanya ada satu baris data saham per indikator
         const priceData = item.data_saham ? item.data_saham[0] : null; 
         
         row.insertCell().textContent = item["Kode Saham"];
@@ -82,24 +83,16 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// FUNGSI UTAMA DENGAN QUERY JOIN YANG SUDAH DIPERBAIKI (TANPA KOMENTAR YANG ERROR)
+// FUNGSI UTAMA DENGAN QUERY JOIN YANG SUDAH DIPERBAIKI SINTAKSISNYA
 async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan harga...';
     
     try {
         const { data: signals, error } = await supabaseClient 
             .from('indikator_teknikal')
-            .select(`
-                "Kode Saham",
-                "Tanggal",
-                "Sinyal_MA",
-                "Sinyal_RSI",
-                "Sinyal_MACD",
-                "Sinyal_Volume",
-                
-                -- QUERY JOIN YANG DIPERBAIKI (tanpa komentar)
-                data_saham (Penutupan, Volume)
-            `)
+            // *** INI PERBAIKAN KRITISNYA: Query dalam satu baris untuk menghindari error parsing ***
+            .select(`"Kode Saham","Tanggal","Sinyal_MA","Sinyal_RSI","Sinyal_MACD","Sinyal_Volume",data_saham(Penutupan,Volume)`)
+            // ***********************************************************************************
             .order('Tanggal', { ascending: false })
             .limit(100); 
 
