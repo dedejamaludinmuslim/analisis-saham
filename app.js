@@ -564,7 +564,7 @@ function updateSortIcons() {
 function handleStockClick(e) { showStockDetailModal(e.target.textContent); }
 
 // ==========================================
-// 9. MODAL DETAIL & FUNDAMENTAL (Tahap 1 & 3) - CODE PERBAIKAN
+// 9. MODAL DETAIL & FUNDAMENTAL (Tahap 1 & 3) - CODE PERBAIKAN FINAL
 // ==========================================
 async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode; 
@@ -608,7 +608,7 @@ async function showStockDetailModal(stockCode) {
         const { data: prices } = await supabaseClient.from('data_saham')
             .select(`"Tanggal Perdagangan Terakhir", "Penutupan"`) 
             .eq('Kode Saham', stockCode)
-            .in('Tanggal Perdagangan Terakhir', dates); // Filter ini hanya untuk harga historis
+            .in('Tanggal Perdagangan Terakhir', dates); 
             
         // ========================================================
         // RENDERING DATA FUNDAMENTAL & NAMA PERUSAHAAN (DARI BAGIAN 1)
@@ -617,7 +617,7 @@ async function showStockDetailModal(stockCode) {
             modalCompanyName.textContent = fundamentalData["Nama Perusahaan"] || "Nama Perusahaan Tidak Ditemukan";
             
             // TAMPILKAN RASIO FUNDAMENTAL HANYA JIKA ADA NILAI
-            const hasFundamental = fundamentalData["PER"] || fundamentalData["PBV"];
+            const hasFundamental = (fundamentalData["PER"] && fundamentalData["PER"] !== 0) || (fundamentalData["PBV"] && fundamentalData["PBV"] !== 0);
             
             if (hasFundamental) {
                 const per = formatNumber(fundamentalData["PER"], false, false);
