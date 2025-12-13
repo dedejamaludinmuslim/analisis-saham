@@ -1,143 +1,6 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screener Sinyal Saham Kategorikal</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: #4f46e5; /* Indigo */
-            --primary-light: #eef2ff;
-            --text-color: #1f2937; /* Dark Gray */
-            --bg-color: #f9fafb; /* Light Gray Background */
-            --card-bg: #ffffff;
-            --border-color: #e5e7eb;
-            --buy-bg: #dcfce7; /* Light Green */
-            --buy-color: #15803d; /* Dark Green */
-            --sell-bg: #fee2e2; /* Light Red */
-            --sell-color: #b91c1c; /* Dark Red */
-            --watch-bg: #fef9c3; /* Light Yellow */
-            --watch-color: #a16207; /* Dark Yellow */
-        }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            padding: 20px;
-            background-color: var(--bg-color); 
-            color: var(--text-color);
-        }
-        .container { 
-            max-width: 1200px; 
-            margin: auto; 
-            background: var(--card-bg); 
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
-        }
-        h1 { 
-            text-align: center; 
-            color: var(--primary-color); 
-            margin-bottom: 5px;
-            font-weight: 700;
-        }
-        #statusMessage { 
-            text-align: center; 
-            margin-bottom: 30px; 
-            font-weight: 600; 
-            color: #4b5563; 
-            padding: 10px;
-            border-bottom: 2px solid var(--border-color);
-        }
-        
-        /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
-        .signal-category {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin-bottom: 25px;
-            padding: 20px;
-            transition: all 0.3s ease;
-        }
-        .signal-category:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-        }
-        .signal-category h2 {
-            margin-top: 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-light);
-            color: var(--primary-color);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .signal-category table { 
-            width: 100%; 
-            border-collapse: separate; /* Untuk border-radius di cell */
-            border-spacing: 0; 
-            margin-top: 15px; 
-            overflow: hidden; /* Penting untuk border-radius table */
-            border-radius: 6px;
-        }
-        .signal-category th, .signal-category td { 
-            padding: 12px 15px; 
-            text-align: left; 
-            border-bottom: 1px solid var(--border-color); 
-        }
-        .signal-category th { 
-            background-color: var(--primary-color); 
-            color: white; 
-            font-weight: 600; 
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-        .signal-category tr:last-child td {
-            border-bottom: none;
-        }
-        .signal-category tbody tr:nth-child(even) {
-            background-color: #f9fafb;
-        }
-        
-        /* Gaya Sinyal */
-        .signal-buy { 
-            background-color: var(--buy-bg); 
-            color: var(--buy-color); 
-            font-weight: 600; 
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .signal-sell { 
-            background-color: var(--sell-bg); 
-            color: var(--sell-color); 
-            font-weight: 600; 
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .signal-watch { 
-            background-color: var(--watch-bg); 
-            color: var(--watch-color); 
-            font-weight: 600;
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .category-status {
-            padding: 10px;
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            border-left: 4px solid var(--primary-color);
-            border-radius: 4px;
-            font-style: italic;
-        }
-    </style>
+<style>
+/* ... CSS dari respon sebelumnya ... */
+</style>
 </head>
 <body>
     <div class="container">
@@ -152,6 +15,9 @@
                     <tr>
                         <th>Kode Saham</th>
                         <th>Tanggal</th>
+                        <th>Harga Penutupan</th>
+                        <th>Volume Harian</th>
+                        <th>Perubahan (%)</th>
                         <th>Sinyal (Aksi)</th>
                     </tr>
                 </thead>
@@ -167,6 +33,9 @@
                     <tr>
                         <th>Kode Saham</th>
                         <th>Tanggal</th>
+                        <th>Harga Penutupan</th>
+                        <th>Volume Harian</th>
+                        <th>Perubahan (%)</th>
                         <th>Sinyal (Aksi)</th>
                     </tr>
                 </thead>
@@ -182,6 +51,9 @@
                     <tr>
                         <th>Kode Saham</th>
                         <th>Tanggal</th>
+                        <th>Harga Penutupan</th>
+                        <th>Volume Harian</th>
+                        <th>Perubahan (%)</th>
                         <th>Sinyal (Aksi)</th>
                     </tr>
                 </thead>
@@ -197,6 +69,9 @@
                     <tr>
                         <th>Kode Saham</th>
                         <th>Tanggal</th>
+                        <th>Harga Penutupan</th>
+                        <th>Volume Harian</th>
+                        <th>Perubahan (%)</th>
                         <th>Sinyal (Aksi)</th>
                     </tr>
                 </thead>
