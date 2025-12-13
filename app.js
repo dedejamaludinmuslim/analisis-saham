@@ -7,19 +7,279 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const statusMessage = document.getElementById('statusMessage');
 const dateFilter = document.getElementById('dateFilter'); 
-const signalFilter = document.getElementById('signalFilter'); // Elemen filter sinyal baru
+const signalFilter = document.getElementById('signalFilter');
+const maFastInput = document.getElementById('maFast'); // Input MA Fast
+const maSlowInput = document.getElementById('maSlow'); // Input MA Slow
+const applyMaCustomButton = document.getElementById('applyMaCustom'); // Tombol Apply
 
-// Variabel Global untuk menyimpan data yang sudah digabungkan dan status sorting
 let globalCombinedSignals = [];
-let sortState = { column: 'Kode Saham', direction: 'asc' }; // Status sorting default
+let sortState = { column: 'Kode Saham', direction: 'asc' }; 
+// Tambahkan variabel global untuk menyimpan data kustom MA
+let globalCustomMASignals = []; 
 
-// Mendapatkan elemen tabel dan status untuk setiap kategori
-const categories = {
-    maCross: { tableBody: document.querySelector('#maCrossTable tbody'), statusEl: document.getElementById('maStatus'), tableEl: document.getElementById('maCrossTable') },
-    rsi: { tableBody: document.querySelector('#rsiTable tbody'), statusEl: document.getElementById('rsiStatus'), tableEl: document.getElementById('rsiTable') },
-    macd: { tableBody: document.querySelector('#macdTable tbody'), statusEl: document.getElementById('macdStatus'), tableEl: document.getElementById('macdTable') },
-    volume: { tableBody: document.querySelector('#volumeTable tbody'), statusEl: document.getElementById('volumeStatus'), tableEl: document.getElementById('volumeTable') }
-};
+// ... (Objek categories, getSignalClass, formatNumber, applySignalFilter, sortSignals, 
+// setupSorting, updateSortIcons, renderCategory, populateDateFilter tetap sama) ...
+
+// ********************************************
+// KARENA LOGIKA BERIKUTNYA CUKUP PANJANG, SAYA AKAN MENGGUNAKAN VERSI app.js YANG LENGKAP
+// DARI RESPONS SEBELUMNYA SEBAGAI DASAR DAN HANYA MENYUNTIKKAN PERUBAHAN.
+// ********************************************
+
+// FUNGSI BARU: Mengambil Sinyal MA Kustom via RPC
+async function fetchCustomMASignals(targetDate, maFast, maSlow) {
+    statusMessage.textContent = `Memproses sinyal MA Kustom (${maFast}/${maSlow}) untuk ${targetDate}...`;
+
+    try {
+        const { data, error } = await supabaseClient.rpc('get_custom_ma_signals', {
+            ma_fast_period: parseInt(maFast),
+            ma_slow_period: parseInt(maSlow),
+            target_date: targetDate
+        });
+        
+        if (error) throw error;
+
+        // Data dari RPC sudah lengkap (sinyal + fundamental)
+        globalCustomMASignals = data; 
+        return data;
+
+    } catch (error) {
+        console.error('Error saat memanggil RPC MA Kustom:', error);
+        statusMessage.textContent = `Error kustom MA: ${error.message}. Pastikan fungsi 'get_custom_ma_signals' sudah dibuat di Supabase.`;
+        globalCustomMASignals = []; // Kosongkan jika gagal
+        return [];
+    }
+}
+
+
+// FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM
+function mergeSignals(staticSignals, customMASignals) {
+    const mergedMap = new Map();
+
+    // 1. Masukkan semua data statis
+    staticSignals.forEach(s => {
+        // Hanya masukkan sinyal non-MA (RSI, MACD, Volume)
+        const isMASignalOnly = s.Sinyal_MA && !s.Sinyal_RSI && !s.Sinyal_MACD && !s.Sinyal_Volume;
+        if (!isMASignalOnly) {
+            mergedMap.set(s["Kode Saham"], { ...s });
+        }
+    });
+
+    // 2. Overwrite/Tambah dengan data MA Kustom
+    customMASignals.forEach(cs => {
+        const existing = mergedMap.get(cs["Kode Saham"]) || {};
+        
+        // Buat objek baru atau ambil yang sudah ada, lalu update sinyal MA dan fundamental
+        mergedMap.set(cs["Kode Saham"], {
+            ...existing, // Jaga sinyal non-MA lama (RSI, MACD, Volume)
+            ...cs,       // Timpa dengan data MA kustom dan fundamentalnya
+            // Pastikan fundamental yang benar digunakan
+            Close: cs.Close,
+            Volume: cs.Volume,
+            Selisih: cs.Selisih
+        });
+    });
+
+    return Array.from(mergedMap.values()).filter(item => 
+        item.Sinyal_MA || item.Sinyal_RSI || item.Sinyal_MACD || item.Sinyal_Volume
+    );
+}
+
+// FUNGSI UTAMA DIMODIFIKASI: Menerima selectedDate sebagai argumen
+async function fetchAndRenderSignals(selectedDate = null) {
+    statusMessage.textContent = 'Memuat data...';
+    
+    // Nonaktifkan tombol MA saat loading
+    applyMaCustomButton.disabled = true;
+
+    try {
+        // Logika Query 1: Ambil data sinyal statis dari indikator_teknikal
+        let signalQuery = supabaseClient 
+            .from('indikator_teknikal')
+            .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
+            .order('Tanggal', { ascending: false });
+            
+        if (selectedDate) {
+            signalQuery = signalQuery.eq('Tanggal', selectedDate);
+        } else {
+            signalQuery = signalQuery.limit(100);
+        }
+
+        const { data: signalData, error: signalError } = await signalQuery;
+
+        if (signalError) throw signalError;
+        if (signalData.length === 0) {
+            statusMessage.textContent = 'Tidak ada data sinyal ditemukan.';
+            return;
+        }
+
+        const dateToFilter = selectedDate || signalData[0].Tanggal;
+
+        // Jika ini adalah pemuatan pertama, isi filter tanggal
+        if (!selectedDate) {
+            await populateDateFilter(dateToFilter);
+            dateFilter.value = dateToFilter;
+        }
+        
+        // Logika Query 2: Ambil data fundamental (hanya jika MA kustom tidak dipanggil)
+        // Jika MA kustom dipanggil, data fundamental sudah ada di hasil RPC.
+        const { data: fundamentalData, error: fundamentalError } = await supabaseClient
+            .from('data_saham')
+            .select(`"Kode Saham", "Penutupan", "Volume", "Selisih"`)
+            .eq('Tanggal Perdagangan Terakhir', dateToFilter);
+
+        if (fundamentalError) throw fundamentalError;
+
+        const fundamentalMap = {};
+        fundamentalData.forEach(item => {
+            const key = item["Kode Saham"];
+            fundamentalMap[key] = {
+                Close: item.Penutupan,
+                Volume: item.Volume,
+                Selisih: item.Selisih
+            };
+        });
+        
+        // Gabungkan Sinyal Statis + Fundamental
+        const staticCombinedSignals = [];
+        signalData.filter(s => s.Tanggal === dateToFilter).forEach(s => {
+            const fundamental = fundamentalMap[s["Kode Saham"]];
+            if (fundamental) {
+                staticCombinedSignals.push({
+                    ...s,
+                    ...fundamental 
+                });
+            }
+        });
+        
+        // Terapkan MA Kustom jika ada
+        let finalSignals;
+        if (globalCustomMASignals.length > 0 && dateToFilter === globalCustomMASignals[0].Tanggal) {
+            // Jika ada data kustom yang dimuat dan tanggalnya cocok, gunakan fungsi merge
+            finalSignals = mergeSignals(staticCombinedSignals, globalCustomMASignals);
+            statusMessage.textContent = 'Sinyal MA Kustom berhasil digabungkan.';
+        } else {
+            // Jika tidak ada kustom atau tanggal tidak cocok, gunakan data statis
+            finalSignals = staticCombinedSignals.filter(s => 
+                s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume
+            );
+        }
+        
+
+        if (finalSignals.length === 0) {
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data fundamental lengkap.`;
+            Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
+            Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
+            return;
+        }
+        
+        // Simpan data gabungan secara global untuk digunakan oleh filter dan sort
+        globalCombinedSignals = finalSignals;
+        
+        // Terapkan Filter Sinyal dan Render
+        const filterValue = signalFilter.value;
+        const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
+
+        // Reset status sorting ke default sebelum render pertama
+        sortState = { column: 'Kode Saham', direction: 'asc' };
+
+        categorizeAndRender(filteredSignals);
+
+    } catch (error) {
+        statusMessage.textContent = `Error memuat data: ${error.message}. Cek koneksi Supabase atau fungsi RPC.`;
+        console.error('Error fetching data:', error);
+    } finally {
+        applyMaCustomButton.disabled = false;
+    }
+}
+
+
+// ********************************************
+// SETUP EVENT LISTENERS (Modifikasi)
+// ********************************************
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Setup Event Listeners
+    
+    // A. Filter Tanggal
+    dateFilter.addEventListener('change', () => {
+        const selectedDate = dateFilter.value;
+        // Reset custom MA signals jika tanggal diganti
+        globalCustomMASignals = []; 
+        fetchAndRenderSignals(selectedDate);
+    });
+    
+    // B. Filter Sinyal
+    signalFilter.addEventListener('change', () => {
+        const filterValue = signalFilter.value;
+        const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
+        categorizeAndRender(filteredSignals); 
+    });
+
+    // C. Kustomisasi MA Cross (BARU)
+    applyMaCustomButton.addEventListener('click', async () => {
+        const maFast = maFastInput.value;
+        const maSlow = maSlowInput.value;
+        const selectedDate = dateFilter.value;
+
+        if (parseInt(maFast) >= parseInt(maSlow)) {
+            alert('Periode MA Cepat harus lebih kecil dari Periode MA Lambat.');
+            return;
+        }
+
+        // Ambil sinyal MA Kustom dari RPC
+        await fetchCustomMASignals(selectedDate, maFast, maSlow);
+        
+        // Muat ulang dan render data (akan otomatis menggunakan globalCustomMASignals)
+        fetchAndRenderSignals(selectedDate);
+    });
+    
+    // D. Sorting
+    setupSorting();
+    
+    // 2. Load Data Awal
+    fetchAndRenderSignals(); 
+});
+
+
+// ********************************************
+// FUNGSI PENDUKUNG (Asumsi Anda sudah memiliki ini)
+// ********************************************
+
+// FUNGSI UNTUK MENGAMBIL DAN MENGISI FILTER TANGGAL
+async function populateDateFilter(latestDate) {
+    statusMessage.textContent = 'Memuat daftar tanggal yang tersedia...';
+
+    try {
+        const { data, error } = await supabaseClient
+            .from('indikator_teknikal')
+            .select('Tanggal')
+            .order('Tanggal', { ascending: false });
+
+        if (error) throw error;
+
+        const uniqueDates = [...new Set(data.map(item => item.Tanggal))];
+        
+        dateFilter.innerHTML = '';
+        uniqueDates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            if (date === latestDate) {
+                option.textContent += ' (Terbaru)';
+            }
+            dateFilter.appendChild(option);
+        });
+
+        dateFilter.disabled = false;
+        
+    } catch (error) {
+        console.error('Error memuat tanggal:', error);
+        dateFilter.innerHTML = '<option>Gagal Memuat Tanggal</option>';
+    }
+}
+
+
+// ... (Tambahkan fungsi categorizeAndRender, renderCategory, sortSignals, applySignalFilter, dan setupSorting dari respons sebelumnya di sini) ...
 
 // Fungsi pembantu untuk menentukan kelas warna sinyal
 function getSignalClass(signal) {
@@ -46,6 +306,7 @@ function formatNumber(num, isVolume = false) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
+
 // FUNGSI BARU: Logika Penyaringan Sinyal (Signal Filtering)
 function applySignalFilter(signals, filterType) {
     if (filterType === 'ALL') {
@@ -53,10 +314,8 @@ function applySignalFilter(signals, filterType) {
     }
     
     const filtered = signals.filter(item => {
-        // Cek semua sinyal yang ada di item
         const allSignals = [item.Sinyal_MA, item.Sinyal_RSI, item.Sinyal_MACD, item.Sinyal_Volume].filter(s => s);
         
-        // Gabungkan semua sinyal dalam satu string (case-insensitive)
         const combinedSignalText = allSignals.join(' ').toUpperCase();
 
         if (filterType === 'BUY') {
@@ -110,10 +369,6 @@ function categorizeAndRender(signals) {
     sortedSignals.forEach(item => {
         if (!item.Close) return; 
 
-        // Gunakan sortedSignals untuk kategorisasi, tetapi filter tetap dipertahankan
-        // Catatan: Jika ingin Filter Sinyal per kategori (misalnya hanya BUY di MA Cross), perlu logika yang lebih spesifik di sini.
-        // Saat ini, filter sinyal diterapkan pada data sebelum kategorisasi.
-
         if (item.Sinyal_MA) categorized.maCross.push(item);
         if (item.Sinyal_RSI) categorized.rsi.push(item);
         if (item.Sinyal_MACD) categorized.macd.push(item);
@@ -135,46 +390,6 @@ function categorizeAndRender(signals) {
     updateSortIcons();
 }
 
-// FUNGSI BARU: Untuk menginisialisasi event sorting
-function setupSorting() {
-    document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
-        header.addEventListener('click', function() {
-            const column = this.getAttribute('data-column');
-            let direction = 'asc';
-
-            if (sortState.column === column) {
-                // Balik arah jika kolom yang sama diklik
-                direction = sortState.direction === 'asc' ? 'desc' : 'asc';
-            }
-
-            // Update state
-            sortState.column = column;
-            sortState.direction = direction;
-
-            // Render ulang data yang sudah ada (globalCombinedSignals)
-            const filterValue = signalFilter.value;
-            const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
-            categorizeAndRender(filteredSignals);
-        });
-    });
-}
-
-// FUNGSI BARU: Untuk memperbarui ikon panah sorting
-function updateSortIcons() {
-    document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
-        const column = header.getAttribute('data-column');
-        const icon = header.querySelector('.sort-icon');
-        icon.textContent = '↕';
-        icon.classList.remove('active');
-
-        if (column === sortState.column) {
-            icon.textContent = sortState.direction === 'asc' ? '↑' : '↓';
-            icon.classList.add('active');
-        }
-    });
-}
-
-
 // Fungsi untuk me-render data ke dalam kategori tabel (Hanya UI rendering)
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
@@ -194,7 +409,6 @@ function renderCategory(categoryKey, data) {
     data.forEach(item => {
         const row = tableBody.insertRow();
         
-        // Urutan kolom harus sesuai dengan header: Kode Saham, Tanggal, Close, Volume, Selisih, Sinyal
         row.insertCell().textContent = item["Kode Saham"];
         row.insertCell().textContent = item["Tanggal"];
         row.insertCell().textContent = formatNumber(item.Close); 
@@ -222,144 +436,38 @@ function renderCategory(categoryKey, data) {
     });
 }
 
+// FUNGSI BARU: Untuk menginisialisasi event sorting
+function setupSorting() {
+    document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.getAttribute('data-column');
+            let direction = 'asc';
 
-// FUNGSI UTAMA DIMODIFIKASI: Menerima selectedDate sebagai argumen
-async function fetchAndRenderSignals(selectedDate = null) {
-    statusMessage.textContent = 'Memuat data...';
-    
-    try {
-        // ... (Logika Query 1 & 2 dari Supabase tetap sama) ...
-        // Logika Query 1: Ambil data sinyal untuk menentukan tanggal
-        let signalQuery = supabaseClient 
-            .from('indikator_teknikal')
-            .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
-            .order('Tanggal', { ascending: false });
-            
-        if (selectedDate) {
-            signalQuery = signalQuery.eq('Tanggal', selectedDate);
-        } else {
-            signalQuery = signalQuery.limit(100);
-        }
-
-        const { data: signalData, error: signalError } = await signalQuery;
-
-        if (signalError) throw signalError;
-        if (signalData.length === 0) {
-            statusMessage.textContent = 'Tidak ada data sinyal ditemukan.';
-            return;
-        }
-
-        const dateToFilter = selectedDate || signalData[0].Tanggal;
-
-        // Jika ini adalah pemuatan pertama, isi filter tanggal
-        if (!selectedDate) {
-            await populateDateFilter(dateToFilter);
-            dateFilter.value = dateToFilter;
-        }
-        
-        // Logika Query 2: Ambil data fundamental
-        const { data: fundamentalData, error: fundamentalError } = await supabaseClient
-            .from('data_saham')
-            .select(`"Kode Saham", "Penutupan", "Volume", "Selisih"`)
-            .eq('Tanggal Perdagangan Terakhir', dateToFilter);
-
-        if (fundamentalError) throw fundamentalError;
-
-        const fundamentalMap = {};
-        fundamentalData.forEach(item => {
-            const key = item["Kode Saham"];
-            fundamentalMap[key] = {
-                Close: item.Penutupan,
-                Volume: item.Volume,
-                Selisih: item.Selisih
-            };
-        });
-        
-        // 3. Gabungkan Data (Semua saham pada tanggal itu, yang memiliki sinyal)
-        const allSignalsForDate = signalData.filter(s => s.Tanggal === dateToFilter);
-        const combinedSignals = [];
-        
-        allSignalsForDate.forEach(s => {
-            const fundamental = fundamentalMap[s["Kode Saham"]];
-            if (fundamental && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)) {
-                combinedSignals.push({
-                    ...s,
-                    ...fundamental 
-                });
+            if (sortState.column === column) {
+                direction = sortState.direction === 'asc' ? 'desc' : 'asc';
             }
+
+            sortState.column = column;
+            sortState.direction = direction;
+
+            const filterValue = signalFilter.value;
+            const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
+            categorizeAndRender(filteredSignals);
         });
-
-        if (combinedSignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data fundamental lengkap.`;
-            // ... (Kode untuk menyembunyikan tabel dan menampilkan status) ...
-            Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
-            Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
-            return;
-        }
-        
-        // Simpan data gabungan secara global untuk digunakan oleh filter dan sort
-        globalCombinedSignals = combinedSignals;
-        
-        // Terapkan Filter Sinyal default ('ALL') dan Render
-        const filterValue = signalFilter.value;
-        const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
-
-        // Reset status sorting ke default sebelum render pertama
-        sortState = { column: 'Kode Saham', direction: 'asc' };
-
-        categorizeAndRender(filteredSignals);
-
-    } catch (error) {
-        statusMessage.textContent = `Error memuat data: ${error.message}. Cek koneksi Supabase.`;
-        console.error('Error fetching data:', error);
-    }
+    });
 }
 
-// FUNGSI INI TETAP SAMA DARI SEBELUMNYA
-async function populateDateFilter(latestDate) {
-    // ... (Logika pengisian dateFilter tetap sama) ...
-    // Ambil semua tanggal unik dari tabel indikator_teknikal
-    const { data, error } = await supabaseClient
-        .from('indikator_teknikal')
-        .select('Tanggal')
-        .order('Tanggal', { ascending: false });
+// FUNGSI BARU: Untuk memperbarui ikon panah sorting
+function updateSortIcons() {
+    document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
+        const column = header.getAttribute('data-column');
+        const icon = header.querySelector('.sort-icon');
+        icon.textContent = '↕';
+        icon.classList.remove('active');
 
-    if (error) throw error;
-
-    const uniqueDates = [...new Set(data.map(item => item.Tanggal))];
-    
-    dateFilter.innerHTML = '';
-    uniqueDates.forEach(date => {
-        const option = document.createElement('option');
-        option.value = date;
-        option.textContent = date;
-        if (date === latestDate) {
-            option.textContent += ' (Terbaru)';
+        if (column === sortState.column) {
+            icon.textContent = sortState.direction === 'asc' ? '↑' : '↓';
+            icon.classList.add('active');
         }
-        dateFilter.appendChild(option);
     });
-
-    dateFilter.disabled = false;
 }
-
-
-// Jalankan fungsi ketika halaman dimuat
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Setup Event Listeners
-    dateFilter.addEventListener('change', () => {
-        const selectedDate = dateFilter.value;
-        fetchAndRenderSignals(selectedDate);
-    });
-    
-    signalFilter.addEventListener('change', () => {
-        // Terapkan filter sinyal pada data yang sudah dimuat
-        const filterValue = signalFilter.value;
-        const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
-        categorizeAndRender(filteredSignals); // Render ulang
-    });
-    
-    setupSorting(); // Inisialisasi sorting
-    
-    // 2. Load Data Awal
-    fetchAndRenderSignals(); 
-});
