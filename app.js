@@ -20,6 +20,7 @@ const stockSearchInput = document.getElementById('stockSearchInput');
 const stockSearchResults = document.getElementById('stockSearchResults');
 const stockSearchContainer = document.getElementById('stockSearchContainer');
 const csvFileInput = document.getElementById('csvFileInput');
+const refreshAnalysisBtn = document.getElementById('refreshAnalysisBtn');
 
 // Modal Elements
 const stockDetailModal = document.getElementById('stockDetailModal');
@@ -318,15 +319,12 @@ csvFileInput.addEventListener('change', (event) => {
                         Swal.fire({
                             icon: 'success',
                             title: 'Selesai!',
-                            text: 'Data berhasil diunggah. Backend sedang menghitung indikator...',
+                            text: 'Data berhasil diunggah. Silakan klik tombol Refresh Analisa jika indikator belum muncul.',
                             timer: 3000,
                             showConfirmButton: false
                         });
                         
                         csvFileInput.value = ''; // Reset input
-                        
-                        // Refresh otomatis setelah 3 detik
-                        setTimeout(() => fetchAndRenderSignals(), 3000);
                     }
                 }
             });
@@ -337,7 +335,61 @@ csvFileInput.addEventListener('change', (event) => {
 });
 
 // ==========================================
-// 3. EVENT LISTENERS
+// 3. FITUR REFRESH ANALISA MANUAL
+// ==========================================
+refreshAnalysisBtn?.addEventListener('click', async () => {
+    // 1. Konfirmasi User
+    const result = await Swal.fire({
+        title: 'Jalankan Analisa Harian?',
+        text: "Sistem akan menghitung ulang indikator MA, RSI, dan status Portofolio berdasarkan data terbaru.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#4f46e5',
+        confirmButtonText: 'Ya, Jalankan',
+        cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+        // 2. Loading State
+        Swal.fire({
+            title: 'Sedang Menganalisa...',
+            text: 'Menjalankan fungsi run_all_analysis()...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+            // 3. Panggil Function SQL Wrapper
+            // Note: Pastikan Anda sudah membuat function 'refresh_market_analysis' di Supabase SQL Editor
+            const { error } = await supabaseClient.rpc('refresh_market_analysis');
+
+            if (error) throw error;
+
+            // 4. Sukses - Reload Tampilan
+            await fetchAndRenderSignals(); 
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Selesai!',
+                text: 'Data pasar dan portofolio berhasil diperbarui.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+
+        } catch (error) {
+            console.error(error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal',
+                text: 'Backend Error: ' + error.message
+            });
+        }
+    }
+});
+
+
+// ==========================================
+// 4. EVENT LISTENERS
 // ==========================================
 
 // Search Logic
@@ -398,7 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// 4. RENDERING & HELPERS
+// 5. RENDERING & HELPERS
 // ==========================================
 
 async function initializeDateInput() {
@@ -577,7 +629,7 @@ function updateSortIcons() {
 function handleStockClick(e) { showStockDetailModal(e.target.textContent); }
 
 // ==========================================
-// 5. MODAL LOGIC
+// 6. MODAL LOGIC
 // ==========================================
 async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode; 
