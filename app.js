@@ -22,7 +22,8 @@ let priceChart = null; // Variabel untuk menyimpan instance Chart.js
 
 // --- GLOBAL STATE ---
 let globalCombinedSignals = [];
-let globalCustomMASignals = []; // Data dari RPC MA Kustom
+let globalCustomMASignals = []; 
+let globalPortfolio = new Map(); // BARU: State untuk portofolio (Map untuk lookup cepat)
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
 
 // Mendapatkan elemen tabel dan status untuk setiap kategori 
@@ -37,10 +38,30 @@ const categories = {
 // FUNGSI UTAMA DAN LOGIKA SUPABASE
 // ********************************************
 
+// FUNGSI BARU: Mengambil semua kode saham yang dimiliki
+async function fetchPortfolio() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('portofolio_saham')
+            .select('kode_saham, harga_beli'); 
+        
+        if (error) throw error;
+        
+        // Simpan data portofolio sebagai Map untuk pencarian cepat (Kode Saham -> { hargaBeli })
+        globalPortfolio = new Map(data.map(item => [item.kode_saham, { hargaBeli: item.harga_beli }]));
+        
+        return globalPortfolio;
+    } catch (error) {
+        console.error('Error fetching portfolio:', error);
+        // Jika gagal, tetap kembalikan Map kosong agar aplikasi tidak error
+        return new Map(); 
+    }
+}
+
 // FUNGSI RPC: Mengambil Sinyal MA Kustom
 async function fetchCustomMASignals(targetDate, maFast, maSlow) {
     statusMessage.textContent = `Memproses sinyal MA Kustom (${maFast}/${maSlow}) untuk ${targetDate}...`;
-    globalCustomMASignals = []; // Reset sebelum panggil RPC
+    globalCustomMASignals = []; 
 
     try {
         const { data, error } = await supabaseClient.rpc('get_custom_ma_signals', {
@@ -68,7 +89,6 @@ function mergeSignals(staticSignals, customMASignals) {
 
     // 1. Masukkan semua data statis (sinyal non-MA)
     staticSignals.forEach(s => {
-        // Hanya masukkan sinyal non-MA (RSI, MACD, Volume)
         const isMASignalOnly = s.Sinyal_MA && !s.Sinyal_RSI && !s.Sinyal_MACD && !s.Sinyal_Volume;
         if (!isMASignalOnly) {
             mergedMap.set(s["Kode Saham"], { ...s });
@@ -79,15 +99,13 @@ function mergeSignals(staticSignals, customMASignals) {
     customMASignals.forEach(cs => {
         const existing = mergedMap.get(cs["Kode Saham"]) || {};
         
-        // Buat objek baru atau ambil yang sudah ada, lalu update sinyal MA dan fundamental
         mergedMap.set(cs["Kode Saham"], {
-            ...existing, // Jaga sinyal non-MA lama 
-            ...cs,       // Timpa dengan data MA kustom dan fundamentalnya
-            // Pastikan fundamental yang benar digunakan (kolom dari RPC sudah sesuai dengan skema)
+            ...existing, 
+            ...cs,       
             Close: cs.Close,
             Volume: cs.Volume,
             Selisih: cs.Selisih,
-            Sinyal_MA: cs.Sinyal_MA // Update sinyal MA dengan hasil kustom
+            Sinyal_MA: cs.Sinyal_MA 
         });
     });
 
@@ -102,6 +120,9 @@ async function fetchAndRenderSignals(selectedDate = null) {
     applyMaCustomButton.disabled = true;
 
     try {
+        // PANGGIL FUNGSI PORTOFOLIO BARU SEBELUM AMBIL SINYAL
+        await fetchPortfolio(); 
+        
         // Kueri 1: Ambil data sinyal statis dari indikator_teknikal
         let signalQuery = supabaseClient 
             .from('indikator_teknikal')
@@ -124,7 +145,6 @@ async function fetchAndRenderSignals(selectedDate = null) {
 
         const dateToFilter = selectedDate || signalData[0].Tanggal;
 
-        // Jika ini adalah pemuatan pertama, isi filter tanggal
         if (!selectedDate) {
             await populateDateFilter(dateToFilter);
             dateFilter.value = dateToFilter;
@@ -160,13 +180,12 @@ async function fetchAndRenderSignals(selectedDate = null) {
             }
         });
         
-        // Terapkan MA Kustom jika ada
+        // Terapkan MA Kustom
         let finalSignals;
         if (globalCustomMASignals.length > 0 && dateToFilter === globalCustomMASignals[0].Tanggal) {
             finalSignals = mergeSignals(staticCombinedSignals, globalCustomMASignals);
             statusMessage.textContent = 'Sinyal MA Kustom berhasil digabungkan.';
         } else {
-            // Gunakan data statis, filter hanya yang punya sinyal
             finalSignals = staticCombinedSignals.filter(s => 
                 s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume
             );
@@ -180,14 +199,11 @@ async function fetchAndRenderSignals(selectedDate = null) {
             return;
         }
         
-        // Simpan data gabungan secara global
         globalCombinedSignals = finalSignals;
         
-        // Terapkan Filter Sinyal dan Render
         const filterValue = signalFilter.value;
         const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
 
-        // Reset status sorting ke default sebelum render pertama
         if (!selectedDate) {
              sortState = { column: 'Kode Saham', direction: 'asc' };
         }
@@ -208,12 +224,10 @@ async function fetchAndRenderSignals(selectedDate = null) {
 // ********************************************
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Setup Event Listeners
     
     if (dateFilter) { 
         dateFilter.addEventListener('change', () => {
             const selectedDate = dateFilter.value;
-            // Reset kustom MA jika tanggal berubah, karena data RPC hanya untuk satu tanggal
             globalCustomMASignals = []; 
             fetchAndRenderSignals(selectedDate);
         });
@@ -227,7 +241,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Kustomisasi MA Cross
     if (applyMaCustomButton && maFastInput && maSlowInput) {
         applyMaCustomButton.addEventListener('click', async () => {
             const maFast = maFastInput.value;
@@ -239,17 +252,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Panggil RPC, lalu ambil dan render ulang semua sinyal
             await fetchCustomMASignals(selectedDate, maFast, maSlow);
             fetchAndRenderSignals(selectedDate);
         });
     }
     
-    // Sorting dan Modal
     setupSorting();
-    setupModalHandlers(); // Mengatur tombol tutup modal
+    setupModalHandlers(); 
     
-    // 2. Load Data Awal
     fetchAndRenderSignals(); 
 });
 
@@ -264,7 +274,6 @@ async function populateDateFilter(latestDate) {
     statusMessage.textContent = 'Memuat daftar tanggal yang tersedia...';
 
     try {
-        // Ambil 30 tanggal unik terbaru
         const { data, error } = await supabaseClient
             .from('indikator_teknikal')
             .select('Tanggal')
@@ -308,13 +317,11 @@ function formatNumber(num, isVolume = false) {
     const number = parseFloat(num);
     
     if (isVolume) {
-        // Format Volume (Jt, M)
         if (number >= 1000000000) return (number / 1000000000).toFixed(2) + ' M';
         if (number >= 1000000) return (number / 1000000).toFixed(2) + ' Jt';
         if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
         return number.toLocaleString('id-ID', { maximumFractionDigits: 0 });
     }
-    // Format Harga (Rupiah)
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
@@ -344,12 +351,29 @@ function applySignalFilter(signals, filterType) {
 
 // Logika Penyortiran Kolom (Column Sorting)
 function sortSignals(signals, column, direction) {
-    const isNumeric = ['Close', 'Volume', 'Selis'].includes(column);
+    // Tambahkan 'Untung/Rugi' ke daftar kolom numerik
+    const isNumeric = ['Close', 'Volume', 'Selis', 'Untung/Rugi'].includes(column);
 
     return signals.sort((a, b) => {
-        let valA = a[column];
-        let valB = b[column];
+        let valA, valB;
 
+        // Penanganan khusus untuk Untung/Rugi (P/L)
+        if (column === 'Untung/Rugi') {
+            const portfolioA = globalPortfolio.get(a["Kode Saham"]) || {};
+            const portfolioB = globalPortfolio.get(b["Kode Saham"]) || {};
+            
+            const buyPriceA = parseFloat(portfolioA.hargaBeli) || 0;
+            const buyPriceB = parseFloat(portfolioB.hargaBeli) || 0;
+
+            // Hitung P/L %
+            valA = buyPriceA > 0 ? ((a.Close - buyPriceA) / buyPriceA) * 100 : 0;
+            valB = buyPriceB > 0 ? ((b.Close - buyPriceB) / buyPriceB) * 100 : 0;
+
+        } else {
+            valA = a[column];
+            valB = b[column];
+        }
+        
         if (isNumeric) {
             valA = parseFloat(valA) || 0;
             valB = parseFloat(valB) || 0;
@@ -371,7 +395,6 @@ function sortSignals(signals, column, direction) {
 
 // Fungsi untuk mengkategorikan data
 function categorizeAndRender(signals) {
-    // Sortir data sebelum dikategorikan dan dirender
     const sortedSignals = sortSignals([...signals], sortState.column, sortState.direction);
 
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
@@ -397,7 +420,6 @@ function categorizeAndRender(signals) {
     
     updateSortIcons();
 
-    // PENTING: Panggil handler klik saham setelah semua data dirender
     setupStockClickHandlers(); 
 }
 
@@ -420,29 +442,71 @@ function renderCategory(categoryKey, data) {
     data.forEach(item => {
         const row = tableBody.insertRow();
         
-        // Kode Saham dibuat clickable (untuk modal detail)
+        const stockCode = item["Kode Saham"];
+        const isOwned = globalPortfolio.has(stockCode); // Cek kepemilikan
+        const portfolioData = globalPortfolio.get(stockCode) || {}; // Ambil data harga beli
+        
+        // Kolom 1: Kode Saham (Clickable)
         const codeCell = row.insertCell();
-        codeCell.textContent = item["Kode Saham"];
+        codeCell.textContent = stockCode;
         codeCell.classList.add('clickable-stock'); 
 
-        row.insertCell().textContent = item["Tanggal"];
-        row.insertCell().textContent = formatNumber(item.Close); 
-        row.insertCell().textContent = formatNumber(item.Volume, true);
-        
-        const percentChange = item.Selisih ? parseFloat(item.Selisih) : 0;
-        const changeCell = row.insertCell();
-        changeCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
-        
-        changeCell.style.fontWeight = 'bold';
-        if (percentChange > 0) {
-            changeCell.style.color = 'var(--buy-color)'; 
-        } else if (percentChange < 0) {
-            changeCell.style.color = 'var(--sell-color)'; 
+        // Kolom 2: Status Kepemilikan (BARU)
+        const statusCell = row.insertCell(); 
+        if (isOwned) {
+            statusCell.innerHTML = `<span style="background-color: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-weight: 600;">OWNED</span>`;
         } else {
-            changeCell.style.color = 'var(--text-color)'; 
+            statusCell.innerHTML = `<span style="background-color: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 4px;">WATCHLIST</span>`;
         }
         
+        // Kolom 3: Harga Beli (BARU)
+        const buyPriceCell = row.insertCell(); 
+        
+        // Kolom 4: P/L (%) (BARU)
+        const profitLossCell = row.insertCell();
 
+        if (isOwned && portfolioData.hargaBeli) {
+            const currentPrice = item.Close;
+            const buyPrice = parseFloat(portfolioData.hargaBeli);
+            
+            buyPriceCell.textContent = formatNumber(buyPrice); 
+            
+            const pnl = ((currentPrice - buyPrice) / buyPrice) * 100;
+            
+            profitLossCell.textContent = `${pnl > 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+            profitLossCell.style.fontWeight = 'bold';
+            
+            if (pnl > 0) {
+                profitLossCell.style.color = 'var(--buy-color)'; 
+            } else if (pnl < 0) {
+                profitLossCell.style.color = 'var(--sell-color)'; 
+            }
+        } else {
+            buyPriceCell.textContent = '-';
+            profitLossCell.textContent = '-';
+        }
+
+        // Kolom 5: Tanggal
+        row.insertCell().textContent = item["Tanggal"];
+        // Kolom 6: Close
+        row.insertCell().textContent = formatNumber(item.Close); 
+        // Kolom 7: Volume
+        row.insertCell().textContent = formatNumber(item.Volume, true);
+        
+        // Kolom 8: Perubahan Harian (%)
+        const percentChange = item.Selisih ? parseFloat(item.Selisih) : 0;
+        const changeDailyCell = row.insertCell();
+        changeDailyCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
+        changeDailyCell.style.fontWeight = 'bold';
+        if (percentChange > 0) {
+            changeDailyCell.style.color = 'var(--buy-color)'; 
+        } else if (percentChange < 0) {
+            changeDailyCell.style.color = 'var(--sell-color)'; 
+        } else {
+            changeDailyCell.style.color = 'var(--text-color)'; 
+        }
+
+        // Kolom 9: Sinyal
         const signalCell = row.insertCell();
         const signalText = item[signalKey];
         const signalSpan = document.createElement('span'); 
@@ -452,7 +516,6 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// Fungsi untuk menginisialisasi event sorting
 function setupSorting() {
     document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
         header.addEventListener('click', function() {
@@ -473,7 +536,6 @@ function setupSorting() {
     });
 }
 
-// Fungsi untuk memperbarui ikon panah sorting
 function updateSortIcons() {
     document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
         const column = header.getAttribute('data-column');
@@ -490,13 +552,11 @@ function updateSortIcons() {
     });
 }
 
-// FUNGSI BARU: Mengatur click handler untuk modal
 function setupModalHandlers() {
     if (closeModalBtn) {
         closeModalBtn.addEventListener('click', () => {
             if (stockDetailModal) stockDetailModal.style.display = 'none';
         });
-        // Tutup modal jika mengklik di luar area modal
         stockDetailModal.addEventListener('click', (e) => {
             if (e.target === stockDetailModal) {
                 stockDetailModal.style.display = 'none';
@@ -505,16 +565,13 @@ function setupModalHandlers() {
     }
 }
 
-// FUNGSI BARU: Menambahkan listener pada kode saham yang telah dibuat clickable
 function setupStockClickHandlers() {
     document.querySelectorAll('.clickable-stock').forEach(cell => {
-        // Hapus listener lama jika ada (agar tidak terduplikasi)
         cell.removeEventListener('click', handleStockClick);
         cell.addEventListener('click', handleStockClick);
     });
 }
 
-// Handler terpisah agar bisa di-remove/add
 function handleStockClick(event) {
     const stockCode = event.currentTarget.textContent.trim();
     showStockDetailModal(stockCode);
@@ -530,13 +587,11 @@ async function showStockDetailModal(stockCode) {
     stockDetailModal.style.display = 'flex';
     rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Memuat data...</td></tr>';
     
-    // Hancurkan chart lama
     if (priceChart) {
         priceChart.destroy();
     }
 
     try {
-        // Ambil data harga historis dan indikator mentah (30 hari terakhir)
         const { data: detailData, error } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
@@ -558,7 +613,7 @@ async function showStockDetailModal(stockCode) {
             return;
         }
 
-        const historicalData = detailData.reverse(); // Urutkan kronologis untuk chart (tertua ke terbaru)
+        const historicalData = detailData.reverse(); 
 
         renderRawIndicatorTable(historicalData);
         renderPriceIndicatorChart(stockCode, historicalData);
@@ -569,10 +624,8 @@ async function showStockDetailModal(stockCode) {
     }
 }
 
-// FUNGSI BARU: Merender data mentah ke tabel
 function renderRawIndicatorTable(data) {
     rawIndicatorTableBody.innerHTML = '';
-    // Balikkan urutan agar data terbaru berada di baris paling atas tabel
     data.slice().reverse().forEach(item => { 
         const row = rawIndicatorTableBody.insertRow();
         row.style.borderBottom = '1px solid #eee';
@@ -587,7 +640,6 @@ function renderRawIndicatorTable(data) {
     });
 }
 
-// FUNGSI BARU: Merender data ke Chart.js
 function renderPriceIndicatorChart(stockCode, data) {
     const ctx = document.getElementById('priceIndicatorChart').getContext('2d');
     
@@ -633,7 +685,6 @@ function renderPriceIndicatorChart(stockCode, data) {
                     tension: 0.1,
                     pointRadius: 0
                 },
-                // Indikator lainnya disembunyikan secara default
                 {
                     label: 'RSI',
                     data: rsiData,
