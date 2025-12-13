@@ -115,17 +115,6 @@
         #portfolioStatusToggle { background: white; color: var(--primary); padding: 8px 16px; border: 2px solid var(--primary); border-radius: 50px; font-weight: 600; cursor: pointer; font-size: 0.85rem; margin-top: 10px;}
         #portfolioStatusToggle.owned { background: #dcfce7; color: #166534; border-color: transparent; }
         
-        /* Style Fundamental (Tahap 1) */
-        .fundamental-tag {
-            background-color: #e5e7eb;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        .fundamental-tag span {
-            font-weight: 700;
-        }
-
         .about-section { margin-bottom: 25px; }
         .about-section h3 { font-size: 1.1rem; color: var(--text-main); margin-bottom: 10px; border-left: 4px solid var(--primary); padding-left: 10px; }
         .about-section p, .about-section li { color: #4b5563; line-height: 1.6; font-size: 0.95rem; }
@@ -296,9 +285,6 @@
                     <h2 id="modalTitle">XXXX</h2>
                     <p id="modalCompanyName">Nama Perusahaan Loading...</p>
                     
-                    <div id="fundamentalRatios" style="margin-top: 10px; display: flex; gap: 10px; font-size: 0.85rem;">
-                        </div>
-                    
                     <button id="portfolioStatusToggle">Tambahkan ke Portofolio</button>
                 </div>
                 <button id="closeModalBtn" class="btn-close">&times;</button>
@@ -331,7 +317,6 @@
                     <ul>
                         <li><b>Smart Trailing Stop:</b> Trailing Stop berbasis ATR (Volatilitas) yang adaptif, bukan hanya 5% kaku.</li>
                         <li><b>Power Score (Rating):</b> Rating gabungan yang menilai kekuatan sinyal beli/jual dari 4 indikator (skala 0-100).</li>
-                        <li><b>Konteks Fundamental:</b> Menampilkan rasio PER & PBV di detail saham.</li>
                         <li><b>PWA Install:</b> Tombol Install App agar bisa diakses dari home screen.</li>
                     </ul>
                 </div>
