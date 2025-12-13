@@ -12,40 +12,30 @@ const signalFilter = document.getElementById('signalFilter');
 const maFastInput = document.getElementById('maFast'); 
 const maSlowInput = document.getElementById('maSlow'); 
 const applyMaCustomButton = document.getElementById('applyMaCustom'); 
-
-// --- ELEMEN DOM FITUR BARU ---
-const csvFileInput = document.getElementById('csvFile');
-const uploadCsvBtn = document.getElementById('uploadCsvBtn');
-const uploadStatus = document.getElementById('uploadStatus');
-const stockSearch = document.getElementById('stockSearch');
-const searchResults = document.getElementById('searchResults');
-const checkTempBtn = document.getElementById('checkTempBtn');
-const clearTempBtn = document.getElementById('clearTempBtn');
+const csvFileInput = document.getElementById('csvFileInput'); // NEW
+const uploadCsvBtn = document.getElementById('uploadCsvBtn'); // NEW
+const stockSearchInput = document.getElementById('stockSearch'); // NEW
+const suggestionList = document.getElementById('suggestionList'); // NEW
 
 // --- DOM MODAL BARU ---
 const stockDetailModal = document.getElementById('stockDetailModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalTitle = document.getElementById('modalTitle');
 const rawIndicatorTableBody = document.querySelector('#rawIndicatorTable tbody');
-let priceChart = null; // Variabel untuk menyimpan instance Chart.js
+const ownedCheckbox = document.getElementById('ownedCheckbox'); // NEW
+const buyPriceInput = document.getElementById('buyPriceInput'); // NEW
+const buyPriceGroup = document.getElementById('buyPriceGroup'); // NEW
+const savePortfolioBtn = document.getElementById('savePortfolioBtn'); // NEW
+const watchlistStatus = document.getElementById('watchlistStatus'); // NEW
 
-// --- Elemen modal baru untuk portfolio ---
-const portfolioStatusMessage = document.getElementById('portfolioStatusMessage');
-const buyPriceInput = document.getElementById('buyPriceInput');
-const buyDateInput = document.getElementById('buyDateInput');
-const savePortfolioBtn = document.getElementById('savePortfolioBtn');
-const buyPriceContainer = document.getElementById('buyPriceContainer');
-const toggleWatchlist = document.getElementById('toggleWatchlist');
-const toggleOwned = document.getElementById('toggleOwned');
-const watchlistRadio = document.getElementById('watchlistRadio');
-const ownedRadio = document.getElementById('ownedRadio');
+let priceChart = null; // Variabel untuk menyimpan instance Chart.js
 
 // --- GLOBAL STATE ---
 let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
 let globalPortfolio = new Map(); 
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
-let currentStockCodeInModal = ''; // Variabel untuk menyimpan kode saham yang sedang dilihat di modal
+let currentModalStockCode = null; // Untuk menyimpan kode saham yang sedang dibuka di modal
 
 // Mendapatkan elemen tabel dan status untuk setiap kategori 
 const categories = {
@@ -62,18 +52,18 @@ const categories = {
 // FUNGSI: Mengambil semua kode saham yang dimiliki
 async function fetchPortfolio() {
     try {
+        // Mengambil juga tanggal beli untuk fitur di masa depan
         const { data, error } = await supabaseClient
             .from('portofolio_saham')
-            .select('kode_saham, harga_beli'); 
+            .select('kode_saham, harga_beli, tanggal_beli'); 
         
         if (error) throw error;
         
-        // Simpan data portofolio sebagai Map untuk pencarian cepat (Kode Saham -> { hargaBeli })
-        globalPortfolio = new Map(data.map(item => [item.kode_saham, { hargaBeli: item.harga_beli }]));
+        // Simpan data portofolio sebagai Map untuk pencarian cepat (Kode Saham -> { hargaBeli, tanggalBeli })
+        globalPortfolio = new Map(data.map(item => [item.kode_saham, { hargaBeli: item.harga_beli, tanggalBeli: item.tanggal_beli }]));
         
         return globalPortfolio;
     } catch (error) {
-        // Jika tabel belum ada, kita abaikan saja agar aplikasi tetap berjalan
         console.warn('Info: Tabel portofolio_saham mungkin belum dibuat atau kosong.', error.message);
         return new Map(); 
     }
@@ -102,6 +92,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
         return [];
     }
 }
+
 
 // FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM
 function mergeSignals(staticSignals, customMASignals) {
@@ -144,7 +135,6 @@ async function fetchAndRenderSignals(selectedDate = null) {
         await fetchPortfolio(); 
         
         // 2. Kueri data Sinyal dari indikator_teknikal
-        // Perhatikan: Menggunakan "Tanggal" sesuai skema indikator_teknikal
         let signalQuery = supabaseClient 
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
@@ -172,7 +162,6 @@ async function fetchAndRenderSignals(selectedDate = null) {
         }
         
         // 3. Kueri Data Fundamental dari data_saham
-        // Perhatikan: Menggunakan "Tanggal Perdagangan Terakhir" dan "Penutupan" sesuai skema data_saham
         statusMessage.textContent = `Mengambil data harga untuk tanggal ${dateToFilter}...`;
         const { data: fundamentalData, error: fundamentalError } = await supabaseClient
             .from('data_saham')
@@ -221,6 +210,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
             statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data harga lengkap.`;
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
+            globalCombinedSignals = [];
             return;
         }
         
@@ -244,416 +234,243 @@ async function fetchAndRenderSignals(selectedDate = null) {
 }
 
 // ********************************************
-// FUNGSI HELPER: PARSE CSV
+// FUNGSI BARU: UPLOAD CSV KE TEMP_SAHAM
 // ********************************************
 
-function parseCSVRow(row) {
-    const values = [];
-    let currentValue = '';
-    let insideQuotes = false;
-    
-    for (let i = 0; i < row.length; i++) {
-        const char = row[i];
-        const nextChar = row[i + 1];
-        
-        if (char === '"') {
-            if (insideQuotes && nextChar === '"') {
-                // Quote dalam quote (escape)
-                currentValue += '"';
-                i++; // Skip quote berikutnya
-            } else {
-                insideQuotes = !insideQuotes;
-            }
-        } else if (char === ',' && !insideQuotes) {
-            values.push(currentValue);
-            currentValue = '';
-        } else {
-            currentValue += char;
-        }
+async function handleCsvUpload() {
+    if (!csvFileInput.files.length) {
+        alert('Silakan pilih file CSV terlebih dahulu.');
+        return;
     }
     
-    values.push(currentValue); // Tambah nilai terakhir
-    return values;
-}
+    uploadCsvBtn.disabled = true;
+    const originalText = uploadCsvBtn.textContent;
+    uploadCsvBtn.textContent = 'Processing...';
 
-// Fungsi helper untuk parsing tanggal
-function parseDateString(dateStr) {
-    if (!dateStr) return null;
-    
-    // Coba format YYYY-MM-DD
-    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoMatch) {
-        return new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]));
-    }
-    
-    // Coba format DD/MM/YYYY
-    const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (slashMatch) {
-        return new Date(parseInt(slashMatch[3]), parseInt(slashMatch[2]) - 1, parseInt(slashMatch[1]));
-    }
-    
-    // Coba format MM/DD/YYYY
-    const usMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (usMatch) {
-        return new Date(parseInt(usMatch[3]), parseInt(usMatch[1]) - 1, parseInt(usMatch[2]));
-    }
-    
-    // Coba parsing dengan Date constructor
-    const date = new Date(dateStr);
-    if (!isNaN(date.getTime())) {
-        return date;
-    }
-    
-    return null;
-}
-
-// ********************************************
-// FUNGSI UPLOAD CSV KE TEMP_SAHAM (REVISI SESUAI STRUKTUR)
-// ********************************************
-
-async function uploadCSV() {
     const file = csvFileInput.files[0];
-    if (!file) {
-        showUploadStatus('Pilih file CSV terlebih dahulu', 'error');
-        return;
-    }
+    const reader = new FileReader();
 
-    showUploadStatus('Memproses file CSV...', 'info');
+    reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(line => line.trim() !== '');
 
-    try {
-        const text = await file.text();
-        const rows = text.split('\n');
-        const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
-        
-        // Validasi header - sesuaikan dengan struktur temp_saham
-        const requiredHeaders = ['Kode Saham', 'Tanggal Perdagangan Terakhir', 'Penutupan'];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        
-        if (missingHeaders.length > 0) {
-            showUploadStatus(`Header yang diperlukan tidak ditemukan: ${missingHeaders.join(', ')}`, 'error');
+        if (lines.length === 0) {
+            alert('File CSV kosong.');
+            uploadCsvBtn.disabled = false;
+            uploadCsvBtn.textContent = originalText;
             return;
         }
-
-        // Parse data - semua nilai sebagai string (sesuai struktur temp_saham)
-        const data = [];
-        for (let i = 1; i < rows.length; i++) {
-            if (rows[i].trim() === '') continue;
-            
-            // Gunakan parser CSV yang lebih robust
-            const values = parseCSVRow(rows[i]);
-            
-            // Pastikan jumlah kolom sesuai header
-            while (values.length < headers.length) {
-                values.push(''); // Tambah nilai kosong jika kolom kurang
+        
+        // Asumsi baris pertama adalah header
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const dataRows = lines.slice(1);
+        const dataToInsert = [];
+        
+        dataRows.forEach(row => {
+            // Memparsing baris CSV (hati-hati dengan koma di dalam nilai)
+            const values = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+            if (values && values.length === headers.length) {
+                let rowObject = {};
+                headers.forEach((header, index) => {
+                    rowObject[header] = values[index].trim().replace(/"/g, '');
+                });
+                dataToInsert.push(rowObject);
             }
-            
-            const row = {};
-            
-            // Map semua kolom yang ada di CSV ke struktur temp_saham
-            headers.forEach((header, index) => {
-                let value = values[index] || null;
-                
-                // Kosongkan string kosong
-                if (value === '' || value === null || value === undefined) {
-                    value = null;
-                } else {
-                    // Trim whitespace
-                    value = value.trim();
-                }
-                
-                row[header] = value;
-            });
-            
-            // Validasi data penting
-            if (!row['Kode Saham'] || !row['Tanggal Perdagangan Terakhir']) {
-                console.warn('Baris data tidak valid, dilewati:', row);
-                continue;
-            }
-            
-            // Format tanggal ke YYYY-MM-DD jika perlu
-            if (row['Tanggal Perdagangan Terakhir']) {
-                const dateStr = row['Tanggal Perdagangan Terakhir'];
-                // Coba parsing berbagai format tanggal
-                const date = parseDateString(dateStr);
-                if (date) {
-                    row['Tanggal Perdagangan Terakhir'] = date.toISOString().split('T')[0];
-                }
-            }
-            
-            data.push(row);
-        }
-
-        if (data.length === 0) {
-            showUploadStatus('Tidak ada data valid yang ditemukan dalam file CSV', 'error');
-            return;
-        }
-
-        showUploadStatus(`Mengunggah ${data.length} baris data ke tabel temp_saham...`, 'info');
-
-        // Upload ke tabel temp_saham di Supabase
-        const { error } = await supabaseClient
-            .from('temp_saham')
-            .upsert(data, { 
-                onConflict: 'Kode Saham,Tanggal Perdagangan Terakhir',
-                ignoreDuplicates: false 
-            });
-
-        if (error) {
-            console.error('Supabase error details:', error);
-            throw error;
-        }
-
-        showUploadStatus(`✅ Berhasil mengunggah ${data.length} baris data ke temp_saham!`, 'success');
-        
-        // Info tentang trigger RPC
-        showUploadStatus(`📋 Trigger otomatis akan memproses data. Data akan dipindahkan ke tabel data_saham.`, 'info');
-        
-        // Reset file input
-        csvFileInput.value = '';
-
-    } catch (error) {
-        console.error('Error uploading CSV:', error);
-        showUploadStatus(`❌ Error: ${error.message}`, 'error');
-        
-        // Cek apakah tabel temp_saham sudah dibuat
-        if (error.message.includes('relation "temp_saham" does not exist')) {
-            showUploadStatus('⚠️ Tabel temp_saham belum dibuat. Buat tabel terlebih dahulu di Supabase.', 'error');
-        }
-    }
-}
-
-function showUploadStatus(message, type = 'info') {
-    uploadStatus.textContent = message;
-    uploadStatus.className = 'upload-status';
-    uploadStatus.classList.add(`upload-${type}`);
-    uploadStatus.style.display = 'block';
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            uploadStatus.style.display = 'none';
-        }, 5000);
-    }
-}
-
-// ********************************************
-// FUNGSI PENCARIAN SAHAM (REVISI - UNIK PER KODE)
-// ********************************************
-
-async function searchStocks(query) {
-    if (query.length < 2) {
-        searchResults.style.display = 'none';
-        return;
-    }
-
-    try {
-        const { data, error } = await supabaseClient
-            .from('data_saham')
-            .select('"Kode Saham", "Nama Perusahaan"')
-            .or(`"Kode Saham".ilike.%${query}%,"Nama Perusahaan".ilike.%${query}%`)
-            .order('"Kode Saham"')
-            .limit(20); // Limit lebih besar untuk di-filter nanti
-
-        if (error) throw error;
-
-        // Filter untuk mendapatkan kode saham unik
-        const uniqueStocks = filterUniqueStocks(data || []);
-        displaySearchResults(uniqueStocks);
-    } catch (error) {
-        console.error('Error searching stocks:', error);
-        searchResults.innerHTML = '<div class="search-result-item">Error mencari data</div>';
-        searchResults.style.display = 'block';
-    }
-}
-
-function filterUniqueStocks(stocks) {
-    const seen = new Set();
-    const uniqueStocks = [];
-    
-    for (const stock of stocks) {
-        const stockCode = stock['Kode Saham'];
-        if (!seen.has(stockCode)) {
-            seen.add(stockCode);
-            uniqueStocks.push(stock);
-        }
-    }
-    
-    return uniqueStocks.slice(0, 10); // Maksimal 10 hasil unik
-}
-
-function displaySearchResults(stocks) {
-    if (stocks.length === 0) {
-        searchResults.innerHTML = '<div class="search-result-item">Tidak ditemukan</div>';
-        searchResults.style.display = 'block';
-        return;
-    }
-
-    searchResults.innerHTML = '';
-    stocks.forEach(stock => {
-        const div = document.createElement('div');
-        div.className = 'search-result-item';
-        div.innerHTML = `
-            <div style="flex: 1;">
-                <span class="search-result-code">${stock['Kode Saham']}</span>
-                <br>
-                <span class="search-result-name">${stock['Nama Perusahaan'] || '-'}</span>
-            </div>
-            <div style="font-size: 0.8em; color: #6b7280;">Klik untuk detail</div>
-        `;
-        
-        div.addEventListener('click', () => {
-            showStockDetailModal(stock['Kode Saham']);
-            stockSearch.value = '';
-            searchResults.style.display = 'none';
         });
         
-        searchResults.appendChild(div);
-    });
-    
-    searchResults.style.display = 'block';
-}
-
-// ********************************************
-// FUNGSI TAMBAHAN: CLEAR TEMP_SAHAM
-// ********************************************
-
-async function clearTempSaham() {
-    try {
-        const { error } = await supabaseClient
-            .from('temp_saham')
-            .delete()
-            .neq('Kode Saham', ''); // Hapus semua data
-
-        if (error) throw error;
-        
-        showUploadStatus('✅ Tabel temp_saham berhasil dibersihkan', 'success');
-    } catch (error) {
-        console.error('Error clearing temp_saham:', error);
-        showUploadStatus(`❌ Error: ${error.message}`, 'error');
-    }
-}
-
-// ********************************************
-// FUNGSI TAMBAHAN: CEK STATUS TEMP_SAHAM
-// ********************************************
-
-async function checkTempSahamStatus() {
-    try {
-        const { data, error } = await supabaseClient
-            .from('temp_saham')
-            .select('*', { count: 'exact', head: true });
-
-        if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
-        
-        const count = data ? data.length : 0;
-        console.log(`Jumlah data di temp_saham: ${count}`);
-        
-        return count;
-    } catch (error) {
-        console.error('Error checking temp_saham status:', error);
-        return 0;
-    }
-}
-
-// ********************************************
-// FUNGSI PORTFOLIO MANAGEMENT
-// ********************************************
-
-async function loadPortfolioStatus(stockCode) {
-    try {
-        const { data, error } = await supabaseClient
-            .from('portofolio_saham')
-            .select('*')
-            .eq('kode_saham', stockCode)
-            .single();
-
-        if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
-        
-        // Update UI berdasarkan status portfolio
-        if (data) {
-            // Saham ada di portfolio
-            ownedRadio.checked = true;
-            toggleOwned.classList.add('active');
-            toggleWatchlist.classList.remove('active');
-            
-            buyPriceInput.value = data.harga_beli || '';
-            buyDateInput.value = data.tanggal_beli || new Date().toISOString().split('T')[0];
-            buyPriceContainer.style.display = 'block';
-        } else {
-            // Saham tidak ada di portfolio
-            watchlistRadio.checked = true;
-            toggleWatchlist.classList.add('active');
-            toggleOwned.classList.remove('active');
-            
-            buyPriceContainer.style.display = 'none';
-        }
-        
-        portfolioStatusMessage.style.display = 'none';
-        
-    } catch (error) {
-        console.error('Error loading portfolio status:', error);
-    }
-}
-
-async function savePortfolioStatus(stockCode, status, buyPrice = null, buyDate = null) {
-    try {
-        let error;
-        
-        if (status === 'owned' && (!buyPrice || !buyDate)) {
-            showPortfolioMessage('Harap isi harga beli dan tanggal', 'error');
+        if (dataToInsert.length === 0) {
+            alert('Gagal memproses data CSV. Pastikan formatnya benar.');
+            uploadCsvBtn.disabled = false;
+            uploadCsvBtn.textContent = originalText;
             return;
         }
+
+        try {
+            // Menghapus data lama (jika perlu, disarankan menggunakan trigger di Supabase untuk mengurus INSERT/UPDATE data_saham)
+            // Namun, karena Anda menggunakan tabel temp_saham dan trigger process_temp_data_bulk, kita hanya perlu INSERT
+            
+            // Supabase memiliki batas payload, jadi disarankan untuk membagi menjadi batch
+            const batchSize = 1000;
+            for (let i = 0; i < dataToInsert.length; i += batchSize) {
+                const batch = dataToInsert.slice(i, i + batchSize);
+                const { error } = await supabaseClient
+                    .from('temp_saham')
+                    .insert(batch);
+
+                if (error) throw error;
+            }
+
+            statusMessage.textContent = `Sukses mengupload ${dataToInsert.length} baris ke temp_saham. Data akan diproses oleh trigger.`;
+            alert(`Sukses mengupload ${dataToInsert.length} baris ke temp_saham. Data akan diproses oleh trigger!`);
+            
+            // Reload sinyal setelah upload, mungkin ada data tanggal baru
+            fetchAndRenderSignals(); 
+
+        } catch (error) {
+            console.error('Error saat upload ke Supabase:', error);
+            statusMessage.textContent = `Gagal menyimpan data: ${error.message}`;
+            alert(`Gagal menyimpan data ke Supabase: ${error.message}`);
+        } finally {
+            uploadCsvBtn.disabled = false;
+            uploadCsvBtn.textContent = originalText;
+        }
+    };
+
+    reader.readAsText(file);
+}
+
+// ********************************************
+// FUNGSI BARU: PENCARIAN SAHAM
+// ********************************************
+
+async function fetchStockSuggestions(query) {
+    if (query.length < 2) {
+        suggestionList.innerHTML = '';
+        return;
+    }
+
+    try {
+        // Cari di data_saham (membutuhkan tanggal terbaru untuk efisiensi)
+        const { data: latestDateData } = await supabaseClient
+            .from('data_saham')
+            .select('"Tanggal Perdagangan Terakhir"')
+            .order('Tanggal Perdagangan Terakhir', { ascending: false })
+            .limit(1);
+            
+        const latestDate = latestDateData ? latestDateData[0]["Tanggal Perdagangan Terakhir"] : null;
+
+        if (!latestDate) return;
         
-        if (status === 'owned') {
-            // Insert atau update ke portfolio
+        // Hanya mencari saham yang memiliki data harga terbaru
+        const { data, error } = await supabaseClient
+            .from('data_saham')
+            .select(`"Kode Saham", "Nama Perusahaan"`)
+            .eq('Tanggal Perdagangan Terakhir', latestDate)
+            .ilike('Kode Saham', `${query}%`) // Mencari yang dimulai dengan query
+            .limit(10); 
+            
+        if (error) throw error;
+        
+        renderSuggestions(data);
+
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        suggestionList.innerHTML = '';
+    }
+}
+
+function renderSuggestions(suggestions) {
+    suggestionList.innerHTML = '';
+    
+    if (suggestions.length === 0) {
+        suggestionList.style.display = 'none';
+        return;
+    }
+    
+    suggestions.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = `${item["Kode Saham"]} - ${item["Nama Perusahaan"]}`;
+        li.style.padding = '10px';
+        li.style.cursor = 'pointer';
+        li.style.borderBottom = '1px solid #eee';
+        li.setAttribute('data-stock-code', item["Kode Saham"]);
+        
+        li.addEventListener('click', () => {
+            stockSearchInput.value = item["Kode Saham"];
+            suggestionList.innerHTML = '';
+            suggestionList.style.display = 'none';
+            showStockDetailModal(item["Kode Saham"]);
+        });
+        
+        suggestionList.appendChild(li);
+    });
+    
+    suggestionList.style.display = 'block';
+}
+
+
+// ********************************************
+// FUNGSI BARU: KONTROL PORTOFOLIO DI MODAL
+// ********************************************
+
+function updatePortfolioControl(stockCode) {
+    currentModalStockCode = stockCode;
+    const isOwned = globalPortfolio.has(stockCode);
+    const portfolioData = globalPortfolio.get(stockCode) || {};
+
+    ownedCheckbox.checked = isOwned;
+    buyPriceInput.value = isOwned ? portfolioData.hargaBeli || '' : '';
+    
+    if (isOwned) {
+        buyPriceGroup.style.display = 'flex';
+        watchlistStatus.style.display = 'none';
+    } else {
+        buyPriceGroup.style.display = 'none';
+        watchlistStatus.style.display = 'block';
+        watchlistStatus.textContent = `Saham ini saat ini tidak ada di portofolio (Watchlist).`;
+    }
+}
+
+async function handleSavePortfolio() {
+    const stockCode = currentModalStockCode;
+    const isOwned = ownedCheckbox.checked;
+    const buyPrice = buyPriceInput.value ? parseFloat(buyPriceInput.value) : null;
+
+    if (!stockCode) return;
+    
+    savePortfolioBtn.disabled = true;
+    savePortfolioBtn.textContent = 'Menyimpan...';
+
+    try {
+        if (isOwned && buyPrice > 0) {
+            // INSERT atau UPDATE
+            const today = new Date().toISOString().split('T')[0];
+            const existing = globalPortfolio.get(stockCode);
+            
+            const dataToUpsert = {
+                kode_saham: stockCode,
+                harga_beli: buyPrice,
+                tanggal_beli: existing ? existing.tanggalBeli : today // Pertahankan tanggal beli jika sudah ada
+            };
+
             const { error: upsertError } = await supabaseClient
                 .from('portofolio_saham')
-                .upsert({
-                    kode_saham: stockCode,
-                    harga_beli: parseFloat(buyPrice),
-                    tanggal_beli: buyDate
-                }, { onConflict: 'kode_saham' });
+                .upsert(dataToUpsert, { onConflict: 'kode_saham' });
+
+            if (upsertError) throw upsertError;
             
-            error = upsertError;
-        } else if (status === 'watchlist') {
-            // Hapus dari portfolio (jika ada)
+            alert(`Portofolio untuk ${stockCode} disimpan (Harga Beli: ${formatNumber(buyPrice)}).`);
+
+        } else if (!isOwned) {
+            // DELETE jika ada di portofolio
             const { error: deleteError } = await supabaseClient
                 .from('portofolio_saham')
                 .delete()
                 .eq('kode_saham', stockCode);
+                
+            if (deleteError) throw deleteError;
+            alert(`Saham ${stockCode} dihapus dari Portofolio.`);
             
-            error = deleteError;
+        } else if (isOwned && !buyPrice) {
+            // User ceklis Owned tapi harga beli kosong
+             alert('Harga Beli harus diisi jika "Owned" dicentang.');
+             return; // Jangan lanjutkan ke finally
         }
-        
-        if (error) throw error;
-        
-        showPortfolioMessage(`✅ Berhasil ${status === 'owned' ? 'menambahkan ke portfolio' : 'menghapus dari portfolio'}`, 'success');
-        
-        // Refresh portfolio data
+
+        // Muat ulang portofolio global dan sinyal
         await fetchPortfolio();
-        
-        // Refresh tampilan utama
-        const filterValue = signalFilter.value;
-        const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
-        categorizeAndRender(filteredSignals);
-        
+        fetchAndRenderSignals(dateFilter.value); 
+        updatePortfolioControl(stockCode); // Perbarui tampilan modal
+
     } catch (error) {
         console.error('Error saving portfolio:', error);
-        showPortfolioMessage(`❌ Error: ${error.message}`, 'error');
+        alert(`Gagal menyimpan portofolio: ${error.message}`);
+    } finally {
+        savePortfolioBtn.disabled = false;
+        savePortfolioBtn.textContent = 'Simpan';
     }
 }
 
-function showPortfolioMessage(message, type = 'info') {
-    portfolioStatusMessage.textContent = message;
-    portfolioStatusMessage.className = '';
-    portfolioStatusMessage.classList.add(`upload-${type}`);
-    portfolioStatusMessage.style.display = 'block';
-    
-    if (type === 'success') {
-        setTimeout(() => {
-            portfolioStatusMessage.style.display = 'none';
-        }, 3000);
-    }
-}
 
 // ********************************************
 // SETUP EVENT LISTENERS
@@ -693,80 +510,43 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Event Listeners untuk fitur baru
+    // NEW: CSV Upload Handler
     if (uploadCsvBtn) {
-        uploadCsvBtn.addEventListener('click', uploadCSV);
+        uploadCsvBtn.addEventListener('click', handleCsvUpload);
     }
     
-    if (stockSearch) {
-        let searchTimeout;
-        stockSearch.addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                searchStocks(e.target.value);
+    // NEW: Stock Search Handler
+    if (stockSearchInput) {
+        let debounceTimer;
+        stockSearchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetchStockSuggestions(e.target.value.trim().toUpperCase());
             }, 300);
         });
-        
-        // Sembunyikan hasil pencarian saat klik di luar
+        // Sembunyikan saran ketika fokus hilang (klik di luar)
         document.addEventListener('click', (e) => {
-            if (!stockSearch.contains(e.target) && !searchResults.contains(e.target)) {
-                searchResults.style.display = 'none';
+            if (!document.getElementById('searchContainer').contains(e.target)) {
+                suggestionList.style.display = 'none';
             }
         });
     }
     
-    // Event Listeners untuk temp_saham management
-    if (checkTempBtn) {
-        checkTempBtn.addEventListener('click', async () => {
-            const count = await checkTempSahamStatus();
-            showUploadStatus(`📊 Jumlah data di temp_saham: ${count}`, 'info');
-        });
-    }
-
-    if (clearTempBtn) {
-        clearTempBtn.addEventListener('click', async () => {
-            if (confirm('Yakin ingin menghapus semua data di temp_saham?')) {
-                await clearTempSaham();
+    // NEW: Portfolio Control Handlers
+    if (ownedCheckbox) {
+        ownedCheckbox.addEventListener('change', () => {
+            if (ownedCheckbox.checked) {
+                buyPriceGroup.style.display = 'flex';
+                watchlistStatus.style.display = 'none';
+            } else {
+                buyPriceGroup.style.display = 'none';
+                watchlistStatus.style.display = 'block';
+                watchlistStatus.textContent = `Saham ini akan dihapus dari Portofolio.`;
             }
         });
     }
-    
-    // Portfolio toggle events
-    if (toggleWatchlist && toggleOwned) {
-        toggleWatchlist.addEventListener('click', () => {
-            watchlistRadio.checked = true;
-            toggleWatchlist.classList.add('active');
-            toggleOwned.classList.remove('active');
-            buyPriceContainer.style.display = 'none';
-        });
-        
-        toggleOwned.addEventListener('click', () => {
-            ownedRadio.checked = true;
-            toggleOwned.classList.add('active');
-            toggleWatchlist.classList.remove('active');
-            buyPriceContainer.style.display = 'block';
-        });
-    }
-    
     if (savePortfolioBtn) {
-        savePortfolioBtn.addEventListener('click', async () => {
-            const status = document.querySelector('input[name="portfolioStatus"]:checked')?.value;
-            
-            if (!status) {
-                showPortfolioMessage('Pilih status terlebih dahulu', 'error');
-                return;
-            }
-            
-            const buyPrice = buyPriceInput.value;
-            const buyDate = buyDateInput.value;
-            
-            await savePortfolioStatus(currentStockCodeInModal, status, buyPrice, buyDate);
-        });
-    }
-    
-    // Set tanggal default untuk input tanggal beli
-    if (buyDateInput) {
-        buyDateInput.value = new Date().toISOString().split('T')[0];
+        savePortfolioBtn.addEventListener('click', handleSavePortfolio);
     }
     
     setupSorting();
@@ -774,6 +554,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     fetchAndRenderSignals(); 
 });
+
 
 // ********************************************
 // FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort)
@@ -834,6 +615,7 @@ function formatNumber(num, isVolume = false) {
     }
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
+
 
 function applySignalFilter(signals, filterType) {
     if (filterType === 'ALL') {
@@ -1079,36 +861,35 @@ function handleStockClick(event) {
     showStockDetailModal(stockCode);
 }
 
+
 // ********************************************
-// FUNGSI UTAMA DETAIL SAHAM
+// FUNGSI UTAMA DETAIL SAHAM (FIXED untuk Dual Fetch dan Tambah Portfolio Control)
 // ********************************************
 
 async function showStockDetailModal(stockCode) {
-    currentStockCodeInModal = stockCode;
     modalTitle.textContent = `Detail Saham ${stockCode}`;
     stockDetailModal.style.display = 'flex';
     rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Memuat data...</td></tr>';
     
+    // Set up portfolio control for this stock
+    updatePortfolioControl(stockCode);
+    
     if (priceChart) {
         priceChart.destroy();
     }
-    
-    // Reset form portfolio
-    portfolioStatusMessage.style.display = 'none';
-    buyPriceContainer.style.display = 'none';
-    watchlistRadio.checked = false;
-    ownedRadio.checked = false;
-    toggleWatchlist.classList.remove('active');
-    toggleOwned.classList.remove('active');
 
     try {
-        // Load portfolio status terlebih dahulu
-        await loadPortfolioStatus(stockCode);
-        
         // 1. Ambil data INDIKATOR (Tanpa Harga)
         const { data: indicatorData, error: indicatorError } = await supabaseClient 
             .from('indikator_teknikal')
-            .select(`"Tanggal", "RSI", "MACD_Line", "Signal_Line", "MA_5", "MA_20"`)
+            .select(`
+                "Tanggal",
+                "RSI", 
+                "MACD_Line", 
+                "Signal_Line", 
+                "MA_5", 
+                "MA_20"
+            `)
             .eq('Kode Saham', stockCode)
             .order('Tanggal', { ascending: false })
             .limit(30); 
@@ -1190,7 +971,8 @@ function renderPriceIndicatorChart(stockCode, data) {
     if (priceChart) {
         priceChart.destroy();
     }
-
+    
+    // 
     priceChart = new Chart(ctx, {
         type: 'line', 
         data: {
