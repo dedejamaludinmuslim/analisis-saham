@@ -653,7 +653,7 @@ async function showStockDetailModal(stockCode) {
 function updatePortfolioStatusDisplay(code) { 
     const owned = globalPortfolio.has(code); 
     portfolioStatusToggle.className = owned ? 'owned' : ''; 
-    portfolioStatusToggle.textContent = owned ? `OWNED (Hapus)` : 'Tambahkan ke Portofolio'; 
+    portfolioStatusToggle.textContent = owned ? `Remove from Portofolio` : 'Add to Portofolio'; 
 }
 
 // ==========================================
