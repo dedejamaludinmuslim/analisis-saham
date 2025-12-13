@@ -48,6 +48,7 @@ function categorizeSignals(signals) {
 // Fungsi untuk me-render data ke dalam kategori tabel
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
+    // Pastikan signalKey sesuai dengan struktur data Supabase
     const signalKey = `Sinyal_${categoryKey.replace('maCross', 'MA').replace('rsi', 'RSI').replace('macd', 'MACD').replace('volume', 'Volume')}`;
     
     tableBody.innerHTML = '';
@@ -67,11 +68,13 @@ function renderCategory(categoryKey, data) {
         row.insertCell().textContent = item["Kode Saham"];
         row.insertCell().textContent = item["Tanggal"];
 
-        // Kolom Sinyal (Aksi)
+        // Kolom Sinyal (Aksi) - Disesuaikan untuk tampilan modern (membungkus teks sinyal)
         const signalCell = row.insertCell();
         const signalText = item[signalKey];
-        signalCell.textContent = signalText;
-        signalCell.className = getSignalClass(signalText);
+        const signalSpan = document.createElement('span'); // Buat elemen span
+        signalSpan.textContent = signalText;
+        signalSpan.className = getSignalClass(signalText); // Terapkan kelas CSS ke span
+        signalCell.appendChild(signalSpan); // Masukkan span ke dalam cell
     });
 }
 
@@ -123,8 +126,8 @@ async function fetchAndRenderSignals() {
         // 4. Render per Kategori
         renderCategory('maCross', categorizedData.maCross);
         renderCategory('rsi', categorizedData.rsi);
+        renderCategory('volume', categorizedData.volume); // Volume di atas MACD
         renderCategory('macd', categorizedData.macd);
-        renderCategory('volume', categorizedData.volume);
 
         let totalSignals = Object.values(categorizedData).flat().length;
         statusMessage.textContent = `Sinyal untuk ${dailySignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
