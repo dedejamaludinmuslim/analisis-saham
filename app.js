@@ -43,8 +43,7 @@ let priceChart = null;
 let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
 let globalPortfolio = new Map(); 
-// NEW: Menyimpan hasil analisa (Cut Loss, Trailing, dll) dari SQL
-let globalPortfolioAnalysis = new Map(); 
+let globalPortfolioAnalysis = new Map(); // Smart Portfolio
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
 let currentModalStockCode = null; 
 
@@ -56,27 +55,24 @@ const categories = {
 };
 
 // ==========================================
-// 1. DATA FETCHING (CORE LOGIC)
+// 1. DATA FETCHING (SMART PORTFOLIO)
 // ==========================================
 
-// UPDATED: Fetch Data Dasar + Data Analisa Cerdas dari SQL
 async function fetchPortfolio() {
     try {
-        // A. Ambil Data Dasar (Untuk Logika Toggle & Modal)
+        // A. Ambil Data Dasar
         const { data: rawData, error } = await supabaseClient
             .from('portofolio_saham')
             .select('kode_saham, harga_beli, harga_tertinggi_sejak_beli'); 
         
         if (error) throw error;
         
-        // Map Dasar: Kode -> { Harga Beli }
         globalPortfolio = new Map(rawData.map(item => [
             item.kode_saham, 
             { hargaBeli: item.harga_beli }
         ]));
 
         // B. Ambil Data Analisa (Brain) via RPC
-        // Menggunakan tanggal dari filter, atau hari ini jika kosong
         const targetDate = dateFilter.value || new Date().toISOString().split('T')[0];
         
         const { data: analysisData, error: rpcError } = await supabaseClient
@@ -92,7 +88,7 @@ async function fetchPortfolio() {
 
         return globalPortfolio;
     } catch (error) {
-        console.warn('Info: Portofolio kosong atau gagal load.', error.message);
+        console.warn('Info: Portofolio kosong/gagal.', error.message);
         return new Map(); 
     }
 }
@@ -107,7 +103,7 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
         } catch (error) { alert(`Gagal: ${error.message}`); return false; }
     } else {
         const latestPrice = await getLatestStockPrice(stockCode);
-        const latestDate = dateFilter.value; // Tanggal transaksi dianggap tgl filter saat ini
+        const latestDate = dateFilter.value; 
         
         if (!latestPrice) { alert("Harga tidak tersedia."); return false; }
         
@@ -115,19 +111,17 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
         if (!confirmPrice) return false;
         
         try {
-            // Insert data baru, set harga_tertinggi awal = harga beli
             await supabaseClient.from('portofolio_saham').upsert({ 
                 kode_saham: stockCode, 
                 harga_beli: parseFloat(confirmPrice), 
                 tanggal_beli: latestDate,
-                harga_tertinggi_sejak_beli: parseFloat(confirmPrice) // Penting untuk trailing stop awal
+                harga_tertinggi_sejak_beli: parseFloat(confirmPrice)
             }, { onConflict: 'kode_saham' });
             
             globalPortfolio.set(stockCode, { hargaBeli: parseFloat(confirmPrice) });
         } catch (error) { alert(`Gagal: ${error.message}`); return false; }
     }
     
-    // Refresh data portofolio agar status analisa terupdate
     await fetchPortfolio();
     
     if (currentModalStockCode === stockCode) updatePortfolioStatusDisplay(stockCode);
@@ -155,14 +149,11 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
 
 function mergeSignals(staticSignals, customMASignals) {
     const mergedMap = new Map();
-    // Masukkan sinyal statis (default)
     staticSignals.forEach(s => {
-        // Filter: Hanya yang punya sinyal atau data valid
         if (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume) {
             mergedMap.set(s["Kode Saham"], { ...s });
         }
     });
-    // Timpa/Gabung dengan sinyal MA Custom
     customMASignals.forEach(cs => {
         const existing = mergedMap.get(cs["Kode Saham"]) || {};
         mergedMap.set(cs["Kode Saham"], { 
@@ -175,11 +166,8 @@ function mergeSignals(staticSignals, customMASignals) {
         });
     });
     
-    // Jika user punya portfolio tapi tidak ada sinyal hari ini, tetap masukkan agar bisa dipantau
     globalPortfolio.forEach((val, key) => {
-        if (!mergedMap.has(key)) {
-            // Fetch data minimal untuk display row portfolio bisa ditambahkan disini
-        }
+        if (!mergedMap.has(key)) { }
     });
 
     return Array.from(mergedMap.values()).filter(item => item.Sinyal_MA || item.Sinyal_RSI || item.Sinyal_MACD || item.Sinyal_Volume || globalPortfolio.has(item["Kode Saham"]));
@@ -196,10 +184,8 @@ async function fetchAndRenderSignals(selectedDate = null) {
             selectedDate = latest; 
         }
 
-        // 1. Load Portfolio & Analysis (Wajib sebelum render)
         await fetchPortfolio(); 
 
-        // 2. Load Market Signals
         const { data: signalData, error: signalError } = await supabaseClient
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
@@ -226,12 +212,10 @@ async function fetchAndRenderSignals(selectedDate = null) {
             if (fundamentalMap[s["Kode Saham"]]) staticCombinedSignals.push({ ...s, ...fundamentalMap[s["Kode Saham"]] });
         });
         
-        // Merge logic
         let finalSignals;
         if (globalCustomMASignals.length > 0 && selectedDate === globalCustomMASignals[0].Tanggal) {
             finalSignals = mergeSignals(staticCombinedSignals, globalCustomMASignals);
         } else {
-            // Tampilkan sinyal valid ATAU saham yang dimiliki user
             finalSignals = staticCombinedSignals.filter(s => 
                 s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume || globalPortfolio.has(s["Kode Saham"])
             );
@@ -246,37 +230,28 @@ async function fetchAndRenderSignals(selectedDate = null) {
 }
 
 // ==========================================
-// 2. CSV UPLOAD HANDLER (SWEETALERT UPDATE)
+// 2. CSV UPLOAD (SWEETALERT2)
 // ==========================================
 async function clearTempTable() {
     await supabaseClient.from('temp_saham').delete().neq('Kode Saham', 'XXXXXX'); 
 }
 
-// Updated untuk return boolean yang bersih
 async function uploadBatches(rows) {
     const BATCH_SIZE = 100;
     try {
         await clearTempTable();
         const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
-        
         for (let i = 0; i < totalBatches; i++) {
             const batch = rows.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
-            
-            // Update teks loading di SweetAlert
             if(Swal.isVisible()) {
                 Swal.getHtmlContainer().querySelector('b').textContent = `${(i+1) * BATCH_SIZE} / ${rows.length}`;
             }
-            
             const { error } = await supabaseClient.from('temp_saham').insert(batch);
             if (error) throw error;
         }
         return true;
     } catch (error) {
-        Swal.fire({
-            icon: 'error',
-            title: 'Gagal Upload',
-            text: error.message
-        });
+        Swal.fire({ icon: 'error', title: 'Gagal Upload', text: error.message });
         return false;
     }
 }
@@ -285,172 +260,51 @@ csvFileInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // 1. Konfirmasi Cantik dengan SweetAlert
     Swal.fire({
-        title: 'Upload Data Saham?',
-        text: `Anda akan mengunggah file: ${file.name}`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#4f46e5',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Ya, Proses!',
-        cancelButtonText: 'Batal'
+        title: 'Upload Data Saham?', text: `File: ${file.name}`, icon: 'question',
+        showCancelButton: true, confirmButtonColor: '#4f46e5', cancelButtonColor: '#d33', confirmButtonText: 'Ya, Proses!', cancelButtonText: 'Batal'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Jika user klik Ya, parsing CSV
             Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
+                header: true, skipEmptyLines: true,
                 complete: async (results) => {
-                    // Tampilkan Loading
-                    Swal.fire({
-                        title: 'Sedang Memproses...',
-                        html: `Mengunggah <b>${results.data.length}</b> baris data.<br>Mohon tunggu sebentar.`,
-                        allowOutsideClick: false,
-                        didOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-
-                    // Proses Upload
+                    Swal.fire({ title: 'Sedang Memproses...', html: `Mengunggah <b>${results.data.length}</b> baris data.`, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
                     const success = await uploadBatches(results.data);
-
                     if (success) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Selesai!',
-                            text: 'Data berhasil diunggah. Silakan klik tombol Refresh Analisa jika indikator belum muncul.',
-                            timer: 3000,
-                            showConfirmButton: false
-                        });
-                        
-                        csvFileInput.value = ''; // Reset input
+                        Swal.fire({ icon: 'success', title: 'Selesai!', text: 'Data berhasil diunggah.', timer: 3000, showConfirmButton: false });
+                        csvFileInput.value = ''; 
+                        setTimeout(() => fetchAndRenderSignals(), 3000);
                     }
                 }
             });
-        } else {
-            csvFileInput.value = ''; // Reset jika batal
-        }
+        } else { csvFileInput.value = ''; }
     });
 });
 
 // ==========================================
-// 3. FITUR REFRESH ANALISA MANUAL
+// 3. REFRESH ANALISA (MANUAL TRIGGER)
 // ==========================================
 refreshAnalysisBtn?.addEventListener('click', async () => {
-    // 1. Konfirmasi User
     const result = await Swal.fire({
-        title: 'Jalankan Analisa Harian?',
-        text: "Sistem akan menghitung ulang indikator MA, RSI, dan status Portofolio berdasarkan data terbaru.",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#4f46e5',
-        confirmButtonText: 'Ya, Jalankan',
-        cancelButtonText: 'Batal'
+        title: 'Jalankan Analisa Harian?', text: "Update status Trailing Stop & Cut Loss Portofolio.", icon: 'question',
+        showCancelButton: true, confirmButtonColor: '#4f46e5', confirmButtonText: 'Ya, Jalankan', cancelButtonText: 'Batal'
     });
 
     if (result.isConfirmed) {
-        // 2. Loading State
-        Swal.fire({
-            title: 'Sedang Menganalisa...',
-            text: 'Menjalankan fungsi run_all_analysis()...',
-            allowOutsideClick: false,
-            didOpen: () => { Swal.showLoading(); }
-        });
-
+        Swal.fire({ title: 'Sedang Menganalisa...', text: 'Mengupdate portofolio...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
         try {
-            // 3. Panggil Function SQL Wrapper
-            // Note: Pastikan Anda sudah membuat function 'refresh_market_analysis' di Supabase SQL Editor
             const { error } = await supabaseClient.rpc('refresh_market_analysis');
-
             if (error) throw error;
-
-            // 4. Sukses - Reload Tampilan
             await fetchAndRenderSignals(); 
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Selesai!',
-                text: 'Data pasar dan portofolio berhasil diperbarui.',
-                timer: 2000,
-                showConfirmButton: false
-            });
-
+            Swal.fire({ icon: 'success', title: 'Selesai!', text: 'Portofolio diperbarui.', timer: 2000, showConfirmButton: false });
         } catch (error) {
-            console.error(error);
-            Swal.fire({
-                icon: 'error',
-                title: 'Gagal',
-                text: 'Backend Error: ' + error.message
-            });
+            Swal.fire({ icon: 'error', title: 'Gagal', text: error.message });
         }
     }
 });
 
-
 // ==========================================
-// 4. EVENT LISTENERS
-// ==========================================
-
-// Search Logic
-async function searchStocks(query) {
-    if (query.length < 2) { stockSearchResults.style.display = 'none'; return []; }
-    try {
-        const { data } = await supabaseClient.from('data_saham').select(`"Kode Saham", "Nama Perusahaan"`).ilike('Kode Saham', `${query}%`).limit(20);
-        const unique = [], seen = new Set();
-        data.forEach(item => { if(!seen.has(item["Kode Saham"])) { seen.add(item["Kode Saham"]); unique.push({code:item["Kode Saham"], name:item["Nama Perusahaan"]}); }});
-        return unique;
-    } catch { return []; }
-}
-let searchTimeout;
-stockSearchInput.addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(async () => {
-        const res = await searchStocks(e.target.value.trim().toUpperCase());
-        stockSearchResults.innerHTML = '';
-        if(!res.length) { stockSearchResults.style.display='none'; return;}
-        res.forEach(i => {
-            const d = document.createElement('div'); d.className='search-result-item';
-            d.innerHTML = `<span class="search-result-code">${i.code}</span><span class="search-result-name">${i.name}</span>`;
-            d.onclick = () => { showStockDetailModal(i.code); stockSearchInput.value=''; stockSearchResults.style.display='none'; };
-            stockSearchResults.appendChild(d);
-        });
-        stockSearchResults.style.display='block';
-    }, 300);
-});
-document.addEventListener('click', (e) => { if (!stockSearchContainer.contains(e.target)) stockSearchResults.style.display = 'none'; });
-
-// UI Listeners
-document.addEventListener('DOMContentLoaded', () => {
-    dateFilter?.addEventListener('change', () => { 
-        globalCustomMASignals = []; 
-        fetchAndRenderSignals(dateFilter.value); 
-    });
-
-    signalFilter?.addEventListener('change', () => categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value)));
-    
-    applyMaCustomButton?.addEventListener('click', async () => {
-        await fetchCustomMASignals(dateFilter.value, maFastInput.value, maSlowInput.value);
-        fetchAndRenderSignals(dateFilter.value);
-    });
-
-    setupSorting();
-    
-    // Modal Listeners
-    const hideModal = () => stockDetailModal.style.display = 'none';
-    closeModalBtn?.addEventListener('click', hideModal);
-    stockDetailModal?.addEventListener('click', (e) => { if (e.target === stockDetailModal) hideModal(); });
-    portfolioStatusToggle?.addEventListener('click', async () => await togglePortfolioStatus(currentModalStockCode, portfolioStatusToggle.classList.contains('owned')));
-
-    aboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'flex'; });
-    closeAboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'none'; });
-    aboutModal?.addEventListener('click', (e) => { if (e.target === aboutModal) aboutModal.style.display = 'none'; });
-
-    fetchAndRenderSignals(); 
-});
-
-// ==========================================
-// 5. RENDERING & HELPERS
+// 4. RENDERING (SMART BADGES)
 // ==========================================
 
 async function initializeDateInput() {
@@ -458,8 +312,7 @@ async function initializeDateInput() {
         const { data } = await supabaseClient.from('indikator_teknikal').select('Tanggal').order('Tanggal', { ascending: false }).limit(1);
         if (data && data.length > 0) {
             const latestDate = data[0].Tanggal;
-            dateFilter.value = latestDate; 
-            dateFilter.max = new Date().toISOString().split("T")[0]; 
+            dateFilter.value = latestDate; dateFilter.max = new Date().toISOString().split("T")[0]; 
             return latestDate;
         }
         return null;
@@ -471,10 +324,8 @@ function applySignalFilter(signals, filterType) {
     if (filterType === 'OWNED') return signals.filter(item => globalPortfolio.has(item["Kode Saham"]));
     
     return signals.filter(item => {
-        // Cek juga status di portofolio analysis
         const pfAnalysis = globalPortfolioAnalysis.get(item["Kode Saham"]);
         const pfStatus = pfAnalysis ? pfAnalysis.status_aksi : "";
-
         const txt = [item.Sinyal_MA, item.Sinyal_RSI, item.Sinyal_MACD, item.Sinyal_Volume, pfStatus].join(' ').toUpperCase();
         
         if (filterType === 'BUY') return txt.includes('BUY') || txt.includes('ADD ON') || txt.includes('GOLDEN') || txt.includes('OVERSOLD');
@@ -514,92 +365,63 @@ function sortSignals(signals, column, direction) {
 function categorizeAndRender(signals) {
     const sorted = sortSignals([...signals], sortState.column, sortState.direction);
     const cat = { maCross: [], rsi: [], macd: [], volume: [] };
-    
     sorted.forEach(item => {
         if (!item.Penutupan) return; 
-        
-        // Memasukkan ke kategori. Satu saham bisa masuk beberapa kategori
-        // Prioritas Portofolio: Jika dimiliki, tampilkan di semua tab yang relevan
         const isOwned = globalPortfolio.has(item["Kode Saham"]);
-        
         if (item.Sinyal_MA || isOwned) cat.maCross.push(item);
         if (item.Sinyal_RSI) cat.rsi.push(item);
         if (item.Sinyal_MACD) cat.macd.push(item);
         if (item.Sinyal_Volume) cat.volume.push(item);
     });
-    
-    renderCategory('maCross', cat.maCross); 
-    renderCategory('rsi', cat.rsi); 
-    renderCategory('volume', cat.volume); 
-    renderCategory('macd', cat.macd);
+    renderCategory('maCross', cat.maCross); renderCategory('rsi', cat.rsi); renderCategory('volume', cat.volume); renderCategory('macd', cat.macd);
     
     let count = signals.length;
     let dateTxt = dateFilter.value;
     statusMessage.textContent = count > 0 ? `Menampilkan ${count} saham (${dateTxt})` : `Tidak ada sinyal signifikan untuk ${dateTxt}`;
-    
     updateSortIcons();
     document.querySelectorAll('.clickable-stock').forEach(el => el.onclick = handleStockClick);
 }
 
-// UPDATED: Render Category dengan Logic Badge Pintar
 function renderCategory(key, data) {
     const { tableBody, statusEl, tableEl } = categories[key];
     const sigKey = `Sinyal_${key.replace('maCross','MA').replace('rsi','RSI').replace('macd','MACD').replace('volume','Volume')}`;
-    
     tableBody.innerHTML = '';
     if (data.length === 0) { statusEl.style.display = 'block'; tableEl.style.display = 'none'; return; }
-    
     statusEl.style.display = 'none'; tableEl.style.display = 'table'; 
-    
     data.forEach(item => {
         const row = tableBody.insertRow();
         const code = item["Kode Saham"];
         const pf = globalPortfolio.get(code);
         
-        // 1. Kolom Kode
         row.insertCell().innerHTML = `<span class="clickable-stock">${code}</span>`;
-        
-        // 2. Kolom Status (UPDATED)
         const statusCell = row.insertCell();
         if (pf) {
-            // Cek hasil Analisa Database
             const analysis = globalPortfolioAnalysis.get(code);
             if (analysis) {
-                // Tampilkan Badge Smart (Cut Loss / Trailing / Add On)
                 statusCell.innerHTML = `<span class="badge ${analysis.warna_badge}" title="${analysis.alasan}" style="cursor:help;">${analysis.status_aksi}</span>`;
             } else {
-                // Fallback normal
                 statusCell.innerHTML = `<span class="badge badge-owned">OWNED</span>`;
             }
         } else {
             statusCell.innerHTML = `<span class="badge badge-neutral">WATCH</span>`;
         }
 
-        // 3. Kolom Avg Price
         row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
-        
-        // 4. Kolom Profit/Loss
         const plCell = row.insertCell();
         if (pf) {
             const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
             plCell.className = pnl >= 0 ? 'text-green' : 'text-red'; 
             plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
-        } else {
-            plCell.textContent = '-';
-        }
+        } else { plCell.textContent = '-'; }
 
-        // 5. Kolom Data Lain
         row.insertCell().textContent = item.Tanggal ? item.Tanggal.slice(5) : '-';
         row.insertCell().textContent = formatNumber(item.Penutupan, false, true);
         row.insertCell().textContent = formatNumber(item.Volume, true);
-        
-        // 6. Kolom Chg%
         const chg = parseFloat(item.Selisih || 0);
         const chgCell = row.insertCell();
         chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
         chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
         
-        // 7. Kolom Sinyal Teknikal
         const signalText = item[sigKey] || '-';
         row.insertCell().innerHTML = `<span class="${getSignalClass(signalText)}">${signalText}</span>`;
     });
@@ -629,7 +451,7 @@ function updateSortIcons() {
 function handleStockClick(e) { showStockDetailModal(e.target.textContent); }
 
 // ==========================================
-// 6. MODAL LOGIC
+// 5. MODAL & EVENT LISTENERS
 // ==========================================
 async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode; 
@@ -642,21 +464,13 @@ async function showStockDetailModal(stockCode) {
     if(priceChart) priceChart.destroy();
     
     try {
-        const { data: indicators } = await supabaseClient
-            .from('indikator_teknikal')
-            .select('*')
-            .eq('Kode Saham', stockCode)
-            .order('Tanggal', { ascending: false })
-            .limit(30);
-            
+        const { data: indicators } = await supabaseClient.from('indikator_teknikal').select('*').eq('Kode Saham', stockCode).order('Tanggal', { ascending: false }).limit(30);
         if(!indicators || !indicators.length) { 
             rawIndicatorTableBody.innerHTML = '<tr><td colspan="7">Data kosong</td></tr>'; 
-            modalCompanyName.textContent = "Data tidak ditemukan"; 
-            return; 
+            modalCompanyName.textContent = "Data tidak ditemukan"; return; 
         }
         
         const dates = indicators.map(i => i.Tanggal);
-        
         const { data: prices } = await supabaseClient.from('data_saham')
             .select('"Tanggal Perdagangan Terakhir", "Penutupan", "Nama Perusahaan"')
             .eq('Kode Saham', stockCode)
@@ -668,40 +482,20 @@ async function showStockDetailModal(stockCode) {
             modalCompanyName.textContent = "";
         }
 
-        const priceMap = new Map(); 
-        prices?.forEach(p => priceMap.set(p["Tanggal Perdagangan Terakhir"], p.Penutupan));
-        
+        const priceMap = new Map(); prices?.forEach(p => priceMap.set(p["Tanggal Perdagangan Terakhir"], p.Penutupan));
         const histData = indicators.map(i => ({ ...i, Penutupan: priceMap.get(i.Tanggal) })).reverse();
         
         rawIndicatorTableBody.innerHTML = '';
         [...histData].reverse().forEach(d => {
             const r = rawIndicatorTableBody.insertRow();
-            r.insertCell().textContent = d.Tanggal; 
-            r.insertCell().textContent = formatNumber(d.Penutupan, false, true); 
-            r.insertCell().textContent = parseFloat(d.RSI||0).toFixed(2); 
-            r.insertCell().textContent = parseFloat(d.MACD_Line||0).toFixed(2); 
-            r.insertCell().textContent = parseFloat(d.Signal_Line||0).toFixed(2); 
-            r.insertCell().textContent = formatNumber(d.MA_5, false, true); 
-            r.insertCell().textContent = formatNumber(d.MA_20, false, true);
+            r.insertCell().textContent = d.Tanggal; r.insertCell().textContent = formatNumber(d.Penutupan, false, true); r.insertCell().textContent = parseFloat(d.RSI||0).toFixed(2); r.insertCell().textContent = parseFloat(d.MACD_Line||0).toFixed(2); r.insertCell().textContent = parseFloat(d.Signal_Line||0).toFixed(2); r.insertCell().textContent = formatNumber(d.MA_5, false, true); r.insertCell().textContent = formatNumber(d.MA_20, false, true);
         });
 
         const ctx = document.getElementById('priceIndicatorChart').getContext('2d');
         priceChart = new Chart(ctx, { 
             type: 'line', 
-            data: { 
-                labels: histData.map(d => d.Tanggal.slice(5)), 
-                datasets: [ 
-                    { label: 'Harga', data: histData.map(d => d.Penutupan), borderColor: '#4f46e5', tension: 0.1, yAxisID: 'y' }, 
-                    { label: 'MA5', data: histData.map(d => d.MA_5), borderColor: '#f43f5e', borderWidth:1, pointRadius:0, yAxisID: 'y' }, 
-                    { label: 'MA20', data: histData.map(d => d.MA_20), borderColor: '#0ea5e9', borderWidth:1, pointRadius:0, yAxisID: 'y' } 
-                ] 
-            }, 
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                scales: { y: { position: 'left', grid: { display: false } } }, 
-                plugins: { legend: { labels: { boxWidth: 10 } } } 
-            } 
+            data: { labels: histData.map(d => d.Tanggal.slice(5)), datasets: [ { label: 'Harga', data: histData.map(d => d.Penutupan), borderColor: '#4f46e5', tension: 0.1, yAxisID: 'y' }, { label: 'MA5', data: histData.map(d => d.MA_5), borderColor: '#f43f5e', borderWidth:1, pointRadius:0, yAxisID: 'y' }, { label: 'MA20', data: histData.map(d => d.MA_20), borderColor: '#0ea5e9', borderWidth:1, pointRadius:0, yAxisID: 'y' } ] }, 
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { position: 'left', grid: { display: false } } }, plugins: { legend: { labels: { boxWidth: 10 } } } } 
         });
     } catch (e) { rawIndicatorTableBody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`; }
 }
@@ -711,3 +505,79 @@ function updatePortfolioStatusDisplay(code) {
     portfolioStatusToggle.className = owned ? 'owned' : ''; 
     portfolioStatusToggle.textContent = owned ? `OWNED (Hapus)` : 'Tambahkan ke Portofolio'; 
 }
+
+// Search Logic
+async function searchStocks(query) {
+    if (query.length < 2) { stockSearchResults.style.display = 'none'; return []; }
+    try {
+        const { data } = await supabaseClient.from('data_saham').select(`"Kode Saham", "Nama Perusahaan"`).ilike('Kode Saham', `${query}%`).limit(20);
+        const unique = [], seen = new Set();
+        data.forEach(item => { if(!seen.has(item["Kode Saham"])) { seen.add(item["Kode Saham"]); unique.push({code:item["Kode Saham"], name:item["Nama Perusahaan"]}); }});
+        return unique;
+    } catch { return []; }
+}
+let searchTimeout;
+stockSearchInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+        const res = await searchStocks(e.target.value.trim().toUpperCase());
+        stockSearchResults.innerHTML = '';
+        if(!res.length) { stockSearchResults.style.display='none'; return;}
+        res.forEach(i => {
+            const d = document.createElement('div'); d.className='search-result-item';
+            d.innerHTML = `<span class="search-result-code">${i.code}</span><span class="search-result-name">${i.name}</span>`;
+            d.onclick = () => { showStockDetailModal(i.code); stockSearchInput.value=''; stockSearchResults.style.display='none'; };
+            stockSearchResults.appendChild(d);
+        });
+        stockSearchResults.style.display='block';
+    }, 300);
+});
+document.addEventListener('click', (e) => { if (!stockSearchContainer.contains(e.target)) stockSearchResults.style.display = 'none'; });
+
+// UI Listeners
+document.addEventListener('DOMContentLoaded', () => {
+    dateFilter?.addEventListener('change', () => { globalCustomMASignals = []; fetchAndRenderSignals(dateFilter.value); });
+    signalFilter?.addEventListener('change', () => categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value)));
+    applyMaCustomButton?.addEventListener('click', async () => { await fetchCustomMASignals(dateFilter.value, maFastInput.value, maSlowInput.value); fetchAndRenderSignals(dateFilter.value); });
+
+    setupSorting();
+    
+    const hideModal = () => stockDetailModal.style.display = 'none';
+    closeModalBtn?.addEventListener('click', hideModal);
+    stockDetailModal?.addEventListener('click', (e) => { if (e.target === stockDetailModal) hideModal(); });
+    portfolioStatusToggle?.addEventListener('click', async () => await togglePortfolioStatus(currentModalStockCode, portfolioStatusToggle.classList.contains('owned')));
+
+    aboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'flex'; });
+    closeAboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'none'; });
+    aboutModal?.addEventListener('click', (e) => { if (e.target === aboutModal) aboutModal.style.display = 'none'; });
+
+    fetchAndRenderSignals(); 
+});
+
+
+// ==========================================
+// 6. INSTALL APP LOGIC (PWA)
+// ==========================================
+let deferredPrompt;
+const installBtn = document.getElementById('installAppBtn');
+
+window.addEventListener('appinstalled', () => {
+    installBtn.style.display = 'none';
+    deferredPrompt = null;
+    console.log('Aplikasi berhasil diinstal');
+});
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.style.display = 'inline-flex';
+});
+
+installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response: ${outcome}`);
+    deferredPrompt = null;
+    installBtn.style.display = 'none';
+});
