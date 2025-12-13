@@ -19,6 +19,8 @@ const uploadCsvBtn = document.getElementById('uploadCsvBtn');
 const uploadStatus = document.getElementById('uploadStatus');
 const stockSearch = document.getElementById('stockSearch');
 const searchResults = document.getElementById('searchResults');
+const checkTempBtn = document.getElementById('checkTempBtn');
+const clearTempBtn = document.getElementById('clearTempBtn');
 
 // --- DOM MODAL BARU ---
 const stockDetailModal = document.getElementById('stockDetailModal');
@@ -100,7 +102,6 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
         return [];
     }
 }
-
 
 // FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM
 function mergeSignals(staticSignals, customMASignals) {
@@ -242,9 +243,72 @@ async function fetchAndRenderSignals(selectedDate = null) {
     }
 }
 
+// ********************************************
+// FUNGSI HELPER: PARSE CSV
+// ********************************************
+
+function parseCSVRow(row) {
+    const values = [];
+    let currentValue = '';
+    let insideQuotes = false;
+    
+    for (let i = 0; i < row.length; i++) {
+        const char = row[i];
+        const nextChar = row[i + 1];
+        
+        if (char === '"') {
+            if (insideQuotes && nextChar === '"') {
+                // Quote dalam quote (escape)
+                currentValue += '"';
+                i++; // Skip quote berikutnya
+            } else {
+                insideQuotes = !insideQuotes;
+            }
+        } else if (char === ',' && !insideQuotes) {
+            values.push(currentValue);
+            currentValue = '';
+        } else {
+            currentValue += char;
+        }
+    }
+    
+    values.push(currentValue); // Tambah nilai terakhir
+    return values;
+}
+
+// Fungsi helper untuk parsing tanggal
+function parseDateString(dateStr) {
+    if (!dateStr) return null;
+    
+    // Coba format YYYY-MM-DD
+    const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        return new Date(parseInt(isoMatch[1]), parseInt(isoMatch[2]) - 1, parseInt(isoMatch[3]));
+    }
+    
+    // Coba format DD/MM/YYYY
+    const slashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (slashMatch) {
+        return new Date(parseInt(slashMatch[3]), parseInt(slashMatch[2]) - 1, parseInt(slashMatch[1]));
+    }
+    
+    // Coba format MM/DD/YYYY
+    const usMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (usMatch) {
+        return new Date(parseInt(usMatch[3]), parseInt(usMatch[1]) - 1, parseInt(usMatch[2]));
+    }
+    
+    // Coba parsing dengan Date constructor
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+        return date;
+    }
+    
+    return null;
+}
 
 // ********************************************
-// FUNGSI UPLOAD CSV KE TEMP_SAHAM
+// FUNGSI UPLOAD CSV KE TEMP_SAHAM (REVISI SESUAI STRUKTUR)
 // ********************************************
 
 async function uploadCSV() {
@@ -270,51 +334,58 @@ async function uploadCSV() {
             return;
         }
 
-        // Parse data
+        // Parse data - semua nilai sebagai string (sesuai struktur temp_saham)
         const data = [];
         for (let i = 1; i < rows.length; i++) {
             if (rows[i].trim() === '') continue;
             
-            const values = rows[i].split(',').map(v => v.trim().replace(/"/g, ''));
+            // Gunakan parser CSV yang lebih robust
+            const values = parseCSVRow(rows[i]);
+            
+            // Pastikan jumlah kolom sesuai header
+            while (values.length < headers.length) {
+                values.push(''); // Tambah nilai kosong jika kolom kurang
+            }
+            
             const row = {};
             
-            // Map semua kolom yang ada di CSV
+            // Map semua kolom yang ada di CSV ke struktur temp_saham
             headers.forEach((header, index) => {
                 let value = values[index] || null;
                 
-                // Konversi tipe data yang diperlukan
-                if (header === 'Tanggal Perdagangan Terakhir' && value) {
-                    // Format tanggal: pastikan format YYYY-MM-DD
-                    if (value.includes('/')) {
-                        const parts = value.split('/');
-                        if (parts.length === 3) {
-                            value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                        }
-                    }
-                }
-                
-                // Konversi nilai numerik
-                if (['Penutupan', 'Sebelumnya', 'Open Price', 'First Trade', 'Tertinggi', 'Terendah', 
-                     'Selisih', 'Nilai', 'Index Individual', 'Offer', 'Bid', 'Weight For Index', 
-                     'Non Regular Value'].includes(header) && value) {
-                    value = parseFloat(value.replace(/[^0-9.-]+/g, '')) || null;
-                }
-                
-                // Konversi nilai integer
-                if (['No', 'Frekuensi', 'Non Regular Frequency'].includes(header) && value) {
-                    value = parseInt(value.replace(/[^0-9]+/g, '')) || null;
-                }
-                
-                // Konversi nilai bigint
-                if (['Volume', 'Nilai', 'Offer Volume', 'Bid Volume', 'Listed Shares', 
-                     'Tradeble Shares', 'Foreign Sell', 'Foreign Buy', 'Non Regular Volume'].includes(header) && value) {
-                    value = parseInt(value.replace(/[^0-9]+/g, '')) || null;
+                // Kosongkan string kosong
+                if (value === '' || value === null || value === undefined) {
+                    value = null;
+                } else {
+                    // Trim whitespace
+                    value = value.trim();
                 }
                 
                 row[header] = value;
             });
             
+            // Validasi data penting
+            if (!row['Kode Saham'] || !row['Tanggal Perdagangan Terakhir']) {
+                console.warn('Baris data tidak valid, dilewati:', row);
+                continue;
+            }
+            
+            // Format tanggal ke YYYY-MM-DD jika perlu
+            if (row['Tanggal Perdagangan Terakhir']) {
+                const dateStr = row['Tanggal Perdagangan Terakhir'];
+                // Coba parsing berbagai format tanggal
+                const date = parseDateString(dateStr);
+                if (date) {
+                    row['Tanggal Perdagangan Terakhir'] = date.toISOString().split('T')[0];
+                }
+            }
+            
             data.push(row);
+        }
+
+        if (data.length === 0) {
+            showUploadStatus('Tidak ada data valid yang ditemukan dalam file CSV', 'error');
+            return;
         }
 
         showUploadStatus(`Mengunggah ${data.length} baris data ke tabel temp_saham...`, 'info');
@@ -327,12 +398,15 @@ async function uploadCSV() {
                 ignoreDuplicates: false 
             });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Supabase error details:', error);
+            throw error;
+        }
 
         showUploadStatus(`✅ Berhasil mengunggah ${data.length} baris data ke temp_saham!`, 'success');
         
-        // Tampilkan petunjuk untuk memindahkan ke data_saham
-        showUploadStatus(`📋 Gunakan fungsi RPC 'process_temp_saham()' di Supabase untuk memindahkan data ke tabel utama.`, 'info');
+        // Info tentang trigger RPC
+        showUploadStatus(`📋 Trigger otomatis akan memproses data. Data akan dipindahkan ke tabel data_saham.`, 'info');
         
         // Reset file input
         csvFileInput.value = '';
@@ -362,7 +436,7 @@ function showUploadStatus(message, type = 'info') {
 }
 
 // ********************************************
-// FUNGSI PENCARIAN SAHAM
+// FUNGSI PENCARIAN SAHAM (REVISI - UNIK PER KODE)
 // ********************************************
 
 async function searchStocks(query) {
@@ -377,16 +451,33 @@ async function searchStocks(query) {
             .select('"Kode Saham", "Nama Perusahaan"')
             .or(`"Kode Saham".ilike.%${query}%,"Nama Perusahaan".ilike.%${query}%`)
             .order('"Kode Saham"')
-            .limit(10);
+            .limit(20); // Limit lebih besar untuk di-filter nanti
 
         if (error) throw error;
 
-        displaySearchResults(data || []);
+        // Filter untuk mendapatkan kode saham unik
+        const uniqueStocks = filterUniqueStocks(data || []);
+        displaySearchResults(uniqueStocks);
     } catch (error) {
         console.error('Error searching stocks:', error);
         searchResults.innerHTML = '<div class="search-result-item">Error mencari data</div>';
         searchResults.style.display = 'block';
     }
+}
+
+function filterUniqueStocks(stocks) {
+    const seen = new Set();
+    const uniqueStocks = [];
+    
+    for (const stock of stocks) {
+        const stockCode = stock['Kode Saham'];
+        if (!seen.has(stockCode)) {
+            seen.add(stockCode);
+            uniqueStocks.push(stock);
+        }
+    }
+    
+    return uniqueStocks.slice(0, 10); // Maksimal 10 hasil unik
 }
 
 function displaySearchResults(stocks) {
@@ -401,7 +492,7 @@ function displaySearchResults(stocks) {
         const div = document.createElement('div');
         div.className = 'search-result-item';
         div.innerHTML = `
-            <div>
+            <div style="flex: 1;">
                 <span class="search-result-code">${stock['Kode Saham']}</span>
                 <br>
                 <span class="search-result-name">${stock['Nama Perusahaan'] || '-'}</span>
@@ -419,6 +510,48 @@ function displaySearchResults(stocks) {
     });
     
     searchResults.style.display = 'block';
+}
+
+// ********************************************
+// FUNGSI TAMBAHAN: CLEAR TEMP_SAHAM
+// ********************************************
+
+async function clearTempSaham() {
+    try {
+        const { error } = await supabaseClient
+            .from('temp_saham')
+            .delete()
+            .neq('Kode Saham', ''); // Hapus semua data
+
+        if (error) throw error;
+        
+        showUploadStatus('✅ Tabel temp_saham berhasil dibersihkan', 'success');
+    } catch (error) {
+        console.error('Error clearing temp_saham:', error);
+        showUploadStatus(`❌ Error: ${error.message}`, 'error');
+    }
+}
+
+// ********************************************
+// FUNGSI TAMBAHAN: CEK STATUS TEMP_SAHAM
+// ********************************************
+
+async function checkTempSahamStatus() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('temp_saham')
+            .select('*', { count: 'exact', head: true });
+
+        if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
+        
+        const count = data ? data.length : 0;
+        console.log(`Jumlah data di temp_saham: ${count}`);
+        
+        return count;
+    } catch (error) {
+        console.error('Error checking temp_saham status:', error);
+        return 0;
+    }
 }
 
 // ********************************************
@@ -582,6 +715,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // Event Listeners untuk temp_saham management
+    if (checkTempBtn) {
+        checkTempBtn.addEventListener('click', async () => {
+            const count = await checkTempSahamStatus();
+            showUploadStatus(`📊 Jumlah data di temp_saham: ${count}`, 'info');
+        });
+    }
+
+    if (clearTempBtn) {
+        clearTempBtn.addEventListener('click', async () => {
+            if (confirm('Yakin ingin menghapus semua data di temp_saham?')) {
+                await clearTempSaham();
+            }
+        });
+    }
+    
     // Portfolio toggle events
     if (toggleWatchlist && toggleOwned) {
         toggleWatchlist.addEventListener('click', () => {
@@ -625,7 +774,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     fetchAndRenderSignals(); 
 });
-
 
 // ********************************************
 // FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort)
@@ -686,7 +834,6 @@ function formatNumber(num, isVolume = false) {
     }
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
-
 
 function applySignalFilter(signals, filterType) {
     if (filterType === 'ALL') {
@@ -931,7 +1078,6 @@ function handleStockClick(event) {
     const stockCode = event.currentTarget.textContent.trim();
     showStockDetailModal(stockCode);
 }
-
 
 // ********************************************
 // FUNGSI UTAMA DETAIL SAHAM
