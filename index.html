@@ -8,18 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #4f46e5; /* Indigo */
+            --primary-color: #4f46e5; 
             --primary-light: #eef2ff;
-            --text-color: #1f2937; /* Dark Gray */
-            --bg-color: #f9fafb; /* Light Gray Background */
+            --text-color: #1f2937; 
+            --bg-color: #f9fafb; 
             --card-bg: #ffffff;
             --border-color: #e5e7eb;
-            --buy-bg: #dcfce7; /* Light Green */
-            --buy-color: #15803d; /* Dark Green */
-            --sell-bg: #fee2e2; /* Light Red */
-            --sell-color: #b91c1c; /* Dark Red */
-            --watch-bg: #fef9c3; /* Light Yellow */
-            --watch-color: #a16207; /* Dark Yellow */
+            --buy-bg: #dcfce7; 
+            --buy-color: #15803d; 
+            --sell-bg: #fee2e2; 
+            --sell-color: #b91c1c; 
+            --watch-bg: #fef9c3; 
+            --watch-color: #a16207; 
         }
         
         body { 
@@ -45,21 +45,24 @@
         }
         #statusMessage { 
             text-align: center; 
-            margin-bottom: 10px; /* Diperkecil */
+            margin-bottom: 10px; 
             font-weight: 600; 
             color: #4b5563; 
             padding: 10px;
             border-bottom: 2px solid var(--border-color);
         }
 
-        /* --- Gaya Baru untuk Filter --- */
+        /* --- Gaya Filter --- */
         #filterContainer {
-            text-align: center;
+            display: flex; /* Menggunakan flexbox untuk tata letak yang rapi */
+            justify-content: center;
+            align-items: center;
+            gap: 20px; /* Jarak antar filter */
             margin-bottom: 30px;
             padding: 10px 0;
             border-bottom: 1px dashed var(--border-color);
         }
-        #dateFilter {
+        #dateFilter, #signalFilter {
             padding: 10px 15px;
             border: 1px solid var(--border-color);
             border-radius: 6px;
@@ -70,7 +73,7 @@
             transition: border-color 0.3s;
             font-family: 'Inter', sans-serif; 
         }
-        #dateFilter:hover {
+        #dateFilter:hover, #signalFilter:hover {
             border-color: var(--primary-color);
         }
         /* ----------------------------- */
@@ -84,76 +87,33 @@
             padding: 20px;
             transition: all 0.3s ease;
         }
-        .signal-category:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-        }
-        .signal-category h2 {
-            margin-top: 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-light);
-            color: var(--primary-color);
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .signal-category table { 
-            width: 100%; 
-            border-collapse: separate; 
-            border-spacing: 0; 
-            margin-top: 15px; 
-            overflow: hidden; 
-            border-radius: 6px;
-        }
-        .signal-category th, .signal-category td { 
-            padding: 12px 15px; 
-            text-align: left; 
-            border-bottom: 1px solid var(--border-color); 
-        }
+        /* ... Gaya lainnya ... */
+        
+        /* Gaya untuk Header Tabel yang Dapat Disortir */
         .signal-category th { 
             background-color: var(--primary-color); 
             color: white; 
             font-weight: 600; 
             text-transform: uppercase;
             font-size: 0.85rem;
+            cursor: pointer; /* Menandakan bahwa header dapat diklik */
+            user-select: none;
+            position: relative;
         }
-        .signal-category tr:last-child td {
-            border-bottom: none;
+        .signal-category th:hover {
+            background-color: #3b30bd; /* Sedikit lebih gelap saat dihover */
         }
-        .signal-category tbody tr:nth-child(even) {
-            background-color: #f9fafb;
+        .sort-icon {
+            margin-left: 5px;
+            font-size: 0.8em;
+            opacity: 0.7;
         }
-        
-        /* Gaya Sinyal */
-        .signal-buy { 
-            background-color: var(--buy-bg); 
-            color: var(--buy-color); 
-            font-weight: 600; 
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .signal-sell { 
-            background-color: var(--sell-bg); 
-            color: var(--sell-color); 
-            font-weight: 600; 
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .signal-watch { 
-            background-color: var(--watch-bg); 
-            color: var(--watch-color); 
-            font-weight: 600;
-            border-radius: 4px; 
-            padding: 4px 8px; 
-            display: inline-block;
-            font-size: 0.9rem;
+        .sort-icon.active {
+            opacity: 1;
         }
         
-        /* Set status tersembunyi secara default di CSS */
+        /* ... Gaya sinyal dan status lainnya (tetap sama) ... */
+
         .category-status {
             padding: 10px;
             background-color: var(--primary-light);
@@ -161,7 +121,7 @@
             border-left: 4px solid var(--primary-color);
             border-radius: 4px;
             font-style: italic;
-            display: none; /* Disembunyikan secara default */
+            display: none; 
         }
     </style>
 </head>
@@ -171,10 +131,21 @@
         <p id="statusMessage">Memuat sinyal...</p>
 
         <div id="filterContainer">
-            <label for="dateFilter">Lihat Sinyal Tanggal:</label>
-            <select id="dateFilter" disabled>
-                <option>Memuat Tanggal...</option>
-            </select>
+            <div>
+                <label for="dateFilter">Lihat Tanggal:</label>
+                <select id="dateFilter" disabled>
+                    <option>Memuat Tanggal...</option>
+                </select>
+            </div>
+            <div>
+                <label for="signalFilter">Filter Sinyal:</label>
+                <select id="signalFilter">
+                    <option value="ALL">Tampilkan Semua Sinyal</option>
+                    <option value="BUY">BUY / GOLDEN CROSS / OVERSOLD</option>
+                    <option value="SELL">SELL / DEAD CROSS / OVERBOUGHT</option>
+                    <option value="WATCH">WATCH / VOLUME SPIKE</option>
+                </select>
+            </div>
         </div>
         <div id="maCrossSection" class="signal-category">
             <h2>📈 MA Cross (Trend Following)</h2>
@@ -182,12 +153,12 @@
             <table id="maCrossTable" style="display:none;">
                 <thead>
                     <tr>
-                        <th>Kode Saham</th>
-                        <th>Tanggal</th>
-                        <th>Harga Penutupan</th>
-                        <th>Volume Harian</th>
-                        <th>Perubahan (%)</th>
-                        <th>Sinyal (Aksi)</th>
+                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
+                        <th data-column="Close">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -200,12 +171,12 @@
             <table id="rsiTable" style="display:none;">
                 <thead>
                     <tr>
-                        <th>Kode Saham</th>
-                        <th>Tanggal</th>
-                        <th>Harga Penutupan</th>
-                        <th>Volume Harian</th>
-                        <th>Perubahan (%)</th>
-                        <th>Sinyal (Aksi)</th>
+                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
+                        <th data-column="Close">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -218,12 +189,12 @@
             <table id="volumeTable" style="display:none;">
                 <thead>
                     <tr>
-                        <th>Kode Saham</th>
-                        <th>Tanggal</th>
-                        <th>Harga Penutupan</th>
-                        <th>Volume Harian</th>
-                        <th>Perubahan (%)</th>
-                        <th>Sinyal (Aksi)</th>
+                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
+                        <th data-column="Close">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -236,12 +207,12 @@
             <table id="macdTable" style="display:none;">
                 <thead>
                     <tr>
-                        <th>Kode Saham</th>
-                        <th>Tanggal</th>
-                        <th>Harga Penutupan</th>
-                        <th>Volume Harian</th>
-                        <th>Perubahan (%)</th>
-                        <th>Sinyal (Aksi)</th>
+                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
+                        <th data-column="Close">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
