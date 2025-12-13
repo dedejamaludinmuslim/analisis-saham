@@ -7,187 +7,107 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
         :root {
-            /* Palette Modern */
-            --primary: #6366f1; /* Indigo 500 */
+            --primary: #6366f1; 
             --primary-dark: #4f46e5;
             --primary-light: #eef2ff;
-            --accent: #10b981; /* Emerald 500 */
             --bg-body: #f3f4f6; 
             --bg-card: #ffffff;
             --text-main: #111827; 
             --text-muted: #6b7280; 
             --border: #e5e7eb;
-            
             --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         
         * { box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Inter', sans-serif; 
-            margin: 0; 
-            padding: 0;
-            background-color: var(--bg-body); 
-            color: var(--text-main);
-            -webkit-font-smoothing: antialiased;
-        }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; background-color: var(--bg-body); color: var(--text-main); }
 
-        /* --- Header & Container --- */
+        /* Header */
         .header-section {
             background: linear-gradient(135deg, #4f46e5 0%, #818cf8 100%);
-            color: white;
-            padding: 30px 20px 50px; /* Padding bawah ditambah untuk tombol upload */
-            text-align: center;
-            border-bottom-left-radius: 20px;
-            border-bottom-right-radius: 20px;
-            margin-bottom: -25px; 
-            box-shadow: var(--shadow-md);
-            position: relative;
+            color: white; padding: 30px 20px 50px; text-align: center;
+            border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+            margin-bottom: -25px; box-shadow: var(--shadow-md);
         }
-        
         .header-section h1 { margin: 0 0 10px; font-weight: 700; font-size: 1.75rem; }
-        .header-section p { margin: 0; opacity: 0.9; font-size: 0.95rem; }
-
-        /* Tombol Upload Floating */
         .upload-btn {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-top: 15px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s;
-        }
-        .upload-btn:hover { background-color: white; color: var(--primary); }
-
-        .container { 
-            max-width: 1200px; 
-            margin: auto; 
-            padding: 0 15px 40px; 
+            background-color: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer;
+            font-size: 0.85rem; font-weight: 600; margin-top: 15px; display: inline-flex; align-items: center; gap: 8px;
         }
 
-        /* --- Search Bar --- */
-        #stockSearchContainer {
-            position: relative;
-            max-width: 500px;
-            margin: 0 auto 20px;
-            z-index: 50;
-        }
-        
+        .container { max-width: 1200px; margin: auto; padding: 0 15px 40px; }
+
+        /* Search */
+        #stockSearchContainer { position: relative; max-width: 500px; margin: 0 auto 20px; z-index: 50; }
         #stockSearchInput {
-            width: 100%;
-            padding: 16px 20px;
-            border: none;
-            border-radius: 50px;
-            font-size: 1rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            outline: none;
-            transition: all 0.3s ease;
+            width: 100%; padding: 16px 20px; border: none; border-radius: 50px; font-size: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); outline: none;
         }
-        #stockSearchInput:focus {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
-        }
-        
         #stockSearchResults {
-            position: absolute;
-            top: 110%;
-            left: 15px; right: 15px;
-            background: var(--bg-card);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            overflow: hidden;
-            display: none;
-            border: 1px solid var(--border);
+            position: absolute; top: 110%; left: 15px; right: 15px; background: var(--bg-card);
+            border-radius: 12px; box-shadow: var(--shadow-md); display: none; border: 1px solid var(--border);
         }
-        
-        .search-result-item {
-            padding: 12px 20px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-        }
+        .search-result-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
         .search-result-item:hover { background-color: var(--primary-light); }
         .search-result-code { font-weight: 700; color: var(--primary); }
-        .search-result-name { font-size: 0.85rem; color: var(--text-muted); }
 
-        /* --- Filters & Controls --- */
+        /* Controls */
         .controls-wrapper {
-            background: var(--bg-card);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: var(--shadow-sm);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid var(--border);
+            background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 25px;
+            box-shadow: var(--shadow-sm); display: flex; flex-wrap: wrap; gap: 15px;
+            align-items: center; justify-content: center; border: 1px solid var(--border);
         }
-        
         .control-group { display: flex; flex-direction: column; gap: 5px; }
         .control-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
-
-        select, input[type="number"] {
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            min-width: 150px;
-            outline: none;
-            font-family: inherit;
-        }
         
-        select:focus, input[type="number"]:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        select, input[type="number"], input[type="date"] {
+            padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+            font-size: 0.95rem; outline: none; font-family: inherit; width: 100%;
+        }
 
+        /* --- UPDATED MA BOX LAYOUT --- */
         .ma-custom-box {
-            display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
-            background: var(--primary-light); padding: 10px 15px; border-radius: 8px;
+            display: flex; 
+            justify-content: space-between; /* Kiri dan Kanan mentok */
+            align-items: flex-end; /* Rata bawah agar sejajar dengan tombol */
+            background: var(--primary-light); 
+            padding: 15px; 
+            border-radius: 8px;
+            width: 100%; /* Full width di mobile, atau disesuaikan */
+            gap: 10px;
+        }
+
+        .ma-input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .ma-input-wrapper label {
+            font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+        }
+        .ma-input-wrapper input {
+            width: 70px; text-align: center;
         }
         
         #applyMaCustom {
-            padding: 10px 20px; background-color: var(--primary); color: white;
+            padding: 10px 16px; background-color: var(--primary); color: white;
             border: none; border-radius: 8px; cursor: pointer; font-weight: 600;
+            height: 40px; /* Samakan tinggi dengan input */
         }
 
-        /* --- Signal Cards & Table --- */
-        .signal-card {
-            background: var(--bg-card);
-            border-radius: 16px;
-            box-shadow: var(--shadow-md);
-            margin-bottom: 30px;
-            overflow: hidden; 
-            border: 1px solid var(--border);
-        }
-        
-        .signal-header {
-            padding: 20px; border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between;
-            background-color: #fcfcfc;
-        }
+        /* Tables & Cards */
+        .signal-card { background: var(--bg-card); border-radius: 16px; box-shadow: var(--shadow-md); margin-bottom: 30px; border: 1px solid var(--border); overflow: hidden; }
+        .signal-header { padding: 20px; border-bottom: 1px solid var(--border); background-color: #fcfcfc; display: flex; justify-content: space-between; align-items: center;} 
         .signal-header h2 { margin: 0; font-size: 1.1rem; color: var(--text-main); }
-
-        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-
+        .table-responsive { width: 100%; overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 800px; font-size: 0.9rem; }
         th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background-color: #f9fafb; color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; cursor: pointer; }
+        th { background-color: #f9fafb; font-weight: 600; cursor: pointer; }
         
         /* Badges */
         .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
@@ -196,47 +116,29 @@
         .badge-watch { background-color: #fef9c3; color: #854d0e; }
         .badge-owned { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
         .badge-neutral { background-color: #f3f4f6; color: #6b7280; }
-
+        .clickable-stock { color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: none; }
         .text-green { color: #16a34a; font-weight: 600; }
         .text-red { color: #dc2626; font-weight: 600; }
-        .clickable-stock { color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: none; }
-        
         .category-status { padding: 30px; text-align: center; color: var(--text-muted); font-style: italic; background-color: #f9fafb; }
 
-        /* --- Modal --- */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
-            display: none; z-index: 1000; justify-content: center; align-items: flex-end;
-        }
-        .modal-content {
-            background: white; width: 100%; max-width: 900px; height: 90vh;
-            border-top-left-radius: 20px; border-top-right-radius: 20px;
-            display: flex; flex-direction: column; animation: slideUp 0.3s ease-out;
-        }
-        .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: none; z-index: 1000; justify-content: center; align-items: flex-end; }
+        .modal-content { background: white; width: 100%; max-width: 900px; height: 90vh; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; }
+        .modal-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
         .modal-body { flex: 1; overflow-y: auto; padding: 20px; }
         .btn-close { background: #f3f4f6; border: none; width: 36px; height: 36px; border-radius: 50%; font-size: 1.5rem; cursor: pointer; }
+        #portfolioStatusToggle { background: white; color: var(--primary); padding: 8px 16px; border: 2px solid var(--primary); border-radius: 50px; font-weight: 600; cursor: pointer; }
+        #portfolioStatusToggle.owned { background: #dcfce7; color: #166534; border-color: transparent; }
 
-        #portfolioStatusToggle {
-            background-color: white; color: var(--primary); padding: 8px 16px;
-            border: 2px solid var(--primary); border-radius: 50px; font-weight: 600; cursor: pointer;
-        }
-        #portfolioStatusToggle.owned { background-color: #dcfce7; color: #166534; border-color: transparent; }
-
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-        
         @media (min-width: 768px) {
             .modal-overlay { align-items: center; }
-            .modal-content { height: auto; max-height: 90%; border-radius: 16px; animation: fadeInScale 0.2s ease-out; }
+            .modal-content { height: auto; max-height: 90%; border-radius: 16px; }
             .controls-wrapper { justify-content: space-between; }
-            @keyframes fadeInScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+            .ma-custom-box { width: auto; min-width: 350px; }
         }
         @media (max-width: 768px) {
-            .header-section { padding-bottom: 60px; }
-            .controls-wrapper, .ma-custom-box { flex-direction: column; align-items: stretch; }
-            select, input { width: 100%; }
-            #stockSearchResults { width: 90%; left: 5%; }
+            .ma-custom-box { width: 100%; } /* Pastikan full width di HP */
+            .header-section { padding-bottom: 70px; }
         }
     </style>
 </head>
@@ -245,44 +147,46 @@
     <header class="header-section">
         <h1>Screener Saham</h1>
         <p id="statusMessage">Memuat sinyal pasar...</p>
-        
-        <label for="csvFileInput" class="upload-btn">
-            📂 Upload Data CSV
-        </label>
+        <label for="csvFileInput" class="upload-btn">📂 Upload Data CSV</label>
         <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
     </header>
 
     <div class="container">
         
         <div id="stockSearchContainer">
-            <input type="text" id="stockSearchInput" placeholder="🔍 Cari Kode Saham (cth: BBCA, TLKM)">
+            <input type="text" id="stockSearchInput" placeholder="🔍 Cari Kode Saham (cth: BBCA)">
             <div id="stockSearchResults"></div>
         </div>
         
         <div class="controls-wrapper">
             <div class="control-group">
-                <label for="dateFilter">Tanggal Data</label>
-                <select id="dateFilter" disabled><option>Memuat...</option></select>
+                <label for="dateFilter">Pilih Tanggal</label>
+                <input type="date" id="dateFilter">
             </div>
+            
             <div class="control-group">
                 <label for="signalFilter">Filter Sinyal</label>
                 <select id="signalFilter">
                     <option value="ALL">Semua Sinyal</option>
+                    <option value="OWNED">💼 Portfolio (Owned)</option>
                     <option value="BUY">📈 Potensi BUY</option>
                     <option value="SELL">📉 Potensi SELL</option>
                     <option value="WATCH">👀 Watchlist</option>
                 </select>
             </div>
+
             <div class="ma-custom-box">
-                <div class="control-group">
-                    <label style="font-size:0.7rem;">MA Cepat</label>
-                    <input type="number" id="maFast" value="5" min="1" style="width: 60px;">
+                <div class="ma-input-wrapper">
+                    <label>MA Cepat</label>
+                    <input type="number" id="maFast" value="5" min="1">
                 </div>
-                <div class="control-group">
-                    <label style="font-size:0.7rem;">MA Lambat</label>
-                    <input type="number" id="maSlow" value="20" min="5" style="width: 60px;">
+                
+                <button id="applyMaCustom">Set</button>
+
+                <div class="ma-input-wrapper">
+                    <label style="text-align: right;">MA Lambat</label>
+                    <input type="number" id="maSlow" value="20" min="5">
                 </div>
-                <button id="applyMaCustom">Set Custom</button>
             </div>
         </div>
 
@@ -296,7 +200,6 @@
                 </table>
             </div>
         </div>
-
         <div id="rsiSection" class="signal-card">
             <div class="signal-header"><h2>⚖️ Overbought / Oversold (RSI)</h2></div>
             <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
@@ -307,7 +210,6 @@
                 </table>
             </div>
         </div>
-        
         <div id="volumeSection" class="signal-card">
             <div class="signal-header"><h2>💥 Volume Spike (Anomali)</h2></div>
             <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
@@ -318,7 +220,6 @@
                 </table>
             </div>
         </div>
-
         <div id="macdSection" class="signal-card">
             <div class="signal-header"><h2>⚡ Momentum (MACD)</h2></div>
             <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
