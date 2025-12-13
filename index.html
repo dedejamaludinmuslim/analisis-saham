@@ -3,15 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Screener Sinyal Saham</title>
+    <title>Screener Sinyal Saham Kategorikal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+        .container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
         h1 { text-align: center; color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #4CAF50; color: white; }
+        #statusMessage { text-align: center; margin-bottom: 20px; font-weight: bold; color: #555; }
+        
+        /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
+        .signal-category {
+            background: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .signal-category h2 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #007bff;
+            color: #007bff;
+        }
+        .signal-category table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .signal-category th, .signal-category td { padding: 8px 10px; border: 1px solid #eee; text-align: left; }
+        .signal-category th { background-color: #f1f1f1; color: #333; }
+        
+        /* Gaya Sinyal */
         .signal-buy { background-color: #d4edda; color: #155724; font-weight: bold; }
         .signal-sell { background-color: #f8d7da; color: #721c24; font-weight: bold; }
         .signal-watch { background-color: #ffeeba; color: #856404; }
@@ -20,22 +39,68 @@
 <body>
     <div class="container">
         <h1>Screener Saham Hari Ini</h1>
-        <p>Data diambil dari indikator teknikal (MA, RSI, MACD, Volume).</p>
-        <table id="signalTable">
-            <thead>
-                <tr>
-                    <th>Kode Saham</th>
-                    <th>Tanggal</th>
-                    <th>MA Cross</th>
-                    <th>RSI</th>
-                    <th>MACD</th>
-                    <th>Volume Spike</th>
-                </tr>
-            </thead>
-            <tbody>
-                </tbody>
-        </table>
         <p id="statusMessage">Memuat sinyal...</p>
+
+        <div id="maCrossSection" class="signal-category">
+            <h2>MA Cross (Trend Following)</h2>
+            <p class="category-status" id="maStatus">Tidak ada sinyal MA Cross hari ini.</p>
+            <table id="maCrossTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Kode Saham</th>
+                        <th>Tanggal</th>
+                        <th>Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="rsiSection" class="signal-category">
+            <h2>RSI (Kondisi Jenuh Beli/Jual)</h2>
+            <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
+            <table id="rsiTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Kode Saham</th>
+                        <th>Tanggal</th>
+                        <th>Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="macdSection" class="signal-category">
+            <h2>MACD (Momentum)</h2>
+            <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
+            <table id="macdTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Kode Saham</th>
+                        <th>Tanggal</th>
+                        <th>Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        
+        <div id="volumeSection" class="signal-category">
+            <h2>Volume Spike (Anomali Volume)</h2>
+            <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
+            <table id="volumeTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Kode Saham</th>
+                        <th>Tanggal</th>
+                        <th>Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
     </div>
 
     <script src="app.js"></script>
