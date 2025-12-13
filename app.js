@@ -1,5 +1,5 @@
 // ==========================================
-// KREDENSIAL SUPABASE
+// 1. KONFIGURASI SUPABASE
 // ==========================================
 const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs"; 
@@ -8,7 +8,7 @@ const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
 
 // ==========================================
-// DOM ELEMENTS
+// 2. DOM ELEMENTS
 // ==========================================
 const statusMessage = document.getElementById('statusMessage');
 const dateFilter = document.getElementById('dateFilter'); 
@@ -21,6 +21,7 @@ const stockSearchResults = document.getElementById('stockSearchResults');
 const stockSearchContainer = document.getElementById('stockSearchContainer');
 const csvFileInput = document.getElementById('csvFileInput');
 const refreshAnalysisBtn = document.getElementById('refreshAnalysisBtn');
+const installBtn = document.getElementById('installAppBtn'); // Tombol PWA
 
 // Modal Elements
 const stockDetailModal = document.getElementById('stockDetailModal');
@@ -38,12 +39,12 @@ const closeAboutBtn = document.getElementById('closeAboutBtn');
 let priceChart = null; 
 
 // ==========================================
-// GLOBAL STATE
+// 3. GLOBAL STATE
 // ==========================================
 let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
 let globalPortfolio = new Map(); 
-let globalPortfolioAnalysis = new Map(); // Smart Portfolio
+let globalPortfolioAnalysis = new Map(); // Untuk menyimpan status Smart Portfolio (Cut Loss/Trailing)
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
 let currentModalStockCode = null; 
 
@@ -55,12 +56,12 @@ const categories = {
 };
 
 // ==========================================
-// 1. DATA FETCHING (SMART PORTFOLIO)
+// 4. DATA FETCHING & SMART PORTFOLIO
 // ==========================================
 
 async function fetchPortfolio() {
     try {
-        // A. Ambil Data Dasar
+        // A. Ambil Data Dasar Portfolio
         const { data: rawData, error } = await supabaseClient
             .from('portofolio_saham')
             .select('kode_saham, harga_beli, harga_tertinggi_sejak_beli'); 
@@ -72,9 +73,10 @@ async function fetchPortfolio() {
             { hargaBeli: item.harga_beli }
         ]));
 
-        // B. Ambil Data Analisa (Brain) via RPC
+        // B. Ambil Data Analisa Cerdas (Brain) via RPC
         const targetDate = dateFilter.value || new Date().toISOString().split('T')[0];
         
+        // Memanggil fungsi SQL untuk analisa Cut Loss / Trailing Stop
         const { data: analysisData, error: rpcError } = await supabaseClient
             .rpc('get_portfolio_analysis', { target_date: targetDate });
 
@@ -88,41 +90,87 @@ async function fetchPortfolio() {
 
         return globalPortfolio;
     } catch (error) {
-        console.warn('Info: Portofolio kosong/gagal.', error.message);
+        console.warn('Info: Portofolio kosong/gagal load.', error.message);
         return new Map(); 
     }
 }
 
+// FUNGSI UPDATE STATUS PORTFOLIO (DIPOLES DENGAN SWEETALERT2)
 async function togglePortfolioStatus(stockCode, currentIsOwned) {
+    // A. LOGIKA HAPUS (JIKA SUDAH PUNYA)
     if (currentIsOwned) {
-        if(!confirm(`Hapus ${stockCode} dari Portofolio?`)) return false;
-        try {
-            await supabaseClient.from('portofolio_saham').delete().eq('kode_saham', stockCode);
-            globalPortfolio.delete(stockCode);
-            globalPortfolioAnalysis.delete(stockCode);
-        } catch (error) { alert(`Gagal: ${error.message}`); return false; }
+        const result = await Swal.fire({
+            title: `Hapus ${stockCode}?`,
+            text: "Saham ini akan dihapus dari pemantauan portofolio Anda.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#6b7280',
+            confirmButtonText: 'Ya, Hapus',
+            cancelButtonText: 'Batal'
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await supabaseClient.from('portofolio_saham').delete().eq('kode_saham', stockCode);
+                globalPortfolio.delete(stockCode);
+                if(globalPortfolioAnalysis) globalPortfolioAnalysis.delete(stockCode);
+
+                Swal.fire({ icon: 'success', title: 'Dihapus!', text: `${stockCode} dihapus dari portofolio.`, timer: 1500, showConfirmButton: false });
+            } catch (error) { 
+                Swal.fire({ icon: 'error', title: 'Gagal', text: error.message });
+                return false; 
+            }
+        } else { return false; }
+
+    // B. LOGIKA TAMBAH/BELI BARU
     } else {
         const latestPrice = await getLatestStockPrice(stockCode);
         const latestDate = dateFilter.value; 
         
-        if (!latestPrice) { alert("Harga tidak tersedia."); return false; }
-        
-        const confirmPrice = prompt(`Masukkan Harga Beli ${stockCode}:`, latestPrice);
-        if (!confirmPrice) return false;
-        
-        try {
-            await supabaseClient.from('portofolio_saham').upsert({ 
-                kode_saham: stockCode, 
-                harga_beli: parseFloat(confirmPrice), 
-                tanggal_beli: latestDate,
-                harga_tertinggi_sejak_beli: parseFloat(confirmPrice)
-            }, { onConflict: 'kode_saham' });
-            
-            globalPortfolio.set(stockCode, { hargaBeli: parseFloat(confirmPrice) });
-        } catch (error) { alert(`Gagal: ${error.message}`); return false; }
+        if (!latestPrice) { 
+            Swal.fire({ icon: 'error', title: 'Data Tidak Tersedia', text: 'Harga saham ini belum tersedia.' });
+            return false; 
+        }
+
+        // Popup Input Harga
+        const { value: inputPrice } = await Swal.fire({
+            title: `Tambah ${stockCode}`,
+            html: `
+                <p style="margin-bottom: 10px; color: #6b7280;">Harga penutupan terakhir: <b>Rp ${latestPrice}</b></p>
+                <label for="swal-input-price" style="display:block; text-align:left; font-size:0.9rem; font-weight:600; margin-bottom:5px;">Masukkan Harga Beli:</label>
+            `,
+            input: 'number',
+            inputValue: latestPrice,
+            inputAttributes: { min: 1, step: 1 },
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            confirmButtonText: 'Simpan',
+            cancelButtonText: 'Batal',
+            inputValidator: (value) => { if (!value || value <= 0) return 'Harga beli harus valid!'; }
+        });
+
+        if (inputPrice) {
+            try {
+                await supabaseClient.from('portofolio_saham').upsert({ 
+                    kode_saham: stockCode, 
+                    harga_beli: parseFloat(inputPrice), 
+                    tanggal_beli: latestDate,
+                    harga_tertinggi_sejak_beli: parseFloat(inputPrice) 
+                }, { onConflict: 'kode_saham' });
+                
+                globalPortfolio.set(stockCode, { hargaBeli: parseFloat(inputPrice) });
+                
+                // Refresh agar analisa langsung jalan
+                await fetchPortfolio();
+                
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${stockCode} disimpan dengan harga Rp ${inputPrice}.`, timer: 2000, showConfirmButton: false });
+            } catch (error) { 
+                Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message });
+                return false; 
+            }
+        } else { return false; }
     }
-    
-    await fetchPortfolio();
     
     if (currentModalStockCode === stockCode) updatePortfolioStatusDisplay(stockCode);
     categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value));
@@ -157,19 +205,12 @@ function mergeSignals(staticSignals, customMASignals) {
     customMASignals.forEach(cs => {
         const existing = mergedMap.get(cs["Kode Saham"]) || {};
         mergedMap.set(cs["Kode Saham"], { 
-            ...existing, 
-            ...cs, 
+            ...existing, ...cs, 
             Penutupan: cs.Close || cs.Penutupan, 
-            Volume: cs.Volume, 
-            Selisih: cs.Selisih, 
-            Sinyal_MA: cs.Sinyal_MA 
+            Volume: cs.Volume, Selisih: cs.Selisih, Sinyal_MA: cs.Sinyal_MA 
         });
     });
-    
-    globalPortfolio.forEach((val, key) => {
-        if (!mergedMap.has(key)) { }
-    });
-
+    globalPortfolio.forEach((val, key) => { if (!mergedMap.has(key)) { /* Logic optional fetch if needed */ } });
     return Array.from(mergedMap.values()).filter(item => item.Sinyal_MA || item.Sinyal_RSI || item.Sinyal_MACD || item.Sinyal_Volume || globalPortfolio.has(item["Kode Saham"]));
 }
 
@@ -184,7 +225,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
             selectedDate = latest; 
         }
 
-        await fetchPortfolio(); 
+        await fetchPortfolio(); // Load portfolio & analisa dulu
 
         const { data: signalData, error: signalError } = await supabaseClient
             .from('indikator_teknikal')
@@ -230,7 +271,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
 }
 
 // ==========================================
-// 2. CSV UPLOAD (SWEETALERT2)
+// 5. CSV UPLOAD HANDLER
 // ==========================================
 async function clearTempTable() {
     await supabaseClient.from('temp_saham').delete().neq('Kode Saham', 'XXXXXX'); 
@@ -282,17 +323,20 @@ csvFileInput.addEventListener('change', (event) => {
 });
 
 // ==========================================
-// 3. REFRESH ANALISA (MANUAL TRIGGER)
+// 6. FITUR REFRESH ANALISA (MANUAL)
 // ==========================================
 refreshAnalysisBtn?.addEventListener('click', async () => {
     const result = await Swal.fire({
-        title: 'Jalankan Analisa Harian?', text: "Update status Trailing Stop & Cut Loss Portofolio.", icon: 'question',
+        title: 'Refresh Analisa?', 
+        text: "Update status Trailing Stop & Cut Loss Portofolio dengan data terbaru.", 
+        icon: 'question',
         showCancelButton: true, confirmButtonColor: '#4f46e5', confirmButtonText: 'Ya, Jalankan', cancelButtonText: 'Batal'
     });
 
     if (result.isConfirmed) {
-        Swal.fire({ title: 'Sedang Menganalisa...', text: 'Mengupdate portofolio...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+        Swal.fire({ title: 'Sedang Mengupdate...', text: 'Menghitung ulang status portofolio...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
         try {
+            // Memanggil Function SQL Wrapper (Yang sudah pakai WHERE clause aman)
             const { error } = await supabaseClient.rpc('refresh_market_analysis');
             if (error) throw error;
             await fetchAndRenderSignals(); 
@@ -304,7 +348,60 @@ refreshAnalysisBtn?.addEventListener('click', async () => {
 });
 
 // ==========================================
-// 4. RENDERING (SMART BADGES)
+// 7. EVENT LISTENERS UI LAINNYA
+// ==========================================
+
+// Search Logic
+async function searchStocks(query) {
+    if (query.length < 2) { stockSearchResults.style.display = 'none'; return []; }
+    try {
+        const { data } = await supabaseClient.from('data_saham').select(`"Kode Saham", "Nama Perusahaan"`).ilike('Kode Saham', `${query}%`).limit(20);
+        const unique = [], seen = new Set();
+        data.forEach(item => { if(!seen.has(item["Kode Saham"])) { seen.add(item["Kode Saham"]); unique.push({code:item["Kode Saham"], name:item["Nama Perusahaan"]}); }});
+        return unique;
+    } catch { return []; }
+}
+let searchTimeout;
+stockSearchInput.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+        const res = await searchStocks(e.target.value.trim().toUpperCase());
+        stockSearchResults.innerHTML = '';
+        if(!res.length) { stockSearchResults.style.display='none'; return;}
+        res.forEach(i => {
+            const d = document.createElement('div'); d.className='search-result-item';
+            d.innerHTML = `<span class="search-result-code">${i.code}</span><span class="search-result-name">${i.name}</span>`;
+            d.onclick = () => { showStockDetailModal(i.code); stockSearchInput.value=''; stockSearchResults.style.display='none'; };
+            stockSearchResults.appendChild(d);
+        });
+        stockSearchResults.style.display='block';
+    }, 300);
+});
+document.addEventListener('click', (e) => { if (!stockSearchContainer.contains(e.target)) stockSearchResults.style.display = 'none'; });
+
+// UI Listeners Load
+document.addEventListener('DOMContentLoaded', () => {
+    dateFilter?.addEventListener('change', () => { globalCustomMASignals = []; fetchAndRenderSignals(dateFilter.value); });
+    signalFilter?.addEventListener('change', () => categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value)));
+    applyMaCustomButton?.addEventListener('click', async () => { await fetchCustomMASignals(dateFilter.value, maFastInput.value, maSlowInput.value); fetchAndRenderSignals(dateFilter.value); });
+
+    setupSorting();
+    
+    // Modal Listeners
+    const hideModal = () => stockDetailModal.style.display = 'none';
+    closeModalBtn?.addEventListener('click', hideModal);
+    stockDetailModal?.addEventListener('click', (e) => { if (e.target === stockDetailModal) hideModal(); });
+    portfolioStatusToggle?.addEventListener('click', async () => await togglePortfolioStatus(currentModalStockCode, portfolioStatusToggle.classList.contains('owned')));
+
+    aboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'flex'; });
+    closeAboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'none'; });
+    aboutModal?.addEventListener('click', (e) => { if (e.target === aboutModal) aboutModal.style.display = 'none'; });
+
+    fetchAndRenderSignals(); 
+});
+
+// ==========================================
+// 8. RENDERING & HELPERS
 // ==========================================
 
 async function initializeDateInput() {
@@ -324,8 +421,10 @@ function applySignalFilter(signals, filterType) {
     if (filterType === 'OWNED') return signals.filter(item => globalPortfolio.has(item["Kode Saham"]));
     
     return signals.filter(item => {
+        // Cek juga status di portofolio analysis
         const pfAnalysis = globalPortfolioAnalysis.get(item["Kode Saham"]);
         const pfStatus = pfAnalysis ? pfAnalysis.status_aksi : "";
+
         const txt = [item.Sinyal_MA, item.Sinyal_RSI, item.Sinyal_MACD, item.Sinyal_Volume, pfStatus].join(' ').toUpperCase();
         
         if (filterType === 'BUY') return txt.includes('BUY') || txt.includes('ADD ON') || txt.includes('GOLDEN') || txt.includes('OVERSOLD');
@@ -365,6 +464,7 @@ function sortSignals(signals, column, direction) {
 function categorizeAndRender(signals) {
     const sorted = sortSignals([...signals], sortState.column, sortState.direction);
     const cat = { maCross: [], rsi: [], macd: [], volume: [] };
+    
     sorted.forEach(item => {
         if (!item.Penutupan) return; 
         const isOwned = globalPortfolio.has(item["Kode Saham"]);
@@ -373,6 +473,7 @@ function categorizeAndRender(signals) {
         if (item.Sinyal_MACD) cat.macd.push(item);
         if (item.Sinyal_Volume) cat.volume.push(item);
     });
+    
     renderCategory('maCross', cat.maCross); renderCategory('rsi', cat.rsi); renderCategory('volume', cat.volume); renderCategory('macd', cat.macd);
     
     let count = signals.length;
@@ -393,7 +494,10 @@ function renderCategory(key, data) {
         const code = item["Kode Saham"];
         const pf = globalPortfolio.get(code);
         
+        // 1. Kode
         row.insertCell().innerHTML = `<span class="clickable-stock">${code}</span>`;
+        
+        // 2. Status (Smart Badge)
         const statusCell = row.insertCell();
         if (pf) {
             const analysis = globalPortfolioAnalysis.get(code);
@@ -406,7 +510,10 @@ function renderCategory(key, data) {
             statusCell.innerHTML = `<span class="badge badge-neutral">WATCH</span>`;
         }
 
+        // 3. Avg Price
         row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
+        
+        // 4. P/L %
         const plCell = row.insertCell();
         if (pf) {
             const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
@@ -414,6 +521,7 @@ function renderCategory(key, data) {
             plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
         } else { plCell.textContent = '-'; }
 
+        // 5. Data Lain
         row.insertCell().textContent = item.Tanggal ? item.Tanggal.slice(5) : '-';
         row.insertCell().textContent = formatNumber(item.Penutupan, false, true);
         row.insertCell().textContent = formatNumber(item.Volume, true);
@@ -422,6 +530,7 @@ function renderCategory(key, data) {
         chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
         chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
         
+        // 7. Sinyal
         const signalText = item[sigKey] || '-';
         row.insertCell().innerHTML = `<span class="${getSignalClass(signalText)}">${signalText}</span>`;
     });
@@ -451,7 +560,7 @@ function updateSortIcons() {
 function handleStockClick(e) { showStockDetailModal(e.target.textContent); }
 
 // ==========================================
-// 5. MODAL & EVENT LISTENERS
+// 9. MODAL DETAIL
 // ==========================================
 async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode; 
@@ -503,81 +612,37 @@ async function showStockDetailModal(stockCode) {
 function updatePortfolioStatusDisplay(code) { 
     const owned = globalPortfolio.has(code); 
     portfolioStatusToggle.className = owned ? 'owned' : ''; 
-    portfolioStatusToggle.textContent = owned ? `Owned (click to remove from porto)` : 'Unowned (click to add to porto)'; 
+    portfolioStatusToggle.textContent = owned ? `OWNED (Hapus)` : 'Tambahkan ke Portofolio'; 
 }
-
-// Search Logic
-async function searchStocks(query) {
-    if (query.length < 2) { stockSearchResults.style.display = 'none'; return []; }
-    try {
-        const { data } = await supabaseClient.from('data_saham').select(`"Kode Saham", "Nama Perusahaan"`).ilike('Kode Saham', `${query}%`).limit(20);
-        const unique = [], seen = new Set();
-        data.forEach(item => { if(!seen.has(item["Kode Saham"])) { seen.add(item["Kode Saham"]); unique.push({code:item["Kode Saham"], name:item["Nama Perusahaan"]}); }});
-        return unique;
-    } catch { return []; }
-}
-let searchTimeout;
-stockSearchInput.addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(async () => {
-        const res = await searchStocks(e.target.value.trim().toUpperCase());
-        stockSearchResults.innerHTML = '';
-        if(!res.length) { stockSearchResults.style.display='none'; return;}
-        res.forEach(i => {
-            const d = document.createElement('div'); d.className='search-result-item';
-            d.innerHTML = `<span class="search-result-code">${i.code}</span><span class="search-result-name">${i.name}</span>`;
-            d.onclick = () => { showStockDetailModal(i.code); stockSearchInput.value=''; stockSearchResults.style.display='none'; };
-            stockSearchResults.appendChild(d);
-        });
-        stockSearchResults.style.display='block';
-    }, 300);
-});
-document.addEventListener('click', (e) => { if (!stockSearchContainer.contains(e.target)) stockSearchResults.style.display = 'none'; });
-
-// UI Listeners
-document.addEventListener('DOMContentLoaded', () => {
-    dateFilter?.addEventListener('change', () => { globalCustomMASignals = []; fetchAndRenderSignals(dateFilter.value); });
-    signalFilter?.addEventListener('change', () => categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value)));
-    applyMaCustomButton?.addEventListener('click', async () => { await fetchCustomMASignals(dateFilter.value, maFastInput.value, maSlowInput.value); fetchAndRenderSignals(dateFilter.value); });
-
-    setupSorting();
-    
-    const hideModal = () => stockDetailModal.style.display = 'none';
-    closeModalBtn?.addEventListener('click', hideModal);
-    stockDetailModal?.addEventListener('click', (e) => { if (e.target === stockDetailModal) hideModal(); });
-    portfolioStatusToggle?.addEventListener('click', async () => await togglePortfolioStatus(currentModalStockCode, portfolioStatusToggle.classList.contains('owned')));
-
-    aboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'flex'; });
-    closeAboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'none'; });
-    aboutModal?.addEventListener('click', (e) => { if (e.target === aboutModal) aboutModal.style.display = 'none'; });
-
-    fetchAndRenderSignals(); 
-});
-
 
 // ==========================================
-// 6. INSTALL APP LOGIC (PWA)
+// 10. PWA INSTALLATION LOGIC (WAJIB ADA)
 // ==========================================
 let deferredPrompt;
-const installBtn = document.getElementById('installAppBtn');
 
+// 1. Cek jika sudah terinstal
 window.addEventListener('appinstalled', () => {
-    installBtn.style.display = 'none';
+    if(installBtn) installBtn.style.display = 'none';
     deferredPrompt = null;
     console.log('Aplikasi berhasil diinstal');
 });
 
+// 2. Tangkap event browser
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installBtn.style.display = 'inline-flex';
+    // Munculkan tombol jika browser mendukung
+    if(installBtn) installBtn.style.display = 'inline-flex';
 });
 
-installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response: ${outcome}`);
-    deferredPrompt = null;
-    installBtn.style.display = 'none';
-});
+// 3. Klik Tombol
+if(installBtn) {
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response: ${outcome}`);
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+    });
+}
