@@ -5,9 +5,9 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase; 
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
 
-// --- ELEMEN DOM ---
+// --- ELEMEN DOM UTAMA ---
 const statusMessage = document.getElementById('statusMessage');
-const dateFilter = document.getElementById('dateFilter'); // Sekarang Input Date
+const dateFilter = document.getElementById('dateFilter'); 
 const signalFilter = document.getElementById('signalFilter');
 const maFastInput = document.getElementById('maFast'); 
 const maSlowInput = document.getElementById('maSlow'); 
@@ -17,14 +17,22 @@ const stockSearchResults = document.getElementById('stockSearchResults');
 const stockSearchContainer = document.getElementById('stockSearchContainer');
 const csvFileInput = document.getElementById('csvFileInput');
 
+// --- MODAL DETAIL DOM ---
 const stockDetailModal = document.getElementById('stockDetailModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalTitle = document.getElementById('modalTitle');
+const modalCompanyName = document.getElementById('modalCompanyName'); // New Element
 const rawIndicatorTableBody = document.querySelector('#rawIndicatorTable tbody');
 const portfolioStatusToggle = document.getElementById('portfolioStatusToggle');
+
+// --- MODAL ABOUT DOM ---
+const aboutModal = document.getElementById('aboutModal');
+const aboutBtn = document.getElementById('aboutBtn');
+const closeAboutBtn = document.getElementById('closeAboutBtn');
+
 let priceChart = null; 
 
-// --- STATE ---
+// --- GLOBAL STATE ---
 let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
 let globalPortfolio = new Map(); 
@@ -115,22 +123,19 @@ async function fetchAndRenderSignals(selectedDate = null) {
     try {
         await fetchPortfolio(); 
 
-        // LOGIKA BARU: Jika selectedDate null (inisialisasi), ambil tanggal terbaru dari DB
         if (!selectedDate) {
             const latest = await initializeDateInput();
             if(!latest) { statusMessage.textContent = "Database kosong."; return; }
-            selectedDate = latest; // Set variable agar query di bawah pakai tanggal ini
+            selectedDate = latest; 
         }
 
-        // Cek data sinyal di tanggal tersebut
         const { data: signalData, error: signalError } = await supabaseClient
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
-            .eq('Tanggal', selectedDate); // Query spesifik tanggal input
+            .eq('Tanggal', selectedDate);
 
         if (signalError) throw signalError;
         
-        // PENTING: Handle jika tanggal dipilih tidak ada datanya (misal hari minggu)
         if (!signalData || signalData.length === 0) {
             statusMessage.textContent = `Tidak ada data perdagangan pada tanggal ${selectedDate}. Silakan pilih tanggal lain.`;
             globalCombinedSignals = [];
@@ -234,12 +239,11 @@ stockSearchInput.addEventListener('input', (e) => {
 });
 document.addEventListener('click', (e) => { if (!stockSearchContainer.contains(e.target)) stockSearchResults.style.display = 'none'; });
 
-// Filter & Date Listeners
+// Listeners General
 document.addEventListener('DOMContentLoaded', () => {
-    // Listener Tanggal Berubah
     dateFilter?.addEventListener('change', () => { 
         globalCustomMASignals = []; 
-        fetchAndRenderSignals(dateFilter.value); // Ambil data sesuai tanggal input
+        fetchAndRenderSignals(dateFilter.value); 
     });
 
     signalFilter?.addEventListener('change', () => categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value)));
@@ -251,11 +255,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupSorting();
     
-    // Modal
+    // DETAIL MODAL HANDLERS
     const hideModal = () => stockDetailModal.style.display = 'none';
     closeModalBtn?.addEventListener('click', hideModal);
     stockDetailModal?.addEventListener('click', (e) => { if (e.target === stockDetailModal) hideModal(); });
     portfolioStatusToggle?.addEventListener('click', async () => await togglePortfolioStatus(currentModalStockCode, portfolioStatusToggle.classList.contains('owned')));
+
+    // ABOUT MODAL HANDLERS
+    aboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'flex'; });
+    closeAboutBtn?.addEventListener('click', () => { aboutModal.style.display = 'none'; });
+    aboutModal?.addEventListener('click', (e) => { if (e.target === aboutModal) aboutModal.style.display = 'none'; });
 
     fetchAndRenderSignals(); 
 });
@@ -264,14 +273,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // 4. HELPER UTAMA
 // ********************************************
 
-// PENGGANTI POPULATE DATE: Set input date ke tanggal terbaru dari DB
 async function initializeDateInput() {
     try {
         const { data } = await supabaseClient.from('indikator_teknikal').select('Tanggal').order('Tanggal', { ascending: false }).limit(1);
         if (data && data.length > 0) {
             const latestDate = data[0].Tanggal;
-            dateFilter.value = latestDate; // Set nilai input
-            // Opsional: Set max date ke hari ini atau latestDate
+            dateFilter.value = latestDate; 
             dateFilter.max = new Date().toISOString().split("T")[0]; 
             return latestDate;
         }
@@ -281,12 +288,7 @@ async function initializeDateInput() {
 
 function applySignalFilter(signals, filterType) {
     if (filterType === 'ALL') return signals;
-    
-    // FILTER LOGIC UNTUK OWNED
-    if (filterType === 'OWNED') {
-        return signals.filter(item => globalPortfolio.has(item["Kode Saham"]));
-    }
-
+    if (filterType === 'OWNED') return signals.filter(item => globalPortfolio.has(item["Kode Saham"]));
     return signals.filter(item => {
         const txt = [item.Sinyal_MA, item.Sinyal_RSI, item.Sinyal_MACD, item.Sinyal_Volume].join(' ').toUpperCase();
         if (filterType === 'BUY') return txt.includes('BUY') || txt.includes('OVERSOLD') || txt.includes('GOLDEN');
@@ -295,9 +297,6 @@ function applySignalFilter(signals, filterType) {
         return false;
     });
 }
-
-// ... Fungsi formatNumber, getSignalClass, sortSignals, categorizeAndRender, renderCategory, setupSorting, updateSortIcons, handleStockClick 
-// (TIDAK ADA PERUBAHAN SIGNIFIKAN DARI VERSI SEBELUMNYA, GUNAKAN KODE SAMA) ...
 
 function getSignalClass(signal) {
     if (!signal) return ''; const s = signal.toUpperCase();
@@ -338,7 +337,6 @@ function categorizeAndRender(signals) {
     });
     renderCategory('maCross', cat.maCross); renderCategory('rsi', cat.rsi); renderCategory('volume', cat.volume); renderCategory('macd', cat.macd);
     
-    // Update Text
     let count = signals.length;
     let dateTxt = dateFilter.value;
     statusMessage.textContent = count > 0 ? `Menampilkan ${count} saham (${dateTxt})` : `Tidak ada data untuk ${dateTxt}`;
@@ -379,20 +377,38 @@ function setupSorting() { document.querySelectorAll('th[data-column]').forEach(t
 function updateSortIcons() { document.querySelectorAll('th[data-column]').forEach(th => { const icon = th.querySelector('.sort-icon'); if(icon) { icon.textContent = '↕'; if(th.getAttribute('data-column') === sortState.column) icon.textContent = sortState.direction === 'asc' ? '↑' : '↓'; } }); }
 function handleStockClick(e) { showStockDetailModal(e.target.textContent); }
 
-// Modal & Chart logic sama persis seperti sebelumnya...
+// --- MODAL & CHART LOGIC (UPDATED WITH COMPANY NAME) ---
 async function showStockDetailModal(stockCode) {
-    currentModalStockCode = stockCode; modalTitle.textContent = `${stockCode} - Detail`;
+    currentModalStockCode = stockCode; 
+    modalTitle.textContent = stockCode; // Set Kode Saham
+    modalCompanyName.textContent = "Memuat nama perusahaan..."; // Reset text
     updatePortfolioStatusDisplay(stockCode);
     stockDetailModal.style.display = 'flex'; 
+    
     rawIndicatorTableBody.innerHTML = '<tr><td colspan="7">Memuat...</td></tr>';
     if(priceChart) priceChart.destroy();
+    
     try {
         const { data: indicators } = await supabaseClient.from('indikator_teknikal').select('*').eq('Kode Saham', stockCode).order('Tanggal', { ascending: false }).limit(30);
-        if(!indicators || !indicators.length) { rawIndicatorTableBody.innerHTML = '<tr><td colspan="7">Data kosong</td></tr>'; return; }
+        if(!indicators || !indicators.length) { rawIndicatorTableBody.innerHTML = '<tr><td colspan="7">Data kosong</td></tr>'; modalCompanyName.textContent = "Data tidak ditemukan"; return; }
+        
         const dates = indicators.map(i => i.Tanggal);
-        const { data: prices } = await supabaseClient.from('data_saham').select('"Tanggal Perdagangan Terakhir", "Penutupan"').eq('Kode Saham', stockCode).in('Tanggal Perdagangan Terakhir', dates);
+        // FETCH DATA HARGA + NAMA PERUSAHAAN
+        const { data: prices } = await supabaseClient.from('data_saham')
+            .select('"Tanggal Perdagangan Terakhir", "Penutupan", "Nama Perusahaan"')
+            .eq('Kode Saham', stockCode)
+            .in('Tanggal Perdagangan Terakhir', dates);
+            
+        // Update Nama Perusahaan (ambil dari row pertama yang ada)
+        if (prices && prices.length > 0 && prices[0]["Nama Perusahaan"]) {
+            modalCompanyName.textContent = prices[0]["Nama Perusahaan"];
+        } else {
+            modalCompanyName.textContent = "";
+        }
+
         const priceMap = new Map(); prices?.forEach(p => priceMap.set(p["Tanggal Perdagangan Terakhir"], p.Penutupan));
         const histData = indicators.map(i => ({ ...i, Penutupan: priceMap.get(i.Tanggal) })).reverse();
+        
         rawIndicatorTableBody.innerHTML = '';
         [...histData].reverse().forEach(d => {
             const r = rawIndicatorTableBody.insertRow();
@@ -402,4 +418,5 @@ async function showStockDetailModal(stockCode) {
         priceChart = new Chart(ctx, { type: 'line', data: { labels: histData.map(d => d.Tanggal.slice(5)), datasets: [ { label: 'Harga', data: histData.map(d => d.Penutupan), borderColor: '#4f46e5', tension: 0.1, yAxisID: 'y' }, { label: 'MA5', data: histData.map(d => d.MA_5), borderColor: '#f43f5e', borderWidth:1, pointRadius:0, yAxisID: 'y' }, { label: 'MA20', data: histData.map(d => d.MA_20), borderColor: '#0ea5e9', borderWidth:1, pointRadius:0, yAxisID: 'y' } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { position: 'left', grid: { display: false } } }, plugins: { legend: { labels: { boxWidth: 10 } } } } });
     } catch (e) { rawIndicatorTableBody.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`; }
 }
+
 function updatePortfolioStatusDisplay(code) { const owned = globalPortfolio.has(code); portfolioStatusToggle.className = owned ? 'owned' : ''; portfolioStatusToggle.textContent = owned ? `OWNED (Hapus)` : 'Tambahkan ke Portofolio'; }
