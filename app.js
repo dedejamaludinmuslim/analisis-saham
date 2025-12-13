@@ -15,6 +15,7 @@ const applyMaCustomButton = document.getElementById('applyMaCustom');
 // PENAMBAHAN: Elemen Pencarian
 const stockSearchInput = document.getElementById('stockSearchInput');
 const stockSearchResults = document.getElementById('stockSearchResults');
+const stockSearchContainer = document.getElementById('stockSearchContainer');
 
 // --- DOM MODAL BARU ---
 const stockDetailModal = document.getElementById('stockDetailModal');
@@ -86,7 +87,6 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
         }
     } else {
         // Tambahkan ke Portofolio (menjadi Owned)
-        // Kita perlu harga beli. Karena tidak ada input, kita gunakan harga Penutupan terbaru
         const latestPrice = await getLatestStockPrice(stockCode);
         const latestDate = dateFilter.value; // Ambil tanggal dari filter
         
@@ -95,6 +95,7 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
             return false;
         }
         
+        // Menggunakan prompt untuk Harga Beli
         const confirmPrice = prompt(`Masukkan Harga Beli untuk ${stockCode} (Harga Close terakhir: ${formatNumber(latestPrice, false, true)}):`, latestPrice);
         
         if (confirmPrice === null || isNaN(parseFloat(confirmPrice)) || parseFloat(confirmPrice) <= 0) {
@@ -105,7 +106,7 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
         const buyPrice = parseFloat(confirmPrice);
         
         try {
-            // Coba masukkan data (dengan asumsi 'kode_saham' adalah unique key)
+            // Upsert: Jika kode_saham sudah ada, update harga_beli dan tanggal_beli. Jika tidak, insert.
             const { error } = await supabaseClient
                 .from('portofolio_saham')
                 .upsert(
@@ -158,7 +159,7 @@ async function getLatestStockPrice(stockCode) {
      }
 }
 
-// FUNGSI RPC: Mengambil Sinyal MA Kustom (Tidak Berubah)
+// FUNGSI RPC: Mengambil Sinyal MA Kustom
 async function fetchCustomMASignals(targetDate, maFast, maSlow) {
     statusMessage.textContent = `Memproses sinyal MA Kustom (${maFast}/${maSlow}) untuk ${targetDate}...`;
     globalCustomMASignals = []; 
@@ -183,7 +184,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
 }
 
 
-// FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM (Tidak Berubah)
+// FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM
 function mergeSignals(staticSignals, customMASignals) {
     const mergedMap = new Map();
 
@@ -214,7 +215,7 @@ function mergeSignals(staticSignals, customMASignals) {
     );
 }
 
-// FUNGSI UTAMA: Mengambil dan Merender Sinyal (Tidak Berubah Signifikan)
+// FUNGSI UTAMA: Mengambil dan Merender Sinyal
 async function fetchAndRenderSignals(selectedDate = null) {
     statusMessage.textContent = 'Memuat data...';
     applyMaCustomButton.disabled = true;
@@ -378,20 +379,31 @@ async function searchStocks(query) {
         return [];
     }
     
-    // Kueri Supabase: Cari kode saham yang diawali dengan query
     try {
         const { data, error } = await supabaseClient
             .from('data_saham')
             .select(`"Kode Saham", "Nama Perusahaan"`)
-            .ilike('Kode Saham', `${query}%`) // ILIKE untuk pencarian tidak sensitif huruf besar/kecil
-            .limit(10); 
+            .ilike('Kode Saham', `${query}%`) 
+            .limit(50); // Batasi hasil mentah
             
         if (error) throw error;
         
-        return data.map(item => ({
-            code: item["Kode Saham"],
-            name: item["Nama Perusahaan"] || 'N/A'
-        }));
+        // LOGIKA PERBAIKAN: Filter duplikat secara lokal
+        const uniqueStocks = [];
+        const seenCodes = new Set();
+        
+        data.forEach(item => {
+            const code = item["Kode Saham"];
+            if (!seenCodes.has(code)) {
+                seenCodes.add(code);
+                uniqueStocks.push({
+                    code: code,
+                    name: item["Nama Perusahaan"] || 'N/A'
+                });
+            }
+        });
+
+        return uniqueStocks.slice(0, 10); // Batasi hasil akhir 10 item untuk tampilan
 
     } catch (error) {
         console.error('Error mencari saham:', error);
@@ -455,7 +467,7 @@ function setupSearchHandlers() {
 
 
 // ********************************************
-// FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort) - (Format Number diubah)
+// FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort)
 // ********************************************
 
 async function populateDateFilter(latestDate) {
@@ -659,7 +671,7 @@ function renderCategory(categoryKey, data) {
             const currentPrice = item.Penutupan; 
             const buyPrice = parseFloat(portfolioData.hargaBeli);
             
-            buyPriceCell.textContent = formatNumber(buyPrice, false, true); // Menggunakan formatNumber baru
+            buyPriceCell.textContent = formatNumber(buyPrice, false, true); // Menggunakan formatNumber Raw Price
             
             const pnl = ((currentPrice - buyPrice) / buyPrice) * 100;
             
@@ -679,7 +691,7 @@ function renderCategory(categoryKey, data) {
         // Kolom 5: Tanggal
         row.insertCell().textContent = item["Tanggal"];
         // Kolom 6: Penutupan
-        row.insertCell().textContent = formatNumber(item.Penutupan, false, true); // Menggunakan formatNumber baru
+        row.insertCell().textContent = formatNumber(item.Penutupan, false, true); // Menggunakan formatNumber Raw Price
         // Kolom 7: Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
         
@@ -758,8 +770,8 @@ function setupModalHandlers() {
     if (portfolioStatusToggle) {
         portfolioStatusToggle.addEventListener('click', async () => {
             const isOwned = portfolioStatusToggle.classList.contains('owned');
-            const success = await togglePortfolioStatus(currentModalStockCode, isOwned);
-            // Status tampilan akan diperbarui di dalam togglePortfolioStatus
+            // currentModalStockCode diset di showStockDetailModal
+            await togglePortfolioStatus(currentModalStockCode, isOwned);
         });
     }
 }
