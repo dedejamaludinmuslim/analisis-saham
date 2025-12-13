@@ -2,8 +2,10 @@
 const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs"; 
 
+// --- PERBAIKAN INISIALISASI KLIEN ---
 const { createClient } = window.supabase; 
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
+// ------------------------------------
 
 const statusMessage = document.getElementById('statusMessage');
 
@@ -66,6 +68,7 @@ function renderCategory(categoryKey, data) {
         row.insertCell().textContent = item["Tanggal"];
 
         // KOLOM HARGA PENUTUPAN (Menggunakan data_saham yang di-merge)
+        // item.Penutupan dan item.Volume sudah ada di objek setelah proses merge
         const closePrice = item.Penutupan ? parseFloat(item.Penutupan).toLocaleString('id-ID', { minimumFractionDigits: 0 }) : 'N/A';
         row.insertCell().textContent = closePrice;
         
@@ -81,7 +84,7 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// FUNGSI UTAMA MENGGUNAKAN DUA QUERY
+// FUNGSI UTAMA MENGGUNAKAN DUA QUERY (MENGHINDARI ERROR RELASI SUPABASE)
 async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan harga...';
     
@@ -110,7 +113,7 @@ async function fetchAndRenderSignals() {
 
         if (priceError) throw priceError;
         
-        // --- Langkah 3: Merge Data ---
+        // --- Langkah 3: Merge Data di JavaScript ---
         // Buat map harga untuk pencarian cepat: Key = "Kode Saham"
         const priceMap = {};
         prices.forEach(p => {
