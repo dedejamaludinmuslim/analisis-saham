@@ -2,10 +2,8 @@
 const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs"; 
 
-// --- PERBAIKAN INISIALISASI KLIEN ---
 const { createClient } = window.supabase; 
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
-// ------------------------------------
 
 const statusMessage = document.getElementById('statusMessage');
 
@@ -25,7 +23,6 @@ function getSignalClass(signal) {
     return '';
 }
 
-// Fungsi untuk mengkategorikan data berdasarkan sinyal non-NULL
 function categorizeSignals(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
@@ -67,8 +64,7 @@ function renderCategory(categoryKey, data) {
         row.insertCell().textContent = item["Kode Saham"];
         row.insertCell().textContent = item["Tanggal"];
 
-        // KOLOM HARGA PENUTUPAN (Menggunakan data_saham yang di-merge)
-        // item.Penutupan dan item.Volume sudah ada di objek setelah proses merge
+        // KOLOM HARGA PENUTUPAN
         const closePrice = item.Penutupan ? parseFloat(item.Penutupan).toLocaleString('id-ID', { minimumFractionDigits: 0 }) : 'N/A';
         row.insertCell().textContent = closePrice;
         
@@ -84,12 +80,12 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// FUNGSI UTAMA MENGGUNAKAN DUA QUERY (MENGHINDARI ERROR RELASI SUPABASE)
+// FUNGSI UTAMA MENGGUNAKAN DUA QUERY YANG DIKOREKSI
 async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan harga...';
     
     try {
-        // --- QUERY 1: Ambil data indikator (tanpa join) ---
+        // --- QUERY 1: Ambil data indikator (untuk mendapatkan tanggal terbaru) ---
         const { data: indicators, error: indicatorError } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
@@ -102,31 +98,36 @@ async function fetchAndRenderSignals() {
             return;
         }
 
-        // Tentukan Tanggal Terbaru
+        // Tentukan Tanggal Terbaru dari data indikator
         const latestDate = indicators[0].Tanggal;
 
-        // --- QUERY 2: Ambil data harga dan volume untuk tanggal terbaru ---
+        // --- QUERY 2: Ambil data harga dan volume (TANPA FILTER TANGGAL, diasumsikan data terbaru ada di paling atas) ---
         const { data: prices, error: priceError } = await supabaseClient 
             .from('data_saham')
+            // Cuma ambil Kode Saham, Penutupan, dan Volume
             .select(`"Kode Saham", "Penutupan", "Volume"`)
-            .eq('Tanggal', latestDate); 
-
+            .order('Tanggal', { ascending: false }) // Tambahkan order untuk mencoba mendapatkan data harga terbaru
+            .limit(100); 
+            
         if (priceError) throw priceError;
         
         // --- Langkah 3: Merge Data di JavaScript ---
         // Buat map harga untuk pencarian cepat: Key = "Kode Saham"
         const priceMap = {};
         prices.forEach(p => {
-            priceMap[p["Kode Saham"]] = { Penutupan: p.Penutupan, Volume: p.Volume };
+            // Jika ada duplikasi Kode Saham, hanya ambil yang pertama (yang seharusnya yang paling baru karena sudah di-order)
+            if (!priceMap[p["Kode Saham"]]) {
+                 priceMap[p["Kode Saham"]] = { Penutupan: p.Penutupan, Volume: p.Volume };
+            }
         });
 
         const mergedSignals = indicators
             .filter(i => 
-                i.Tanggal === latestDate && // Filter Tanggal Terbaru
+                i.Tanggal === latestDate && // Filter Tanggal Terbaru Indikator
                 (i.Sinyal_MA || i.Sinyal_RSI || i.Sinyal_MACD || i.Sinyal_Volume) // Filter Ada Sinyal
             )
             .map(i => {
-                const priceData = priceMap[i["Kode Saham"]] || {};
+                const priceData = priceMap[i["Kode Saham"]] || { Penutupan: 'N/A', Volume: 0 };
                 return { ...i, ...priceData }; // Gabungkan data sinyal dan data harga
             });
 
