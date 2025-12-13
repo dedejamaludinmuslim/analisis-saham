@@ -7,6 +7,7 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const statusMessage = document.getElementById('statusMessage');
 
+// Mendapatkan elemen tabel dan status untuk setiap kategori
 const categories = {
     maCross: { tableBody: document.querySelector('#maCrossTable tbody'), statusEl: document.getElementById('maStatus'), tableEl: document.getElementById('maCrossTable') },
     rsi: { tableBody: document.querySelector('#rsiTable tbody'), statusEl: document.getElementById('rsiStatus'), tableEl: document.getElementById('rsiTable') },
@@ -16,12 +17,13 @@ const categories = {
 
 function getSignalClass(signal) {
     if (!signal) return '';
-    if (signal.includes('BUY') || signal.includes('OVERSOLD')) return 'signal-buy';
-    if (signal.includes('SELL') || signal.includes('OVERBOUGHT')) return 'signal-sell';
+    if (signal.includes('BUY') || signal.includes('OVERSOLD') || signal.includes('GOLDEN CROSS')) return 'signal-buy';
+    if (signal.includes('SELL') || signal.includes('OVERBOUGHT') || signal.includes('DEATH CROSS')) return 'signal-sell';
     if (signal.includes('WATCH') || signal.includes('SPIKE')) return 'signal-watch';
     return '';
 }
 
+// Fungsi untuk mengkategorikan data berdasarkan sinyal non-NULL
 function categorizeSignals(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
@@ -60,19 +62,15 @@ function renderCategory(categoryKey, data) {
     data.forEach(item => {
         const row = tableBody.insertRow();
         
-        // Ambil data harga dan volume dari hasil join (data_saham adalah array)
-        // Kita gunakan [0] karena diasumsikan hanya ada satu baris data saham per indikator
-        const priceData = item.data_saham ? item.data_saham[0] : null; 
-        
         row.insertCell().textContent = item["Kode Saham"];
         row.insertCell().textContent = item["Tanggal"];
 
-        // KOLOM HARGA PENUTUPAN
-        const closePrice = priceData ? parseFloat(priceData["Penutupan"]).toLocaleString('id-ID', { minimumFractionDigits: 0 }) : 'N/A';
+        // KOLOM HARGA PENUTUPAN (Menggunakan data_saham yang di-merge)
+        const closePrice = item.Penutupan ? parseFloat(item.Penutupan).toLocaleString('id-ID', { minimumFractionDigits: 0 }) : 'N/A';
         row.insertCell().textContent = closePrice;
         
         // KOLOM VOLUME (Dalam Juta)
-        const volumeVal = priceData ? parseFloat(priceData["Volume"]) / 1000000 : 0;
+        const volumeVal = item.Volume ? parseFloat(item.Volume) / 1000000 : 0;
         row.insertCell().textContent = volumeVal.toLocaleString('id-ID', { maximumFractionDigits: 2 }) + ' Jt';
 
         // Kolom Sinyal (Aksi)
@@ -83,52 +81,70 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// FUNGSI UTAMA DENGAN QUERY JOIN YANG SUDAH DIPERBAIKI SINTAKSISNYA
+// FUNGSI UTAMA MENGGUNAKAN DUA QUERY
 async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan harga...';
     
     try {
-        const { data: signals, error } = await supabaseClient 
+        // --- QUERY 1: Ambil data indikator (tanpa join) ---
+        const { data: indicators, error: indicatorError } = await supabaseClient 
             .from('indikator_teknikal')
-            // *** INI PERBAIKAN KRITISNYA: Query dalam satu baris untuk menghindari error parsing ***
-            .select(`"Kode Saham","Tanggal","Sinyal_MA","Sinyal_RSI","Sinyal_MACD","Sinyal_Volume",data_saham(Penutupan,Volume)`)
-            // ***********************************************************************************
+            .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
             .order('Tanggal', { ascending: false })
             .limit(100); 
 
-        if (error) throw error;
-        
-        if (signals.length === 0) {
-            statusMessage.textContent = 'Tidak ada data ditemukan di tabel indikator_teknikal.';
+        if (indicatorError) throw indicatorError;
+        if (indicators.length === 0) {
+            statusMessage.textContent = 'Tidak ada data indikator ditemukan.';
             return;
         }
 
-        // 1. Tentukan Tanggal Terbaru
-        const latestDate = signals[0].Tanggal;
-        
-        // 2. Filter data untuk Tanggal Terbaru DAN memiliki MINIMAL satu sinyal
-        const dailySignals = signals.filter(s => 
-            s.Tanggal === latestDate && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)
-        );
+        // Tentukan Tanggal Terbaru
+        const latestDate = indicators[0].Tanggal;
 
-        if (dailySignals.length === 0) {
+        // --- QUERY 2: Ambil data harga dan volume untuk tanggal terbaru ---
+        const { data: prices, error: priceError } = await supabaseClient 
+            .from('data_saham')
+            .select(`"Kode Saham", "Penutupan", "Volume"`)
+            .eq('Tanggal', latestDate); 
+
+        if (priceError) throw priceError;
+        
+        // --- Langkah 3: Merge Data ---
+        // Buat map harga untuk pencarian cepat: Key = "Kode Saham"
+        const priceMap = {};
+        prices.forEach(p => {
+            priceMap[p["Kode Saham"]] = { Penutupan: p.Penutupan, Volume: p.Volume };
+        });
+
+        const mergedSignals = indicators
+            .filter(i => 
+                i.Tanggal === latestDate && // Filter Tanggal Terbaru
+                (i.Sinyal_MA || i.Sinyal_RSI || i.Sinyal_MACD || i.Sinyal_Volume) // Filter Ada Sinyal
+            )
+            .map(i => {
+                const priceData = priceMap[i["Kode Saham"]] || {};
+                return { ...i, ...priceData }; // Gabungkan data sinyal dan data harga
+            });
+
+
+        if (mergedSignals.length === 0) {
             statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate}.`;
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
             return;
         }
         
-        // 3. Kategorikan Data
-        const categorizedData = categorizeSignals(dailySignals);
+        // 4. Kategorikan Data dan Render
+        const categorizedData = categorizeSignals(mergedSignals);
         
-        // 4. Render per Kategori
         renderCategory('maCross', categorizedData.maCross);
         renderCategory('rsi', categorizedData.rsi);
         renderCategory('macd', categorizedData.macd);
         renderCategory('volume', categorizedData.volume);
 
         let totalSignals = Object.values(categorizedData).flat().length;
-        statusMessage.textContent = `Sinyal untuk ${dailySignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
+        statusMessage.textContent = `Sinyal untuk ${mergedSignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
 
     } catch (error) {
         statusMessage.textContent = `Error memuat data: ${error.message}`;
