@@ -92,7 +92,7 @@ async function fetchPortfolio() {
     }
 }
 
-// FUNGSI UPDATE STATUS PORTFOLIO (DIPOLES DENGAN SWEETALERT2)
+// FUNGSI UPDATE STATUS PORTFOLIO (SIMETRI DAN PENGHAPUSAN OPSI TANGGAL BELI)
 async function togglePortfolioStatus(stockCode, currentIsOwned) {
     // A. LOGIKA HAPUS (JIKA SUDAH PUNYA)
     if (currentIsOwned) {
@@ -120,47 +120,56 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
             }
         } else { return false; }
 
-    // B. LOGIKA TAMBAH/BELI BARU
+    // B. LOGIKA TAMBAH/BELI BARU (Simetri UI)
     } else {
         const latestPrice = await getLatestStockPrice(stockCode);
-        const latestDate = dateFilter.value; 
+        const latestDate = dateFilter.value; // Tanggal Beli = Tanggal Analisis Terakhir
         
         if (!latestPrice) { 
             Swal.fire({ icon: 'error', title: 'Data Tidak Tersedia', text: 'Harga saham ini belum tersedia.' });
             return false; 
         }
 
-        // Popup Input Harga
+        // Popup Input Harga (Disederhanakan)
         const { value: inputPrice } = await Swal.fire({
             title: `Tambah ${stockCode}`,
             html: `
-                <p style="margin-bottom: 10px; color: #6b7280;">Harga penutupan terakhir: <b>Rp ${latestPrice}</b></p>
-                <label for="swal-input-price" style="display:block; text-align:left; font-size:0.9rem; font-weight:600; margin-bottom:5px;">Masukkan Harga Beli:</label>
+                <p style="margin-bottom: 10px; color: #6b7280;">Harga penutupan terakhir (${latestDate}): <b>Rp ${formatNumber(latestPrice, false, true)}</b></p>
+                <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+                    <label for="swal-input-price" style="display:block; text-align:center; font-size:0.9rem; font-weight:600; margin-bottom:5px;">Masukkan Harga Beli:</label>
+                    <input id="swal-input-price" class="swal2-input" type="number" value="${latestPrice}" min="1" step="1" style="width: 80%; margin-top: 0;">
+                </div>
             `,
-            input: 'number',
-            inputValue: latestPrice,
-            inputAttributes: { min: 1, step: 1 },
+            input: 'text', // Karena kita menggunakan custom input, jenis input harus 'text'
             showCancelButton: true,
+            focusConfirm: false,
+            preConfirm: () => { 
+                const price = document.getElementById('swal-input-price').value;
+                if (!price || parseFloat(price) <= 0) {
+                    Swal.showValidationMessage('Harga beli harus valid!');
+                    return false;
+                }
+                return parseFloat(price);
+            },
             confirmButtonColor: '#4f46e5',
             confirmButtonText: 'Simpan',
-            cancelButtonText: 'Batal',
-            inputValidator: (value) => { if (!value || value <= 0) return 'Harga beli harus valid!'; }
+            cancelButtonText: 'Batal'
         });
-
-        if (inputPrice) {
+        
+        // Pengecekan inputPrice setelah preConfirm
+        if (inputPrice && inputPrice > 0) {
             try {
                 await supabaseClient.from('portofolio_saham').upsert({ 
                     kode_saham: stockCode, 
-                    harga_beli: parseFloat(inputPrice), 
-                    tanggal_beli: latestDate,
-                    harga_tertinggi_sejak_beli: parseFloat(inputPrice) 
+                    harga_beli: inputPrice, 
+                    tanggal_beli: latestDate, // Menggunakan tanggal analisis sebagai tanggal beli
+                    harga_tertinggi_sejak_beli: inputPrice 
                 }, { onConflict: 'kode_saham' });
                 
-                globalPortfolio.set(stockCode, { hargaBeli: parseFloat(inputPrice) });
-                
+                globalPortfolio.set(stockCode, { hargaBeli: inputPrice });
                 await fetchPortfolio();
                 
-                Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${stockCode} disimpan dengan harga Rp ${inputPrice}.`, timer: 2000, showConfirmButton: false });
+                Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${stockCode} disimpan dengan harga Rp ${formatNumber(inputPrice, false, true)}.`, timer: 2000, showConfirmButton: false });
             } catch (error) { 
                 Swal.fire({ icon: 'error', title: 'Gagal Menyimpan', text: error.message });
                 return false; 
@@ -477,7 +486,7 @@ function categorizeAndRender(signals) {
     document.querySelectorAll('.clickable-stock').forEach(el => el.onclick = handleStockClick);
 }
 
-// MEMPERBARUI FUNGSI RENDER UNTUK POWER SCORE (Tahap 2)
+// MEMPERBARUI FUNGSI RENDER UNTUK URUTAN KOLOM BARU
 function renderCategory(key, data) {
     const { tableBody, statusEl, tableEl } = categories[key];
     const sigKey = `Sinyal_${key.replace('maCross','MA').replace('rsi','RSI').replace('macd','MACD').replace('volume','Volume')}`;
@@ -492,16 +501,33 @@ function renderCategory(key, data) {
         // 1. Kode
         row.insertCell().innerHTML = `<span class="clickable-stock">${code}</span>`;
 
-        // 2. POWER SCORE (BARU)
-        const score = item.power_score || 0;
-        const scoreCell = row.insertCell();
-        scoreCell.style.fontWeight = 'bold';
-        if (score >= 40) { scoreCell.className = 'text-green'; scoreCell.textContent = `${score} (STRONG BUY)`; }
-        else if (score > 0) { scoreCell.className = 'text-green'; scoreCell.textContent = `${score} (BUY)`; }
-        else if (score === 0) { scoreCell.textContent = `-`; }
-        else { scoreCell.className = 'text-red'; scoreCell.textContent = `${score} (SELL)`; }
+        // 2. Tanggal
+        row.insertCell().textContent = item.Tanggal ? item.Tanggal.slice(5) : '-';
 
-        // 3. Status (Smart Badge) 
+        // 3. Harga Penutupan
+        row.insertCell().textContent = formatNumber(item.Penutupan, false, true);
+
+        // 4. Volume
+        row.insertCell().textContent = formatNumber(item.Volume, true);
+
+        // 5. Chg% (Selisih)
+        const chg = parseFloat(item.Selisih || 0);
+        const chgCell = row.insertCell();
+        chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
+        chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
+        
+        // 6. Avg Price
+        row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
+
+        // 7. P/L %
+        const plCell = row.insertCell();
+        if (pf) {
+            const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
+            plCell.className = pnl >= 0 ? 'text-green' : 'text-red'; 
+            plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
+        } else { plCell.textContent = '-'; }
+
+        // 8. Status (Smart Badge) 
         const statusCell = row.insertCell();
         if (pf) {
             const analysis = globalPortfolioAnalysis.get(code);
@@ -513,28 +539,17 @@ function renderCategory(key, data) {
         } else {
             statusCell.innerHTML = `<span class="badge badge-neutral">WATCH</span>`;
         }
-
-        // 4. Avg Price
-        row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
         
-        // 5. P/L %
-        const plCell = row.insertCell();
-        if (pf) {
-            const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
-            plCell.className = pnl >= 0 ? 'text-green' : 'text-red'; 
-            plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
-        } else { plCell.textContent = '-'; }
+        // 9. POWER SCORE 
+        const score = item.power_score || 0;
+        const scoreCell = row.insertCell();
+        scoreCell.style.fontWeight = 'bold';
+        if (score >= 40) { scoreCell.className = 'text-green'; scoreCell.textContent = `${score} (STRONG BUY)`; }
+        else if (score > 0) { scoreCell.className = 'text-green'; scoreCell.textContent = `${score} (BUY)`; }
+        else if (score === 0) { scoreCell.textContent = `-`; }
+        else { scoreCell.className = 'text-red'; scoreCell.textContent = `${score} (SELL)`; }
 
-        // 6. Data Lain
-        row.insertCell().textContent = item.Tanggal ? item.Tanggal.slice(5) : '-';
-        row.insertCell().textContent = formatNumber(item.Penutupan, false, true);
-        row.insertCell().textContent = formatNumber(item.Volume, true);
-        const chg = parseFloat(item.Selisih || 0);
-        const chgCell = row.insertCell();
-        chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
-        chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
-        
-        // 7. Sinyal
+        // 10. Sinyal
         const signalText = item[sigKey] || '-';
         row.insertCell().innerHTML = `<span class="${getSignalClass(signalText)}">${signalText}</span>`;
     });
@@ -570,7 +585,6 @@ async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode; 
     modalTitle.textContent = stockCode; 
     modalCompanyName.textContent = "Memuat data..."; 
-    // document.getElementById('fundamentalRatios').innerHTML = ''; // Tidak perlu karena elemen ini sudah dihapus
     updatePortfolioStatusDisplay(stockCode);
     stockDetailModal.style.display = 'flex'; 
     
@@ -580,7 +594,7 @@ async function showStockDetailModal(stockCode) {
     try {
         // BAGIAN 1: Ambil Nama Perusahaan
         const { data: latestFundamental } = await supabaseClient.from('data_saham')
-            .select(`"Nama Perusahaan"`) // HANYA AMBIL NAMA PERUSAHAAN
+            .select(`"Nama Perusahaan"`)
             .eq('Kode Saham', stockCode)
             .order('Tanggal Perdagangan Terakhir', { ascending: false })
             .limit(1); 
@@ -615,7 +629,6 @@ async function showStockDetailModal(stockCode) {
         if (fundamentalData) {
             modalCompanyName.textContent = fundamentalData["Nama Perusahaan"] || "Nama Perusahaan Tidak Ditemukan";
         } else {
-            // Jika nama perusahaan tidak ada di data_saham terbaru
             modalCompanyName.textContent = "Nama perusahaan tidak ditemukan";
         }
 
@@ -653,7 +666,7 @@ async function showStockDetailModal(stockCode) {
 function updatePortfolioStatusDisplay(code) { 
     const owned = globalPortfolio.has(code); 
     portfolioStatusToggle.className = owned ? 'owned' : ''; 
-    portfolioStatusToggle.textContent = owned ? `Remove from Portofolio` : 'Add to Portofolio'; 
+    portfolioStatusToggle.textContent = owned ? `Hapus dari Portofolio` : 'Tambahkan ke Portofolio'; // Perbaikan teks
 }
 
 // ==========================================
