@@ -55,7 +55,7 @@
             border-bottom: 2px solid var(--border-color);
         }
 
-        /* --- Gaya Filter --- */
+        /* --- Gaya Filter Utama --- */
         #filterContainer {
             display: flex; 
             justify-content: center;
@@ -79,6 +79,52 @@
         #dateFilter:hover, #signalFilter:hover {
             border-color: var(--primary-color);
         }
+        
+        /* --- Gaya Pencarian Saham --- */
+        #stockSearchContainer {
+            position: relative;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #stockSearchInput {
+            padding: 10px 15px;
+            width: 300px;
+            border: 2px solid var(--primary-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        #stockSearchResults {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 330px; 
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .search-result-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 0.95rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .search-result-item:hover {
+            background-color: var(--primary-light);
+        }
+        .search-result-code { font-weight: 700; color: var(--primary-color); }
+        .search-result-name { color: #4b5563; font-size: 0.9em; }
+
         
         /* --- Gaya Kustomisasi MA --- */
         #maCustomization {
@@ -223,13 +269,44 @@
              text-decoration: underline;
         }
         
+        /* Gaya Modal Owned/Watchlist */
+        #modalTitleContainer {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        #portfolioStatusToggle {
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            padding: 6px 12px;
+            border: 2px solid var(--primary-color);
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        #portfolioStatusToggle.owned {
+            background-color: var(--buy-bg);
+            color: var(--buy-color);
+            border-color: var(--buy-color);
+        }
+        #portfolioStatusToggle:hover {
+            opacity: 0.8;
+        }
+        
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Screener Saham Hari Ini</h1>
         <p id="statusMessage">Memuat sinyal...</p>
-
+        
+        <div id="stockSearchContainer">
+            <input type="text" id="stockSearchInput" placeholder="Cari Kode Saham (mis: TLKM, BBCA, dll.)">
+            <div id="stockSearchResults" style="display: none;">
+                </div>
+        </div>
+        
         <div id="filterContainer">
             <div>
                 <label for="dateFilter">Lihat Tanggal:</label>
@@ -352,7 +429,10 @@
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
         ">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px;">
-                <h2 id="modalTitle">Detail Saham [KODE]</h2>
+                <div id="modalTitleContainer">
+                    <h2 id="modalTitle">Detail Saham [KODE]</h2>
+                    <button id="portfolioStatusToggle">Owned / Watchlist</button>
+                </div>
                 <button id="closeModalBtn" style="
                     background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #333;
                 ">&times;</button>
