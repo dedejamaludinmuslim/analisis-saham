@@ -145,7 +145,7 @@
             </button>
             
             <button id="refreshAnalysisBtn" class="header-btn">
-                🔄 Refresh
+                🔄 Refresh Analisa
             </button>
 
             <label for="csvFileInput" class="header-btn">
@@ -158,7 +158,7 @@
     <div class="container">
         
         <div id="stockSearchContainer">
-            <input type="text" id="stockSearchInput" placeholder="🔍 Cari Kode Saham (misal: ANTM)">
+            <input type="text" id="stockSearchInput" placeholder="🔍 Cari Kode Saham (cth: BBCA)">
             <div id="stockSearchResults"></div>
         </div>
         
@@ -199,14 +199,14 @@
                 <table id="maCrossTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Avg Price</th>
-                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
                         <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
                         <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
                         <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Harga Beli">Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Status Aksi">Status <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
                         <th data-column="Sinyal">Sinyal</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -220,14 +220,14 @@
                 <table id="rsiTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Avg Price</th>
-                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
                         <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
                         <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
                         <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Harga Beli">Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Status Aksi">Status <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
                         <th data-column="Sinyal">Sinyal</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -241,14 +241,14 @@
                 <table id="volumeTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Avg Price</th>
-                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
                         <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
                         <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
                         <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Harga Beli">Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Status Aksi">Status <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
                         <th data-column="Sinyal">Sinyal</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -262,14 +262,14 @@
                 <table id="macdTable" style="display:none;">
                     <thead><tr>
                         <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
-                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
-                        <th>Status</th>
-                        <th>Avg Price</th>
-                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
                         <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
                         <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
                         <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Harga Beli">Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Status Aksi">Status <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th>
                         <th data-column="Sinyal">Sinyal</th>
                     </tr></thead>
                     <tbody></tbody>
@@ -285,7 +285,7 @@
                     <h2 id="modalTitle">XXXX</h2>
                     <p id="modalCompanyName">Nama Perusahaan Loading...</p>
                     
-                    <button id="portfolioStatusToggle">Add to Portofolio</button>
+                    <button id="portfolioStatusToggle">Tambahkan ke Portofolio</button>
                 </div>
                 <button id="closeModalBtn" class="btn-close">&times;</button>
             </div>
