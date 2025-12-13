@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Screener Saham Pro v2.0</title>
+    <title>Screener Saham Pro v2.1</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -157,6 +157,10 @@
             <button id="aboutBtn" class="header-btn">
                 ℹ️ Panduan
             </button>
+            
+            <button id="refreshAnalysisBtn" class="header-btn">
+                🔄 Refresh Analisa
+            </button>
 
             <label for="csvFileInput" class="header-btn">
                 📂 Upload CSV
@@ -273,7 +277,7 @@
     <div id="aboutModal" class="modal-overlay">
         <div class="modal-content" style="max-height: 80vh;">
             <div class="modal-header">
-                <h2 style="color: var(--text-main); font-size: 1.25rem;">ℹ️ Panduan Aplikasi v2.0</h2>
+                <h2 style="color: var(--text-main); font-size: 1.25rem;">ℹ️ Panduan Aplikasi v2.1</h2>
                 <button id="closeAboutBtn" class="btn-close">&times;</button>
             </div>
             <div class="modal-body">
@@ -297,12 +301,15 @@
                 </div>
 
                 <div class="about-section">
-                    <h3>📂 Upload Data</h3>
-                    <p>Gunakan tombol <b>Upload CSV</b> untuk memperbarui data harian. Gunakan template standar yang sudah ditentukan.</p>
+                    <h3>🔄 Refresh & Update</h3>
+                    <ul>
+                        <li><b>Upload CSV:</b> Gunakan tombol Upload untuk memasukkan data harian baru.</li>
+                        <li><b>Refresh Analisa:</b> Klik tombol "Refresh" jika data sudah diupload tapi indikator belum muncul. Ini akan memaksa sistem backend menghitung ulang semua strategi.</li>
+                    </ul>
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px; font-size: 0.8rem; color: #9ca3af;">
-                    Screener Saham Pro v2.0 - Powered by Supabase
+                    Screener Saham Pro v2.1 - Powered by Supabase
                 </div>
             </div>
         </div>
