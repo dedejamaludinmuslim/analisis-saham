@@ -12,17 +12,17 @@ const signalFilter = document.getElementById('signalFilter');
 const maFastInput = document.getElementById('maFast'); 
 const maSlowInput = document.getElementById('maSlow'); 
 const applyMaCustomButton = document.getElementById('applyMaCustom'); 
-// Elemen Pencarian
+// Elemen Pencarian & Upload
 const stockSearchInput = document.getElementById('stockSearchInput');
 const stockSearchResults = document.getElementById('stockSearchResults');
 const stockSearchContainer = document.getElementById('stockSearchContainer');
+const csvFileInput = document.getElementById('csvFileInput'); // Input File Baru
 
 // --- DOM MODAL ---
 const stockDetailModal = document.getElementById('stockDetailModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalTitle = document.getElementById('modalTitle');
 const rawIndicatorTableBody = document.querySelector('#rawIndicatorTable tbody');
-// Tombol Portfolio
 const portfolioStatusToggle = document.getElementById('portfolioStatusToggle');
 let priceChart = null; 
 
@@ -33,7 +33,6 @@ let globalPortfolio = new Map();
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
 let currentModalStockCode = null; 
 
-// Kategori Tabel
 const categories = {
     maCross: { tableBody: document.querySelector('#maCrossTable tbody'), statusEl: document.getElementById('maStatus'), tableEl: document.getElementById('maCrossTable') },
     rsi: { tableBody: document.querySelector('#rsiTable tbody'), statusEl: document.getElementById('rsiStatus'), tableEl: document.getElementById('rsiTable') },
@@ -42,15 +41,12 @@ const categories = {
 };
 
 // ********************************************
-// 1. DATA FETCHING & SUPABASE
+// 1. DATA FETCHING & LOGIKA UTAMA
 // ********************************************
 
 async function fetchPortfolio() {
     try {
-        const { data, error } = await supabaseClient
-            .from('portofolio_saham')
-            .select('kode_saham, harga_beli'); 
-        
+        const { data, error } = await supabaseClient.from('portofolio_saham').select('kode_saham, harga_beli'); 
         if (error) throw error;
         globalPortfolio = new Map(data.map(item => [item.kode_saham, { hargaBeli: item.harga_beli }]));
         return globalPortfolio;
@@ -67,34 +63,23 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
             const { error } = await supabaseClient.from('portofolio_saham').delete().eq('kode_saham', stockCode);
             if (error) throw error;
             globalPortfolio.delete(stockCode);
-        } catch (error) {
-            alert(`Gagal menghapus: ${error.message}`);
-            return false;
-        }
+        } catch (error) { alert(`Gagal menghapus: ${error.message}`); return false; }
     } else {
         const latestPrice = await getLatestStockPrice(stockCode);
         const latestDate = dateFilter.value;
         if (latestPrice === null) { alert("Data harga tidak tersedia."); return false; }
-        
         const confirmPrice = prompt(`Harga Beli untuk ${stockCode}:`, latestPrice);
         if (!confirmPrice || isNaN(parseFloat(confirmPrice))) return false;
-        
         const buyPrice = parseFloat(confirmPrice);
         try {
             const { error } = await supabaseClient.from('portofolio_saham')
                 .upsert({ kode_saham: stockCode, harga_beli: buyPrice, tanggal_beli: latestDate }, { onConflict: 'kode_saham' });
             if (error) throw error;
             globalPortfolio.set(stockCode, { hargaBeli: buyPrice });
-        } catch (error) {
-            alert(`Gagal menambah: ${error.message}`);
-            return false;
-        }
+        } catch (error) { alert(`Gagal menambah: ${error.message}`); return false; }
     }
-    
     await fetchPortfolio();
     if (currentModalStockCode === stockCode) updatePortfolioStatusDisplay(stockCode);
-    
-    // Rerender tabel utama
     const filteredSignals = applySignalFilter(globalCombinedSignals, signalFilter.value);
     categorizeAndRender(filteredSignals);
     return true;
@@ -118,10 +103,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
         if (error) throw error;
         globalCustomMASignals = data; 
         return data;
-    } catch (error) {
-        console.error('Error RPC:', error);
-        return [];
-    }
+    } catch (error) { return []; }
 }
 
 function mergeSignals(staticSignals, customMASignals) {
@@ -139,14 +121,11 @@ function mergeSignals(staticSignals, customMASignals) {
 async function fetchAndRenderSignals(selectedDate = null) {
     statusMessage.textContent = 'Memuat data pasar...';
     applyMaCustomButton.disabled = true;
-
     try {
         await fetchPortfolio(); 
-        
         let signalQuery = supabaseClient.from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
             .order('Tanggal', { ascending: false });
-            
         if (selectedDate) signalQuery = signalQuery.eq('Tanggal', selectedDate);
         else signalQuery = signalQuery.limit(100);
 
@@ -178,25 +157,106 @@ async function fetchAndRenderSignals(selectedDate = null) {
         
         globalCombinedSignals = finalSignals;
         if (!selectedDate) sortState = { column: 'Kode Saham', direction: 'asc' };
-        
         categorizeAndRender(applySignalFilter(globalCombinedSignals, signalFilter.value));
-
-    } catch (error) {
-        statusMessage.textContent = `Gagal memuat: ${error.message}`;
-    } finally {
-        applyMaCustomButton.disabled = false;
-    }
+    } catch (error) { statusMessage.textContent = `Gagal memuat: ${error.message}`; } 
+    finally { applyMaCustomButton.disabled = false; }
 }
 
 // ********************************************
-// 2. SEARCH & EVENT LISTENERS
+// 2. CSV UPLOAD LOGIC (NEW)
+// ********************************************
+
+// Fungsi untuk menghapus semua data di temp_saham sebelum upload
+async function clearTempTable() {
+    statusMessage.textContent = "Membersihkan data lama...";
+    // Cara cepat hapus semua baris: delete tanpa filter
+    const { error } = await supabaseClient.from('temp_saham').delete().neq('Kode Saham', 'XXXXXX'); 
+    // .neq('Kode Saham', 'XXXXXX') adalah trik karena Supabase kadang menolak delete tanpa where clause. 
+    // Asumsinya tidak ada saham bernama 'XXXXXX'.
+    if (error) console.error("Gagal clear temp:", error);
+}
+
+// Fungsi Upload Batch
+async function uploadBatches(rows) {
+    const BATCH_SIZE = 100; // Kirim 100 baris per request
+    const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
+    
+    // 1. Bersihkan tabel dulu
+    await clearTempTable();
+
+    for (let i = 0; i < totalBatches; i++) {
+        const start = i * BATCH_SIZE;
+        const end = start + BATCH_SIZE;
+        const batch = rows.slice(start, end);
+
+        statusMessage.textContent = `Mengupload Batch ${i + 1}/${totalBatches} (${batch.length} baris)...`;
+
+        const { error } = await supabaseClient.from('temp_saham').insert(batch);
+        
+        if (error) {
+            console.error('Error insert batch:', error);
+            alert(`Gagal upload di batch ${i + 1}: ${error.message}`);
+            return false;
+        }
+    }
+    return true;
+}
+
+// Handler saat file dipilih
+csvFileInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    statusMessage.textContent = "Membaca file CSV...";
+    
+    // Gunakan PapaParse
+    Papa.parse(file, {
+        header: true, // Baris pertama adalah nama kolom
+        skipEmptyLines: true, // Abaikan baris kosong
+        complete: async (results) => {
+            const data = results.data;
+            
+            if (data.length === 0) {
+                alert("File CSV kosong atau format salah!");
+                return;
+            }
+
+            console.log("Preview Data CSV:", data[0]);
+            
+            // Konfirmasi Upload
+            if (confirm(`Akan mengupload ${data.length} baris data ke temp_saham. Data lama di temp_saham akan dihapus. Lanjutkan?`)) {
+                const success = await uploadBatches(data);
+                if (success) {
+                    statusMessage.textContent = "Upload Sukses! Trigger database sedang memproses...";
+                    alert("Data berhasil diupload ke temp_saham. Backend akan memproses data ini secara otomatis.");
+                    // Reset input file agar bisa upload file yang sama lagi jika perlu
+                    csvFileInput.value = '';
+                    // Refresh tampilan setelah beberapa detik (opsional, tergantung seberapa cepat trigger backend selesai)
+                    setTimeout(() => fetchAndRenderSignals(), 3000);
+                } else {
+                    statusMessage.textContent = "Upload Gagal.";
+                }
+            } else {
+                statusMessage.textContent = "Upload Dibatalkan.";
+                csvFileInput.value = '';
+            }
+        },
+        error: (err) => {
+            console.error("Error parsing CSV:", err);
+            alert("Gagal membaca file CSV.");
+        }
+    });
+});
+
+
+// ********************************************
+// 3. SEARCH & EVENT LISTENERS
 // ********************************************
 
 async function searchStocks(query) {
     if (query.length < 2) { stockSearchResults.style.display = 'none'; return []; }
     try {
         const { data } = await supabaseClient.from('data_saham').select(`"Kode Saham", "Nama Perusahaan"`).ilike('Kode Saham', `${query}%`).limit(50);
-        // Hapus Duplikat
         const unique = []; const seen = new Set();
         data.forEach(item => {
             if (!seen.has(item["Kode Saham"])) { seen.add(item["Kode Saham"]); unique.push({ code: item["Kode Saham"], name: item["Nama Perusahaan"] || '' }); }
@@ -230,18 +290,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupSorting();
     
-    // Modal Close Logic
+    // Modal
     const hideModal = () => stockDetailModal.style.display = 'none';
     closeModalBtn?.addEventListener('click', hideModal);
     stockDetailModal?.addEventListener('click', (e) => { if (e.target === stockDetailModal) hideModal(); });
     
-    // Search Logic
+    // Search
     let searchTimeout;
     stockSearchInput.addEventListener('input', (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(async () => renderSearchResults(await searchStocks(e.target.value.trim().toUpperCase())), 300);
     });
     document.addEventListener('click', (e) => { if (!stockSearchContainer.contains(e.target)) stockSearchResults.style.display = 'none'; });
+    
     portfolioStatusToggle?.addEventListener('click', async () => {
         await togglePortfolioStatus(currentModalStockCode, portfolioStatusToggle.classList.contains('owned'));
     });
@@ -250,7 +311,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ********************************************
-// 3. HELPER & RENDERING UTAMA (UPDATED STYLING)
+// 4. HELPER & RENDERING UTAMA
 // ********************************************
 
 async function populateDateFilter(latestDate) {
@@ -349,31 +410,22 @@ function renderCategory(key, data) {
         const code = item["Kode Saham"];
         const pf = globalPortfolio.get(code);
         
-        // 1. Kode
         row.insertCell().innerHTML = `<span class="clickable-stock">${code}</span>`;
-        // 2. Status
         row.insertCell().innerHTML = pf ? `<span class="badge badge-owned">OWNED</span>` : `<span class="badge badge-neutral">WATCH</span>`;
-        // 3. Avg Price
         row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
-        // 4. P/L
         const plCell = row.insertCell();
         if (pf) {
             const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
             plCell.className = pnl >= 0 ? 'text-green' : 'text-red';
             plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
         } else plCell.textContent = '-';
-        // 5. Tanggal
-        row.insertCell().textContent = item.Tanggal.slice(5); // Show MM-DD only to save space
-        // 6. Close
+        row.insertCell().textContent = item.Tanggal.slice(5); 
         row.insertCell().textContent = formatNumber(item.Penutupan, false, true);
-        // 7. Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
-        // 8. Chg
         const chg = parseFloat(item.Selisih || 0);
         const chgCell = row.insertCell();
         chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : '');
         chgCell.textContent = `${chg>0?'+':''}${chg.toFixed(2)}%`;
-        // 9. Sinyal
         row.insertCell().innerHTML = `<span class="${getSignalClass(item[sigKey])}">${item[sigKey]}</span>`;
     });
 }
@@ -404,9 +456,7 @@ async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode;
     modalTitle.textContent = `${stockCode} - Detail`;
     updatePortfolioStatusDisplay(stockCode);
-    stockDetailModal.style.display = 'flex'; // Changed from flex to match CSS
-    
-    // Clear & Load
+    stockDetailModal.style.display = 'flex'; 
     rawIndicatorTableBody.innerHTML = '<tr><td colspan="7">Memuat data...</td></tr>';
     if(priceChart) priceChart.destroy();
     
@@ -422,7 +472,6 @@ async function showStockDetailModal(stockCode) {
         
         const histData = indicators.map(i => ({ ...i, Penutupan: priceMap.get(i.Tanggal) })).reverse();
         
-        // Render Table
         rawIndicatorTableBody.innerHTML = '';
         [...histData].reverse().forEach(d => {
             const r = rawIndicatorTableBody.insertRow();
@@ -435,7 +484,6 @@ async function showStockDetailModal(stockCode) {
             r.insertCell().textContent = formatNumber(d.MA_20, false, true);
         });
 
-        // Render Chart
         const ctx = document.getElementById('priceIndicatorChart').getContext('2d');
         priceChart = new Chart(ctx, {
             type: 'line',
@@ -449,9 +497,7 @@ async function showStockDetailModal(stockCode) {
             },
             options: {
                 responsive: true, maintainAspectRatio: false,
-                scales: {
-                    y: { position: 'left', grid: { display: false } }
-                },
+                scales: { y: { position: 'left', grid: { display: false } } },
                 plugins: { legend: { labels: { boxWidth: 10 } } }
             }
         });
