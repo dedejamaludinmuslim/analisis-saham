@@ -148,8 +148,7 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
                     </div>
                 </div>
             `,
-            // Kita harus menggunakan input: 'text' untuk menonaktifkan input otomatis SweetAlert
-            input: 'text', 
+            // Hapus input: 'text' untuk menghilangkan input field ganda bawaan SweetAlert
             showCancelButton: true,
             focusConfirm: false,
             preConfirm: () => { 
@@ -252,7 +251,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         // PANGGIL RPC untuk mendapatkan sinyal dan Power Score
         const { data: signalData, error: signalError } = await supabaseClient.rpc('get_signals_with_score', { target_date: selectedDate }); 
         
-        if (signalError) throw signalError;
+        if (signalError) throw error;
         
         if (!signalData || signalData.length === 0) {
             statusMessage.textContent = `Tidak ada data perdagangan pada tanggal ${selectedDate}.`;
