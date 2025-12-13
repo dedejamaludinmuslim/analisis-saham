@@ -87,8 +87,6 @@ async function fetchPortfolio() {
             analysisData.forEach(item => {
                 globalPortfolioAnalysis.set(item.kode_saham, item);
             });
-        } else {
-            console.warn("Analisa portofolio tidak tersedia untuk tanggal ini (atau RPC error).");
         }
 
         return globalPortfolio;
@@ -179,7 +177,7 @@ function mergeSignals(staticSignals, customMASignals) {
     // Jika user punya portfolio tapi tidak ada sinyal hari ini, tetap masukkan agar bisa dipantau
     globalPortfolio.forEach((val, key) => {
         if (!mergedMap.has(key)) {
-            // Fetch data minimal untuk display row portfolio (opsional, logic disederhanakan)
+            // Fetch data minimal untuk display row portfolio bisa ditambahkan disini
         }
     });
 
@@ -247,37 +245,93 @@ async function fetchAndRenderSignals(selectedDate = null) {
 }
 
 // ==========================================
-// 2. CSV UPLOAD HANDLER
+// 2. CSV UPLOAD HANDLER (SWEETALERT UPDATE)
 // ==========================================
 async function clearTempTable() {
     await supabaseClient.from('temp_saham').delete().neq('Kode Saham', 'XXXXXX'); 
 }
 
+// Updated untuk return boolean yang bersih
 async function uploadBatches(rows) {
     const BATCH_SIZE = 100;
-    await clearTempTable();
-    for (let i = 0; i < Math.ceil(rows.length / BATCH_SIZE); i++) {
-        const batch = rows.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
-        statusMessage.textContent = `Upload Batch ${i + 1}...`;
-        const { error } = await supabaseClient.from('temp_saham').insert(batch);
-        if (error) { alert(`Gagal upload: ${error.message}`); return false; }
+    try {
+        await clearTempTable();
+        const totalBatches = Math.ceil(rows.length / BATCH_SIZE);
+        
+        for (let i = 0; i < totalBatches; i++) {
+            const batch = rows.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+            
+            // Update teks loading di SweetAlert
+            if(Swal.isVisible()) {
+                Swal.getHtmlContainer().querySelector('b').textContent = `${(i+1) * BATCH_SIZE} / ${rows.length}`;
+            }
+            
+            const { error } = await supabaseClient.from('temp_saham').insert(batch);
+            if (error) throw error;
+        }
+        return true;
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal Upload',
+            text: error.message
+        });
+        return false;
     }
-    return true;
 }
 
 csvFileInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    Papa.parse(file, {
-        header: true, skipEmptyLines: true,
-        complete: async (results) => {
-            if (confirm(`Upload ${results.data.length} baris?`)) {
-                if (await uploadBatches(results.data)) {
-                    alert("Sukses! Backend sedang memproses.");
-                    csvFileInput.value = '';
-                    setTimeout(() => fetchAndRenderSignals(), 3000);
+
+    // 1. Konfirmasi Cantik dengan SweetAlert
+    Swal.fire({
+        title: 'Upload Data Saham?',
+        text: `Anda akan mengunggah file: ${file.name}`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#4f46e5',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Ya, Proses!',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Jika user klik Ya, parsing CSV
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async (results) => {
+                    // Tampilkan Loading
+                    Swal.fire({
+                        title: 'Sedang Memproses...',
+                        html: `Mengunggah <b>${results.data.length}</b> baris data.<br>Mohon tunggu sebentar.`,
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    // Proses Upload
+                    const success = await uploadBatches(results.data);
+
+                    if (success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Selesai!',
+                            text: 'Data berhasil diunggah. Backend sedang menghitung indikator...',
+                            timer: 3000,
+                            showConfirmButton: false
+                        });
+                        
+                        csvFileInput.value = ''; // Reset input
+                        
+                        // Refresh otomatis setelah 3 detik
+                        setTimeout(() => fetchAndRenderSignals(), 3000);
+                    }
                 }
-            } else csvFileInput.value = '';
+            });
+        } else {
+            csvFileInput.value = ''; // Reset jika batal
         }
     });
 });
