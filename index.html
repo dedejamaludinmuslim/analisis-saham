@@ -5,35 +5,138 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Screener Sinyal Saham Kategorikal</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
-        .container { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
-        h1 { text-align: center; color: #333; }
-        #statusMessage { text-align: center; margin-bottom: 20px; font-weight: bold; color: #555; }
+        :root {
+            --primary-color: #4f46e5; /* Indigo */
+            --primary-light: #eef2ff;
+            --text-color: #1f2937; /* Dark Gray */
+            --bg-color: #f9fafb; /* Light Gray Background */
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --buy-bg: #dcfce7; /* Light Green */
+            --buy-color: #15803d; /* Dark Green */
+            --sell-bg: #fee2e2; /* Light Red */
+            --sell-color: #b91c1c; /* Dark Red */
+            --watch-bg: #fef9c3; /* Light Yellow */
+            --watch-color: #a16207; /* Dark Yellow */
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: auto; 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
+        }
+        h1 { 
+            text-align: center; 
+            color: var(--primary-color); 
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        #statusMessage { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            font-weight: 600; 
+            color: #4b5563; 
+            padding: 10px;
+            border-bottom: 2px solid var(--border-color);
+        }
         
         /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
         .signal-category {
-            background: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             margin-bottom: 25px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .signal-category:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
         }
         .signal-category h2 {
             margin-top: 0;
             padding-bottom: 10px;
-            border-bottom: 2px solid #007bff;
-            color: #007bff;
+            border-bottom: 2px solid var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .signal-category table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .signal-category th, .signal-category td { padding: 8px 10px; border: 1px solid #eee; text-align: left; }
-        .signal-category th { background-color: #f1f1f1; color: #333; }
+        .signal-category table { 
+            width: 100%; 
+            border-collapse: separate; /* Untuk border-radius di cell */
+            border-spacing: 0; 
+            margin-top: 15px; 
+            overflow: hidden; /* Penting untuk border-radius table */
+            border-radius: 6px;
+        }
+        .signal-category th, .signal-category td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        .signal-category th { 
+            background-color: var(--primary-color); 
+            color: white; 
+            font-weight: 600; 
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+        .signal-category tr:last-child td {
+            border-bottom: none;
+        }
+        .signal-category tbody tr:nth-child(even) {
+            background-color: #f9fafb;
+        }
         
         /* Gaya Sinyal */
-        .signal-buy { background-color: #d4edda; color: #155724; font-weight: bold; }
-        .signal-sell { background-color: #f8d7da; color: #721c24; font-weight: bold; }
-        .signal-watch { background-color: #ffeeba; color: #856404; }
+        .signal-buy { 
+            background-color: var(--buy-bg); 
+            color: var(--buy-color); 
+            font-weight: 600; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .signal-sell { 
+            background-color: var(--sell-bg); 
+            color: var(--sell-color); 
+            font-weight: 600; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .signal-watch { 
+            background-color: var(--watch-bg); 
+            color: var(--watch-color); 
+            font-weight: 600;
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .category-status {
+            padding: 10px;
+            background-color: var(--primary-light);
+            color: var(--primary-color);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 4px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -42,8 +145,8 @@
         <p id="statusMessage">Memuat sinyal...</p>
 
         <div id="maCrossSection" class="signal-category">
-            <h2>MA Cross (Trend Following)</h2>
-            <p class="category-status" id="maStatus">Tidak ada sinyal MA Cross hari ini.</p>
+            <h2>📈 MA Cross (Trend Following)</h2>
+            <p class="category-status" id="maStatus" style="display: none;">Tidak ada sinyal MA Cross hari ini.</p>
             <table id="maCrossTable" style="display:none;">
                 <thead>
                     <tr>
@@ -57,24 +160,9 @@
         </div>
 
         <div id="rsiSection" class="signal-category">
-            <h2>RSI (Kondisi Jenuh Beli/Jual)</h2>
-            <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
+            <h2>⚖️ RSI (Kondisi Jenuh Beli/Jual)</h2>
+            <p class="category-status" id="rsiStatus" style="display: none;">Tidak ada sinyal RSI hari ini.</p>
             <table id="rsiTable" style="display:none;">
-                <thead>
-                    <tr>
-                        <th>Kode Saham</th>
-                        <th>Tanggal</th>
-                        <th>Sinyal (Aksi)</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <div id="macdSection" class="signal-category">
-            <h2>MACD (Momentum)</h2>
-            <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
-            <table id="macdTable" style="display:none;">
                 <thead>
                     <tr>
                         <th>Kode Saham</th>
@@ -87,9 +175,24 @@
         </div>
         
         <div id="volumeSection" class="signal-category">
-            <h2>Volume Spike (Anomali Volume)</h2>
-            <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
+            <h2>💥 Volume Spike (Anomali Volume)</h2>
+            <p class="category-status" id="volumeStatus" style="display: none;">Tidak ada sinyal Volume Spike hari ini.</p>
             <table id="volumeTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Kode Saham</th>
+                        <th>Tanggal</th>
+                        <th>Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="macdSection" class="signal-category">
+            <h2>⚡ MACD (Momentum)</h2>
+            <p class="category-status" id="macdStatus" style="display: none;">Tidak ada sinyal MACD hari ini.</p>
+            <table id="macdTable" style="display:none;">
                 <thead>
                     <tr>
                         <th>Kode Saham</th>
