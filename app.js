@@ -5,21 +5,79 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase; 
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
 
-const signalTableBody = document.querySelector('#signalTable tbody');
 const statusMessage = document.getElementById('statusMessage');
+
+// Mendapatkan elemen tabel dan status untuk setiap kategori
+const categories = {
+    maCross: { tableBody: document.querySelector('#maCrossTable tbody'), statusEl: document.getElementById('maStatus'), tableEl: document.getElementById('maCrossTable') },
+    rsi: { tableBody: document.querySelector('#rsiTable tbody'), statusEl: document.getElementById('rsiStatus'), tableEl: document.getElementById('rsiTable') },
+    macd: { tableBody: document.querySelector('#macdTable tbody'), statusEl: document.getElementById('macdStatus'), tableEl: document.getElementById('macdTable') },
+    volume: { tableBody: document.querySelector('#volumeTable tbody'), statusEl: document.getElementById('volumeStatus'), tableEl: document.getElementById('volumeTable') }
+};
 
 // Fungsi pembantu untuk menentukan kelas warna sinyal
 function getSignalClass(signal) {
     if (!signal) return '';
-    if (signal.includes('BUY')) return 'signal-buy';
-    if (signal.includes('SELL')) return 'signal-sell';
-    if (signal.includes('WATCH')) return 'signal-watch';
+    if (signal.includes('BUY') || signal.includes('OVERSOLD')) return 'signal-buy';
+    if (signal.includes('SELL') || signal.includes('OVERBOUGHT')) return 'signal-sell';
+    if (signal.includes('WATCH') || signal.includes('SPIKE')) return 'signal-watch';
     return '';
+}
+
+// Fungsi untuk mengkategorikan data berdasarkan sinyal non-NULL
+function categorizeSignals(signals) {
+    const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
+
+    signals.forEach(item => {
+        if (item.Sinyal_MA) {
+            categorized.maCross.push(item);
+        }
+        if (item.Sinyal_RSI) {
+            categorized.rsi.push(item);
+        }
+        if (item.Sinyal_MACD) {
+            categorized.macd.push(item);
+        }
+        if (item.Sinyal_Volume) {
+            categorized.volume.push(item);
+        }
+    });
+    return categorized;
+}
+
+// Fungsi untuk me-render data ke dalam kategori tabel
+function renderCategory(categoryKey, data) {
+    const { tableBody, statusEl, tableEl } = categories[categoryKey];
+    const signalKey = `Sinyal_${categoryKey.replace('maCross', 'MA').replace('rsi', 'RSI').replace('macd', 'MACD').replace('volume', 'Volume')}`;
+    
+    tableBody.innerHTML = '';
+    
+    if (data.length === 0) {
+        statusEl.style.display = 'block';
+        tableEl.style.display = 'none';
+        return;
+    }
+
+    statusEl.style.display = 'none';
+    tableEl.style.display = 'table'; // Tampilkan tabel
+
+    data.forEach(item => {
+        const row = tableBody.insertRow();
+        
+        row.insertCell().textContent = item["Kode Saham"];
+        row.insertCell().textContent = item["Tanggal"];
+
+        // Kolom Sinyal (Aksi)
+        const signalCell = row.insertCell();
+        const signalText = item[signalKey];
+        signalCell.textContent = signalText;
+        signalCell.className = getSignalClass(signalText);
+    });
 }
 
 // Fungsi utama untuk mengambil dan menampilkan data
 async function fetchAndRenderSignals() {
-    statusMessage.textContent = 'Mengambil data dari server... (Mode Verifikasi)';
+    statusMessage.textContent = 'Mengambil data sinyal dari Supabase...';
     
     try {
         const { data: signals, error } = await supabaseClient 
@@ -32,52 +90,44 @@ async function fetchAndRenderSignals() {
                 "Sinyal_MACD",
                 "Sinyal_Volume"
             `)
-            // Ambil 50 baris data terbaru, terlepas dari sinyalnya
             .order('Tanggal', { ascending: false })
-            .limit(50); 
+            .limit(100); // Ambil lebih banyak data untuk menemukan tanggal terbaru
 
         if (error) throw error;
         
-        // --- PERUBAHAN KRITIS: KITA HAPUS SEMUA FILTER DI SINI ---
-        // Kita gunakan langsung data yang sudah disortir (50 baris terbaru)
-        const dailySignals = signals;
-
-        if (dailySignals.length === 0) {
-            statusMessage.textContent = `Tidak ada data ditemukan di tabel indikator_teknikal.`;
+        if (signals.length === 0) {
+            statusMessage.textContent = 'Tidak ada data ditemukan di tabel indikator_teknikal.';
             return;
         }
 
-        signalTableBody.innerHTML = ''; // Kosongkan tabel
+        // 1. Tentukan Tanggal Terbaru
+        const latestDate = signals[0].Tanggal;
         
-        dailySignals.forEach(item => {
-            const row = signalTableBody.insertRow();
-            
-            row.insertCell().textContent = item["Kode Saham"];
-            row.insertCell().textContent = item["Tanggal"];
+        // 2. Filter data untuk Tanggal Terbaru DAN memiliki MINIMAL satu sinyal
+        const dailySignals = signals.filter(s => 
+            s.Tanggal === latestDate && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)
+        );
 
-            // Kolom Sinyal MA
-            const maCell = row.insertCell();
-            maCell.textContent = item["Sinyal_MA"] || '—';
-            maCell.className = getSignalClass(item["Sinyal_MA"]);
-
-            // Kolom Sinyal RSI
-            const rsiCell = row.insertCell();
-            rsiCell.textContent = item["Sinyal_RSI"] || '—';
-            rsiCell.className = getSignalClass(item["Sinyal_RSI"]);
+        if (dailySignals.length === 0) {
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate}. (Pastikan data MACD sudah 26 hari)`;
             
-            // Kolom Sinyal MACD
-            const macdCell = row.insertCell();
-            macdCell.textContent = item["Sinyal_MACD"] || '—'; // Akan menampilkan '—' jika NULL
-            macdCell.className = getSignalClass(item["Sinyal_MACD"]);
-            
-            // Kolom Sinyal Volume
-            const volumeCell = row.insertCell();
-            volumeCell.textContent = item["Sinyal_Volume"] || '—';
-            volumeCell.className = getSignalClass(item["Sinyal_Volume"]);
-        });
+            // Sembunyikan semua tabel jika tidak ada sinyal
+            Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
+            Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
+            return;
+        }
         
-        // Status message disesuaikan untuk mode verifikasi
-        statusMessage.textContent = `Menampilkan ${dailySignals.length} baris data terbaru (termasuk sinyal NULL) untuk verifikasi.`;
+        // 3. Kategorikan Data
+        const categorizedData = categorizeSignals(dailySignals);
+        
+        // 4. Render per Kategori
+        renderCategory('maCross', categorizedData.maCross);
+        renderCategory('rsi', categorizedData.rsi);
+        renderCategory('macd', categorizedData.macd);
+        renderCategory('volume', categorizedData.volume);
+
+        let totalSignals = Object.values(categorizedData).flat().length;
+        statusMessage.textContent = `Sinyal untuk ${dailySignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
 
     } catch (error) {
         statusMessage.textContent = `Error memuat data: ${error.message}`;
