@@ -12,30 +12,30 @@ const signalFilter = document.getElementById('signalFilter');
 const maFastInput = document.getElementById('maFast'); 
 const maSlowInput = document.getElementById('maSlow'); 
 const applyMaCustomButton = document.getElementById('applyMaCustom'); 
-const csvFileInput = document.getElementById('csvFileInput'); // NEW
-const uploadCsvBtn = document.getElementById('uploadCsvBtn'); // NEW
-const stockSearchInput = document.getElementById('stockSearch'); // NEW
-const suggestionList = document.getElementById('suggestionList'); // NEW
+const csvFileInput = document.getElementById('csvFileInput'); 
+const uploadCsvBtn = document.getElementById('uploadCsvBtn'); 
+const stockSearchInput = document.getElementById('stockSearch'); 
+const suggestionList = document.getElementById('suggestionList'); 
 
 // --- DOM MODAL BARU ---
 const stockDetailModal = document.getElementById('stockDetailModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalTitle = document.getElementById('modalTitle');
 const rawIndicatorTableBody = document.querySelector('#rawIndicatorTable tbody');
-const ownedCheckbox = document.getElementById('ownedCheckbox'); // NEW
-const buyPriceInput = document.getElementById('buyPriceInput'); // NEW
-const buyPriceGroup = document.getElementById('buyPriceGroup'); // NEW
-const savePortfolioBtn = document.getElementById('savePortfolioBtn'); // NEW
-const watchlistStatus = document.getElementById('watchlistStatus'); // NEW
+const ownedCheckbox = document.getElementById('ownedCheckbox'); 
+const buyPriceInput = document.getElementById('buyPriceInput'); 
+const buyPriceGroup = document.getElementById('buyPriceGroup'); 
+const savePortfolioBtn = document.getElementById('savePortfolioBtn'); 
+const watchlistStatus = document.getElementById('watchlistStatus'); 
 
-let priceChart = null; // Variabel untuk menyimpan instance Chart.js
+let priceChart = null; 
 
-// --- GLOBAL STATE ---
+// Variabel Global untuk Data
 let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
 let globalPortfolio = new Map(); 
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
-let currentModalStockCode = null; // Untuk menyimpan kode saham yang sedang dibuka di modal
+let currentModalStockCode = null; 
 
 // Mendapatkan elemen tabel dan status untuk setiap kategori 
 const categories = {
@@ -52,19 +52,19 @@ const categories = {
 // FUNGSI: Mengambil semua kode saham yang dimiliki
 async function fetchPortfolio() {
     try {
-        // Mengambil juga tanggal beli untuk fitur di masa depan
+        // Menggunakan nama kolom lowercase sesuai skema portofolio_saham
         const { data, error } = await supabaseClient
             .from('portofolio_saham')
             .select('kode_saham, harga_beli, tanggal_beli'); 
         
         if (error) throw error;
         
-        // Simpan data portofolio sebagai Map untuk pencarian cepat (Kode Saham -> { hargaBeli, tanggalBeli })
         globalPortfolio = new Map(data.map(item => [item.kode_saham, { hargaBeli: item.harga_beli, tanggalBeli: item.tanggal_beli }]));
         
         return globalPortfolio;
     } catch (error) {
-        console.warn('Info: Tabel portofolio_saham mungkin belum dibuat atau kosong.', error.message);
+        // Ini sering terjadi jika tabel portofolio_saham belum ada atau tidak bisa diakses
+        console.warn('Info: Gagal memuat portofolio, mungkin tabel portofolio_saham belum tersedia atau kosong.', error.message);
         return new Map(); 
     }
 }
@@ -75,6 +75,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
     globalCustomMASignals = []; 
 
     try {
+        // Perhatian: Ini bergantung pada fungsi RPC 'get_custom_ma_signals' yang harus Anda buat di Supabase
         const { data, error } = await supabaseClient.rpc('get_custom_ma_signals', {
             ma_fast_period: parseInt(maFast),
             ma_slow_period: parseInt(maSlow),
@@ -88,7 +89,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
 
     } catch (error) {
         console.error('Error saat memanggil RPC MA Kustom:', error);
-        statusMessage.textContent = `Error kustom MA: ${error.message}. Pastikan fungsi RPC sudah dibuat di Supabase.`;
+        statusMessage.textContent = `Error kustom MA: ${error.message}. Pastikan fungsi RPC get_custom_ma_signals sudah dibuat di Supabase.`;
         return [];
     }
 }
@@ -110,13 +111,14 @@ function mergeSignals(staticSignals, customMASignals) {
     customMASignals.forEach(cs => {
         const existing = mergedMap.get(cs["Kode Saham"]) || {};
         
+        // Memastikan kolom yang diganti berasal dari RPC
         mergedMap.set(cs["Kode Saham"], {
             ...existing, 
             ...cs,       
-            Penutupan: cs.Close || cs.Penutupan, // Handle kemungkinan nama kolom dari RPC
-            Volume: cs.Volume,
-            Selisih: cs.Selisih,
-            Sinyal_MA: cs.Sinyal_MA 
+            "Penutupan": cs.Close || existing.Penutupan, 
+            "Volume": cs.Volume || existing.Volume,
+            "Selisih": cs.Selisih || existing.Selisih,
+            "Sinyal_MA": cs.Sinyal_MA // Prioritas sinyal MA dari kustom
         });
     });
 
@@ -143,14 +145,15 @@ async function fetchAndRenderSignals(selectedDate = null) {
         if (selectedDate) {
             signalQuery = signalQuery.eq('Tanggal', selectedDate);
         } else {
-            signalQuery = signalQuery.limit(100);
+            signalQuery = signalQuery.limit(1000); // Batasi hanya untuk mendapatkan tanggal terbaru
         }
 
         const { data: signalData, error: signalError } = await signalQuery;
 
         if (signalError) throw signalError;
         if (!signalData || signalData.length === 0) {
-            statusMessage.textContent = 'Tidak ada data sinyal ditemukan.';
+            statusMessage.textContent = 'Tidak ada data sinyal ditemukan. Cek tabel indikator_teknikal.';
+            Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             return;
         }
 
@@ -207,7 +210,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         }
         
         if (finalSignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data harga lengkap.`;
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter}. Cek kesesuaian data indikator dan harga.`;
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
             globalCombinedSignals = [];
@@ -226,7 +229,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         categorizeAndRender(filteredSignals);
 
     } catch (error) {
-        statusMessage.textContent = `Error: ${error.message}`;
+        statusMessage.textContent = `Error: ${error.message}. Pastikan Kredensial dan Skema Kolom sudah benar.`;
         console.error('Error fetching data:', error);
     } finally {
         applyMaCustomButton.disabled = false;
@@ -261,17 +264,18 @@ async function handleCsvUpload() {
             return;
         }
         
-        // Asumsi baris pertama adalah header
+        // Asumsi baris pertama adalah header dan membersihkan kutipan jika ada
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
         const dataRows = lines.slice(1);
         const dataToInsert = [];
         
         dataRows.forEach(row => {
-            // Memparsing baris CSV (hati-hati dengan koma di dalam nilai)
+            // Regex untuk parsing CSV: menangani nilai yang mengandung koma jika diapit kutipan
             const values = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
             if (values && values.length === headers.length) {
                 let rowObject = {};
                 headers.forEach((header, index) => {
+                    // Pastikan nama kolom sama persis dengan yang ada di Supabase
                     rowObject[header] = values[index].trim().replace(/"/g, '');
                 });
                 dataToInsert.push(rowObject);
@@ -279,20 +283,19 @@ async function handleCsvUpload() {
         });
         
         if (dataToInsert.length === 0) {
-            alert('Gagal memproses data CSV. Pastikan formatnya benar.');
+            alert('Gagal memproses data CSV. Pastikan format dan header benar.');
             uploadCsvBtn.disabled = false;
             uploadCsvBtn.textContent = originalText;
             return;
         }
 
         try {
-            // Menghapus data lama (jika perlu, disarankan menggunakan trigger di Supabase untuk mengurus INSERT/UPDATE data_saham)
-            // Namun, karena Anda menggunakan tabel temp_saham dan trigger process_temp_data_bulk, kita hanya perlu INSERT
-            
             // Supabase memiliki batas payload, jadi disarankan untuk membagi menjadi batch
             const batchSize = 1000;
             for (let i = 0; i < dataToInsert.length; i += batchSize) {
                 const batch = dataToInsert.slice(i, i + batchSize);
+                
+                // INSERT data mentah ke tabel temp_saham
                 const { error } = await supabaseClient
                     .from('temp_saham')
                     .insert(batch);
@@ -300,16 +303,16 @@ async function handleCsvUpload() {
                 if (error) throw error;
             }
 
-            statusMessage.textContent = `Sukses mengupload ${dataToInsert.length} baris ke temp_saham. Data akan diproses oleh trigger.`;
+            statusMessage.textContent = `Sukses mengupload ${dataToInsert.length} baris ke temp_saham. Data akan diproses oleh trigger process_temp_data_bulk.`;
             alert(`Sukses mengupload ${dataToInsert.length} baris ke temp_saham. Data akan diproses oleh trigger!`);
             
-            // Reload sinyal setelah upload, mungkin ada data tanggal baru
+            // Reload sinyal setelah upload
             fetchAndRenderSignals(); 
 
         } catch (error) {
             console.error('Error saat upload ke Supabase:', error);
-            statusMessage.textContent = `Gagal menyimpan data: ${error.message}`;
-            alert(`Gagal menyimpan data ke Supabase: ${error.message}`);
+            statusMessage.textContent = `Gagal menyimpan data: ${error.message}. Cek log Supabase Anda.`;
+            alert(`Gagal menyimpan data ke Supabase: ${error.message}. Cek konsol dan pastikan semua kolom text. (temp_saham)`);
         } finally {
             uploadCsvBtn.disabled = false;
             uploadCsvBtn.textContent = originalText;
@@ -326,18 +329,19 @@ async function handleCsvUpload() {
 async function fetchStockSuggestions(query) {
     if (query.length < 2) {
         suggestionList.innerHTML = '';
+        suggestionList.style.display = 'none';
         return;
     }
 
     try {
-        // Cari di data_saham (membutuhkan tanggal terbaru untuk efisiensi)
+        // Cari tanggal terbaru
         const { data: latestDateData } = await supabaseClient
             .from('data_saham')
             .select('"Tanggal Perdagangan Terakhir"')
             .order('Tanggal Perdagangan Terakhir', { ascending: false })
             .limit(1);
             
-        const latestDate = latestDateData ? latestDateData[0]["Tanggal Perdagangan Terakhir"] : null;
+        const latestDate = latestDateData && latestDateData.length > 0 ? latestDateData[0]["Tanggal Perdagangan Terakhir"] : null;
 
         if (!latestDate) return;
         
@@ -399,7 +403,8 @@ function updatePortfolioControl(stockCode) {
     const portfolioData = globalPortfolio.get(stockCode) || {};
 
     ownedCheckbox.checked = isOwned;
-    buyPriceInput.value = isOwned ? portfolioData.hargaBeli || '' : '';
+    // Gunakan toLocaleString untuk format tampilan
+    buyPriceInput.value = isOwned && portfolioData.hargaBeli ? parseFloat(portfolioData.hargaBeli) : '';
     
     if (isOwned) {
         buyPriceGroup.style.display = 'flex';
@@ -423,23 +428,25 @@ async function handleSavePortfolio() {
 
     try {
         if (isOwned && buyPrice > 0) {
-            // INSERT atau UPDATE
+            // UPSERT (INSERT atau UPDATE jika kode_saham sudah ada)
             const today = new Date().toISOString().split('T')[0];
             const existing = globalPortfolio.get(stockCode);
             
             const dataToUpsert = {
                 kode_saham: stockCode,
                 harga_beli: buyPrice,
-                tanggal_beli: existing ? existing.tanggalBeli : today // Pertahankan tanggal beli jika sudah ada
+                // Gunakan tanggal beli yang sudah ada, atau tanggal hari ini jika baru
+                tanggal_beli: existing && existing.tanggalBeli ? existing.tanggalBeli : today 
             };
 
+            // onConflict harus merujuk pada kolom yang memiliki constraint UNIQUE, yaitu 'kode_saham'
             const { error: upsertError } = await supabaseClient
                 .from('portofolio_saham')
                 .upsert(dataToUpsert, { onConflict: 'kode_saham' });
 
             if (upsertError) throw upsertError;
             
-            alert(`Portofolio untuk ${stockCode} disimpan (Harga Beli: ${formatNumber(buyPrice)}).`);
+            alert(`Portofolio untuk ${stockCode} disimpan (Harga Beli: ${formatNumber(buyPrice, false, 0)}).`);
 
         } else if (!isOwned) {
             // DELETE jika ada di portofolio
@@ -451,9 +458,9 @@ async function handleSavePortfolio() {
             if (deleteError) throw deleteError;
             alert(`Saham ${stockCode} dihapus dari Portofolio.`);
             
-        } else if (isOwned && !buyPrice) {
-            // User ceklis Owned tapi harga beli kosong
-             alert('Harga Beli harus diisi jika "Owned" dicentang.');
+        } else if (isOwned && (!buyPrice || buyPrice <= 0)) {
+            // User ceklis Owned tapi harga beli kosong/nol
+             alert('Harga Beli harus diisi dengan nilai > 0 jika "Owned" dicentang.');
              return; // Jangan lanjutkan ke finally
         }
 
@@ -573,6 +580,7 @@ async function populateDateFilter(latestDate) {
 
         if (error) throw error;
 
+        // Gunakan Set untuk mendapatkan tanggal unik
         const uniqueDates = [...new Set(data.map(item => item.Tanggal))];
         
         dateFilter.innerHTML = '';
@@ -602,7 +610,8 @@ function getSignalClass(signal) {
     return '';
 }
 
-function formatNumber(num, isVolume = false) {
+// Menambahkan parameter 'isCurrency' untuk format angka
+function formatNumber(num, isVolume = false, decimalPlaces = 0) {
     if (num === null || num === undefined) return '-';
     
     const number = parseFloat(num);
@@ -613,7 +622,12 @@ function formatNumber(num, isVolume = false) {
         if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
         return number.toLocaleString('id-ID', { maximumFractionDigits: 0 });
     }
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+    return new Intl.NumberFormat('id-ID', { 
+        style: 'currency', 
+        currency: 'IDR', 
+        minimumFractionDigits: decimalPlaces, 
+        maximumFractionDigits: decimalPlaces 
+    }).format(number);
 }
 
 
@@ -640,7 +654,7 @@ function applySignalFilter(signals, filterType) {
 }
 
 function sortSignals(signals, column, direction) {
-    const isNumeric = ['Penutupan', 'Volume', 'Selisih', 'Untung/Rugi'].includes(column);
+    const isNumeric = ['Penutupan', 'Volume', 'Selisih', 'Untung/Rugi', 'Harga Beli'].includes(column);
 
     return signals.sort((a, b) => {
         let valA, valB;
@@ -745,15 +759,17 @@ function renderCategory(categoryKey, data) {
         
         // Kolom 3: Harga Beli
         const buyPriceCell = row.insertCell(); 
-        
+        buyPriceCell.style.textAlign = 'right';
+
         // Kolom 4: P/L (%)
         const profitLossCell = row.insertCell();
+        profitLossCell.style.textAlign = 'right';
 
         if (isOwned && portfolioData.hargaBeli) {
             const currentPrice = item.Penutupan; 
             const buyPrice = parseFloat(portfolioData.hargaBeli);
             
-            buyPriceCell.textContent = formatNumber(buyPrice); 
+            buyPriceCell.textContent = formatNumber(buyPrice, false, 0); 
             
             const pnl = ((currentPrice - buyPrice) / buyPrice) * 100;
             
@@ -773,15 +789,21 @@ function renderCategory(categoryKey, data) {
         // Kolom 5: Tanggal
         row.insertCell().textContent = item["Tanggal"];
         // Kolom 6: Penutupan
-        row.insertCell().textContent = formatNumber(item.Penutupan); 
+        const closePriceCell = row.insertCell();
+        closePriceCell.textContent = formatNumber(item.Penutupan, false, 0); 
+        closePriceCell.style.textAlign = 'right';
+
         // Kolom 7: Volume
-        row.insertCell().textContent = formatNumber(item.Volume, true);
-        
+        const volumeCell = row.insertCell();
+        volumeCell.textContent = formatNumber(item.Volume, true);
+        volumeCell.style.textAlign = 'right';
+
         // Kolom 8: Perubahan
         const percentChange = item.Selisih ? parseFloat(item.Selisih) : 0;
         const changeDailyCell = row.insertCell();
         changeDailyCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
         changeDailyCell.style.fontWeight = 'bold';
+        changeDailyCell.style.textAlign = 'right';
         if (percentChange > 0) {
             changeDailyCell.style.color = 'var(--buy-color)'; 
         } else if (percentChange < 0) {
@@ -823,8 +845,14 @@ function setupSorting() {
 function updateSortIcons() {
     document.querySelectorAll('.signal-category th[data-column]').forEach(header => {
         const column = header.getAttribute('data-column');
-        const icon = header.querySelector('.sort-icon');
-        if (!icon) return; 
+        let icon = header.querySelector('.sort-icon');
+        
+        // Buat icon jika belum ada
+        if (!icon) {
+            icon = document.createElement('span');
+            icon.classList.add('sort-icon');
+            header.appendChild(icon);
+        }
         
         icon.textContent = '↕';
         icon.classList.remove('active');
@@ -851,8 +879,10 @@ function setupModalHandlers() {
 
 function setupStockClickHandlers() {
     document.querySelectorAll('.clickable-stock').forEach(cell => {
-        cell.removeEventListener('click', handleStockClick);
-        cell.addEventListener('click', handleStockClick);
+        // Hapus listener lama sebelum menambahkan yang baru
+        const oldClone = cell.cloneNode(true);
+        cell.parentNode.replaceChild(oldClone, cell);
+        oldClone.addEventListener('click', handleStockClick);
     });
 }
 
@@ -863,7 +893,7 @@ function handleStockClick(event) {
 
 
 // ********************************************
-// FUNGSI UTAMA DETAIL SAHAM (FIXED untuk Dual Fetch dan Tambah Portfolio Control)
+// FUNGSI UTAMA DETAIL SAHAM
 // ********************************************
 
 async function showStockDetailModal(stockCode) {
@@ -879,7 +909,7 @@ async function showStockDetailModal(stockCode) {
     }
 
     try {
-        // 1. Ambil data INDIKATOR (Tanpa Harga)
+        // 1. Ambil data INDIKATOR
         const { data: indicatorData, error: indicatorError } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
@@ -923,20 +953,20 @@ async function showStockDetailModal(stockCode) {
         // 3. Gabungkan Data (Merge)
         const historicalData = indicatorData.map(ind => ({
             Tanggal: ind.Tanggal,
-            Penutupan: priceMap.get(ind.Tanggal) || null, // Ambil harga dari map, null jika tidak ada
+            Penutupan: priceMap.get(ind.Tanggal) || null, 
             RSI: ind.RSI,
             MACD_Line: ind.MACD_Line,
             Signal_Line: ind.Signal_Line,
-            MA_Cepat: ind.MA_5, // Mapping ke MA Cepat
-            MA_Lambat: ind.MA_20 // Mapping ke MA Lambat
-        })).reverse(); // Balikkan agar urut kronologis untuk chart
+            MA_Cepat: ind.MA_5, 
+            MA_Lambat: ind.MA_20 
+        })).reverse(); 
 
         renderRawIndicatorTable(historicalData);
         renderPriceIndicatorChart(stockCode, historicalData);
 
     } catch (err) {
         console.error("Error memuat detail saham:", err);
-        rawIndicatorTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${err.message}.</td></tr>`;
+        rawIndicatorTableBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: red;">Error: ${err.message}. Cek koneksi ke Supabase.</td></tr>`;
     }
 }
 
@@ -948,12 +978,15 @@ function renderRawIndicatorTable(data) {
         row.style.borderBottom = '1px solid #eee';
         
         row.insertCell().textContent = item.Tanggal;
-        row.insertCell().textContent = formatNumber(item.Penutupan); 
+        row.insertCell().textContent = formatNumber(item.Penutupan, false, 0); 
         row.insertCell().textContent = item.RSI ? parseFloat(item.RSI).toFixed(2) : '-';
         row.insertCell().textContent = item.MACD_Line ? parseFloat(item.MACD_Line).toFixed(2) : '-';
         row.insertCell().textContent = item.Signal_Line ? parseFloat(item.Signal_Line).toFixed(2) : '-';
-        row.insertCell().textContent = item.MA_Cepat ? formatNumber(item.MA_Cepat) : '-';
-        row.insertCell().textContent = item.MA_Lambat ? formatNumber(item.MA_Lambat) : '-';
+        row.insertCell().textContent = item.MA_Cepat ? formatNumber(item.MA_Cepat, false, 0) : '-';
+        row.insertCell().textContent = item.MA_Lambat ? formatNumber(item.MA_Lambat, false, 0) : '-';
+        
+        // Atur perataan teks untuk kolom angka
+        row.querySelectorAll('td:not(:first-child)').forEach(td => td.style.textAlign = 'right');
     });
 }
 
@@ -971,8 +1004,7 @@ function renderPriceIndicatorChart(stockCode, data) {
     if (priceChart) {
         priceChart.destroy();
     }
-    
-    // 
+
     priceChart = new Chart(ctx, {
         type: 'line', 
         data: {
@@ -988,7 +1020,7 @@ function renderPriceIndicatorChart(stockCode, data) {
                     pointRadius: 2
                 },
                 {
-                    label: `MA 5 (${maFastInput.value} Hari)`,
+                    label: `MA ${maFastInput.value} (Cepat)`,
                     data: maFastData,
                     borderColor: 'rgba(255, 99, 132, 1)',
                     yAxisID: 'yPrice',
@@ -996,7 +1028,7 @@ function renderPriceIndicatorChart(stockCode, data) {
                     pointRadius: 0
                 },
                 {
-                    label: `MA 20 (${maSlowInput.value} Hari)`,
+                    label: `MA ${maSlowInput.value} (Lambat)`,
                     data: maSlowData,
                     borderColor: 'rgba(54, 162, 235, 1)',
                     yAxisID: 'yPrice',
