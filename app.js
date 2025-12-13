@@ -213,6 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dateFilter) { 
         dateFilter.addEventListener('change', () => {
             const selectedDate = dateFilter.value;
+            // Reset kustom MA jika tanggal berubah, karena data RPC hanya untuk satu tanggal
             globalCustomMASignals = []; 
             fetchAndRenderSignals(selectedDate);
         });
@@ -238,6 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Panggil RPC, lalu ambil dan render ulang semua sinyal
             await fetchCustomMASignals(selectedDate, maFast, maSlow);
             fetchAndRenderSignals(selectedDate);
         });
@@ -262,6 +264,7 @@ async function populateDateFilter(latestDate) {
     statusMessage.textContent = 'Memuat daftar tanggal yang tersedia...';
 
     try {
+        // Ambil 30 tanggal unik terbaru
         const { data, error } = await supabaseClient
             .from('indikator_teknikal')
             .select('Tanggal')
@@ -305,11 +308,13 @@ function formatNumber(num, isVolume = false) {
     const number = parseFloat(num);
     
     if (isVolume) {
+        // Format Volume (Jt, M)
         if (number >= 1000000000) return (number / 1000000000).toFixed(2) + ' M';
         if (number >= 1000000) return (number / 1000000).toFixed(2) + ' Jt';
         if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
         return number.toLocaleString('id-ID', { maximumFractionDigits: 0 });
     }
+    // Format Harga (Rupiah)
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
@@ -366,6 +371,7 @@ function sortSignals(signals, column, direction) {
 
 // Fungsi untuk mengkategorikan data
 function categorizeAndRender(signals) {
+    // Sortir data sebelum dikategorikan dan dirender
     const sortedSignals = sortSignals([...signals], sortState.column, sortState.direction);
 
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
@@ -414,10 +420,10 @@ function renderCategory(categoryKey, data) {
     data.forEach(item => {
         const row = tableBody.insertRow();
         
-        // Kode Saham dibuat clickable
+        // Kode Saham dibuat clickable (untuk modal detail)
         const codeCell = row.insertCell();
         codeCell.textContent = item["Kode Saham"];
-        codeCell.classList.add('clickable-stock'); // Tambahkan kelas untuk listener
+        codeCell.classList.add('clickable-stock'); 
 
         row.insertCell().textContent = item["Tanggal"];
         row.insertCell().textContent = formatNumber(item.Close); 
@@ -490,6 +496,7 @@ function setupModalHandlers() {
         closeModalBtn.addEventListener('click', () => {
             if (stockDetailModal) stockDetailModal.style.display = 'none';
         });
+        // Tutup modal jika mengklik di luar area modal
         stockDetailModal.addEventListener('click', (e) => {
             if (e.target === stockDetailModal) {
                 stockDetailModal.style.display = 'none';
@@ -515,7 +522,7 @@ function handleStockClick(event) {
 
 
 // ********************************************
-// FUNGSI UTAMA DETAIL SAHAM (BARU)
+// FUNGSI UTAMA DETAIL SAHAM
 // ********************************************
 
 async function showStockDetailModal(stockCode) {
@@ -523,13 +530,13 @@ async function showStockDetailModal(stockCode) {
     stockDetailModal.style.display = 'flex';
     rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Memuat data...</td></tr>';
     
+    // Hancurkan chart lama
     if (priceChart) {
         priceChart.destroy();
     }
 
     try {
         // Ambil data harga historis dan indikator mentah (30 hari terakhir)
-        // Pastikan kolom ini ada di tabel indikator_teknikal Anda
         const { data: detailData, error } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
@@ -551,7 +558,7 @@ async function showStockDetailModal(stockCode) {
             return;
         }
 
-        const historicalData = detailData.reverse(); // Urutkan kronologis untuk chart
+        const historicalData = detailData.reverse(); // Urutkan kronologis untuk chart (tertua ke terbaru)
 
         renderRawIndicatorTable(historicalData);
         renderPriceIndicatorChart(stockCode, historicalData);
@@ -565,12 +572,12 @@ async function showStockDetailModal(stockCode) {
 // FUNGSI BARU: Merender data mentah ke tabel
 function renderRawIndicatorTable(data) {
     rawIndicatorTableBody.innerHTML = '';
+    // Balikkan urutan agar data terbaru berada di baris paling atas tabel
     data.slice().reverse().forEach(item => { 
         const row = rawIndicatorTableBody.insertRow();
         row.style.borderBottom = '1px solid #eee';
         
         row.insertCell().textContent = item.Tanggal;
-        // Gunakan nama kolom Supabase untuk mengambil data
         row.insertCell().textContent = formatNumber(item.Harga_Penutupan);
         row.insertCell().textContent = item.RSI ? parseFloat(item.RSI).toFixed(2) : '-';
         row.insertCell().textContent = item.MACD_Line ? parseFloat(item.MACD_Line).toFixed(2) : '-';
