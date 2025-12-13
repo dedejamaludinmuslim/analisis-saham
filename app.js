@@ -564,13 +564,13 @@ function updateSortIcons() {
 function handleStockClick(e) { showStockDetailModal(e.target.textContent); }
 
 // ==========================================
-// 9. MODAL DETAIL & FUNDAMENTAL (Tahap 1 & 3) - CODE PERBAIKAN FINAL
+// 9. MODAL DETAIL - CODE FINAL TANPA FUNDAMENTAL
 // ==========================================
 async function showStockDetailModal(stockCode) {
     currentModalStockCode = stockCode; 
     modalTitle.textContent = stockCode; 
     modalCompanyName.textContent = "Memuat data..."; 
-    document.getElementById('fundamentalRatios').innerHTML = '';
+    // document.getElementById('fundamentalRatios').innerHTML = ''; // Tidak perlu karena elemen ini sudah dihapus
     updatePortfolioStatusDisplay(stockCode);
     stockDetailModal.style.display = 'flex'; 
     
@@ -578,17 +578,16 @@ async function showStockDetailModal(stockCode) {
     if(priceChart) priceChart.destroy();
     
     try {
-        // BAGIAN 1: Ambil data fundamental (Nama Perusahaan, PER, PBV) dari data terbaru
-        // Kita hanya ambil 1 baris terbaru dari data_saham
+        // BAGIAN 1: Ambil Nama Perusahaan
         const { data: latestFundamental } = await supabaseClient.from('data_saham')
-            .select(`"Nama Perusahaan", "PER", "PBV"`) 
+            .select(`"Nama Perusahaan"`) // HANYA AMBIL NAMA PERUSAHAAN
             .eq('Kode Saham', stockCode)
             .order('Tanggal Perdagangan Terakhir', { ascending: false })
             .limit(1); 
             
         const fundamentalData = latestFundamental?.[0];
 
-        // BAGIAN 2: Ambil Indikator (ATR, MA, RSI, dll.)
+        // BAGIAN 2: Ambil Indikator (ATR, MA, RSI, dll. - 60 hari)
         const { data: indicators } = await supabaseClient
             .from('indikator_teknikal')
             .select(`*, "ATR_14"`) 
@@ -611,31 +610,17 @@ async function showStockDetailModal(stockCode) {
             .in('Tanggal Perdagangan Terakhir', dates); 
             
         // ========================================================
-        // RENDERING DATA FUNDAMENTAL & NAMA PERUSAHAAN (DARI BAGIAN 1)
+        // RENDERING NAMA PERUSAHAAN
         // ========================================================
         if (fundamentalData) {
             modalCompanyName.textContent = fundamentalData["Nama Perusahaan"] || "Nama Perusahaan Tidak Ditemukan";
-            
-            // TAMPILKAN RASIO FUNDAMENTAL HANYA JIKA ADA NILAI
-            const hasFundamental = (fundamentalData["PER"] && fundamentalData["PER"] !== 0) || (fundamentalData["PBV"] && fundamentalData["PBV"] !== 0);
-            
-            if (hasFundamental) {
-                const per = formatNumber(fundamentalData["PER"], false, false);
-                const pbv = formatNumber(fundamentalData["PBV"], false, false);
-                document.getElementById('fundamentalRatios').innerHTML = `
-                    <div class="fundamental-tag">PER: <span class="${fundamentalData["PER"] && fundamentalData["PER"] > 15 ? 'text-red' : 'text-green'}">${per}</span></div>
-                    <div class="fundamental-tag">PBV: <span class="${fundamentalData["PBV"] && fundamentalData["PBV"] > 2 ? 'text-red' : 'text-green'}">${pbv}</span></div>
-                `;
-            } else {
-                 document.getElementById('fundamentalRatios').innerHTML = '';
-            }
-            
         } else {
-            modalCompanyName.textContent = "Nama perusahaan & Fundamental tidak ditemukan";
+            // Jika nama perusahaan tidak ada di data_saham terbaru
+            modalCompanyName.textContent = "Nama perusahaan tidak ditemukan";
         }
 
         // ========================================================
-        // RENDERING TABEL & GRAFIK (DARI BAGIAN 2 & 3)
+        // RENDERING TABEL & GRAFIK
         // ========================================================
         
         const priceMap = new Map(); prices?.forEach(p => priceMap.set(p["Tanggal Perdagangan Terakhir"], p.Penutupan));
