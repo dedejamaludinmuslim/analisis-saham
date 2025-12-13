@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Screener Saham Pro v2.2</title>
+    <title>Screener Saham Pro v2.2 (Final)</title>
     
     <link rel="manifest" href="manifest.json">
     
@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         :root {
@@ -87,7 +87,7 @@
         .signal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); background-color: #fcfcfc; } 
         .signal-header h2 { margin: 0; font-size: 1.1rem; color: var(--text-main); display: flex; align-items: center; gap: 8px;}
         .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 0.9rem; } /* Min width ditambah untuk kolom Score */
         th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
         th { background-color: #f9fafb; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); cursor: pointer;}
         
@@ -115,6 +115,17 @@
         #portfolioStatusToggle { background: white; color: var(--primary); padding: 8px 16px; border: 2px solid var(--primary); border-radius: 50px; font-weight: 600; cursor: pointer; font-size: 0.85rem; margin-top: 10px;}
         #portfolioStatusToggle.owned { background: #dcfce7; color: #166534; border-color: transparent; }
         
+        /* Tambahan Style Fundamental (Tahap 1) */
+        .fundamental-tag {
+            background-color: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .fundamental-tag span {
+            font-weight: 700;
+        }
+
         .about-section { margin-bottom: 25px; }
         .about-section h3 { font-size: 1.1rem; color: var(--text-main); margin-bottom: 10px; border-left: 4px solid var(--primary); padding-left: 10px; }
         .about-section p, .about-section li { color: #4b5563; line-height: 1.6; font-size: 0.95rem; }
@@ -145,7 +156,7 @@
             </button>
             
             <button id="refreshAnalysisBtn" class="header-btn">
-                🔄 Refresh
+                🔄 Refresh Analisa
             </button>
 
             <label for="csvFileInput" class="header-btn">
@@ -158,7 +169,7 @@
     <div class="container">
         
         <div id="stockSearchContainer">
-            <input type="text" id="stockSearchInput" placeholder="🔍 Cari Kode Saham (misal: ANTM)">
+            <input type="text" id="stockSearchInput" placeholder="🔍 Cari Kode Saham (cth: BBCA)">
             <div id="stockSearchResults"></div>
         </div>
         
@@ -172,10 +183,10 @@
                 <label for="signalFilter">Filter Sinyal</label>
                 <select id="signalFilter">
                     <option value="ALL">Semua Sinyal</option>
-                    <option value="OWNED">💼 Portofolio (Owned)</option>
-                    <option value="WATCH">👀 Watchlist (Unowned)</option>
+                    <option value="OWNED">💼 Portfolio (Owned)</option>
                     <option value="BUY">📈 Potensi BUY</option>
                     <option value="SELL">📉 Potensi SELL</option>
+                    <option value="WATCH">👀 Watchlist</option>
                 </select>
             </div>
 
@@ -197,7 +208,17 @@
             <p class="category-status" id="maStatus">Tidak ada sinyal MA hari ini.</p>
             <div class="table-responsive">
                 <table id="maCrossTable" style="display:none;">
-                    <thead><tr><th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th><th>Status</th><th>Avg Price</th><th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th><th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th><th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th><th data-column="Volume">Vol <span class="sort-icon">↕</span></th><th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th><th data-column="Sinyal">Sinyal</th></tr></thead>
+                    <thead><tr>
+                        <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th>Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal</th>
+                    </tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -207,7 +228,17 @@
             <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
             <div class="table-responsive">
                 <table id="rsiTable" style="display:none;">
-                    <thead><tr><th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th><th>Status</th><th>Avg Price</th><th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th><th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th><th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th><th data-column="Volume">Vol <span class="sort-icon">↕</span></th><th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th><th data-column="Sinyal">Sinyal</th></tr></thead>
+                    <thead><tr>
+                        <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th>Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal</th>
+                    </tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -217,7 +248,17 @@
             <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
             <div class="table-responsive">
                 <table id="volumeTable" style="display:none;">
-                    <thead><tr><th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th><th>Status</th><th>Avg Price</th><th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th><th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th><th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th><th data-column="Volume">Vol <span class="sort-icon">↕</span></th><th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th><th data-column="Sinyal">Sinyal</th></tr></thead>
+                    <thead><tr>
+                        <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th>Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal</th>
+                    </tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -227,7 +268,17 @@
             <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
             <div class="table-responsive">
                 <table id="macdTable" style="display:none;">
-                    <thead><tr><th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th><th>Status</th><th>Avg Price</th><th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th><th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th><th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th><th data-column="Volume">Vol <span class="sort-icon">↕</span></th><th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th><th data-column="Sinyal">Sinyal</th></tr></thead>
+                    <thead><tr>
+                        <th data-column="Kode Saham">Kode <span class="sort-icon">↕</span></th>
+                        <th data-column="power_score">Score <span class="sort-icon">↕</span></th> <th>Status</th>
+                        <th>Avg Price</th>
+                        <th data-column="Untung/Rugi">P/L % <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tgl <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Vol <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Chg% <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal</th>
+                    </tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -240,16 +291,19 @@
                 <div>
                     <h2 id="modalTitle">XXXX</h2>
                     <p id="modalCompanyName">Nama Perusahaan Loading...</p>
+                    
+                    <div id="fundamentalRatios" style="margin-top: 10px; display: flex; gap: 10px; font-size: 0.85rem;">
+                        </div>
                     <button id="portfolioStatusToggle">Tambahkan ke Portofolio</button>
                 </div>
                 <button id="closeModalBtn" class="btn-close">&times;</button>
             </div>
             <div class="modal-body">
-                <h3 style="margin-top:0; font-size:1rem; color:var(--text-muted);">Grafik Harga & Indikator</h3>
+                <h3 style="margin-top:0; font-size:1rem; color:var(--text-muted);">Grafik Harga & Indikator (60 Hari)</h3>
                 <div style="height: 300px; margin-bottom: 20px; position: relative;">
                     <canvas id="priceIndicatorChart"></canvas>
                 </div>
-                <h3 style="font-size:1rem; color:var(--text-muted);">Data Historis (30 Hari)</h3>
+                <h3 style="font-size:1rem; color:var(--text-muted);">Data Historis (60 Hari)</h3>
                 <div class="table-responsive">
                     <table id="rawIndicatorTable" style="font-size: 0.85rem;">
                         <thead><tr><th>Tanggal</th><th>Close</th><th>RSI</th><th>MACD</th><th>Signal</th><th>MA Fast</th><th>MA Slow</th></tr></thead>
@@ -268,30 +322,30 @@
             </div>
             <div class="modal-body">
                 <div class="about-section">
-                    <h3>📲 Instal Aplikasi (PWA)</h3>
-                    <p>Klik tombol <b>"Install App"</b> di bagian atas untuk menginstal aplikasi ini ke Home Screen HP atau Desktop Anda agar bisa diakses lebih cepat.</p>
+                    <h3>✅ Fitur Terbaru (V2.2)</h3>
+                    <ul>
+                        <li><b>Power Score (Rating):</b> Rating gabungan yang menilai kekuatan sinyal beli/jual dari 4 indikator (skala 0-100).</li>
+                        <li><b>Konteks Fundamental:</b> Menampilkan rasio PER & PBV di detail saham.</li>
+                        <li><b>PWA Install:</b> Tombol Install App agar bisa diakses dari home screen.</li>
+                    </ul>
                 </div>
-
                 <div class="about-section">
                     <h3>💼 Smart Portfolio</h3>
                     <p>Sistem otomatis memantau saham Anda:</p>
                     <ul>
-                        <li><b style="color:#dc2626">CUT LOSS:</b> Rugi > 7%.</li>
-                        <li><b style="color:#d97706">TRAILING STOP:</b> Turun 5% dari harga tertinggi.</li>
+                        <li><b style="color:#dc2626">CUT LOSS:</b> Rugi > 7% dari harga beli.</li>
+                        <li><b style="color:#d97706">TRAILING STOP:</b> Turun 5% dari harga tertinggi sejak beli.</li>
                         <li><b style="color:#16a34a">ADD ON:</b> Sinyal breakout + volume tinggi.</li>
                     </ul>
                 </div>
 
                 <div class="about-section">
                     <h3>🔄 Update Data</h3>
-                    <ul>
-                        <li><b>Upload CSV:</b> Masukkan data harian baru.</li>
-                        <li><b>Refresh Analisa:</b> Klik jika indikator belum muncul atau untuk update status Cut Loss/Trailing portofolio.</li>
-                    </ul>
+                    <p>Gunakan tombol Refresh Analisa setelah Upload CSV untuk update status portofolio.</p>
                 </div>
                 
                 <div style="text-align: center; margin-top: 30px; font-size: 0.8rem; color: #9ca3af;">
-                    Screener Saham Pro v2.2
+                    Screener Saham Pro v2.2 (Final)
                 </div>
             </div>
         </div>
