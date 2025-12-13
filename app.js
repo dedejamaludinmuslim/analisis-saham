@@ -2,7 +2,11 @@
 const SUPABASE_URL = "https://tcibvigvrugvdwlhwsdb.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjaWJ2aWd2cnVndmR3bGh3c2RiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxNzUzNzAsImV4cCI6MjA4MDc1MTM3MH0.pBb6SQeFIMLmBTJZnxSQ2qDtNT1Cslw4c5jeXLeFQDs";
 
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Mengambil fungsi createClient dari objek global yang disediakan oleh CDN
+const { createClient } = window.supabase; 
+
+// Menginisialisasi klien dengan nama yang berbeda agar lebih aman
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
 
 const signalTableBody = document.querySelector('#signalTable tbody');
 const statusMessage = document.getElementById('statusMessage');
