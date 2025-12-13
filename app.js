@@ -30,7 +30,7 @@ function categorizeSignals(signals) {
 
     signals.forEach(item => {
         // Pastikan item memiliki data fundamental sebelum dimasukkan
-        if (!item.data_saham_rel || item.data_saham_rel.length === 0) {
+        if (!item.data_saham || item.data_saham.length === 0) {
             // Lewati jika data fundamental tidak ada
             return; 
         }
@@ -54,14 +54,18 @@ function categorizeSignals(signals) {
 // Fungsi format angka (untuk Volume dan Harga)
 function formatNumber(num, isVolume = false) {
     if (num === null || num === undefined) return '-';
-    // Format volume dengan K/M jika besar, atau sebagai angka biasa
+    
+    // Konversi ke angka float (karena format di Supabase adalah numeric/bigint)
+    const number = parseFloat(num);
+    
+    // Format volume dengan K/Jt jika besar, atau sebagai angka biasa
     if (isVolume) {
-        if (num >= 1000000) return (num / 1000000).toFixed(2) + ' Jt';
-        if (num >= 1000) return (num / 1000).toFixed(1) + ' Rb';
-        return num.toLocaleString('id-ID');
+        if (number >= 1000000) return (number / 1000000).toFixed(2) + ' Jt';
+        if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
+        return number.toLocaleString('id-ID');
     }
-    // Format harga dengan 2 desimal
-    return parseFloat(num).toFixed(2).toLocaleString('id-ID');
+    // Format harga sebagai mata uang IDR
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
 // Fungsi untuk me-render data ke dalam kategori tabel
@@ -81,8 +85,8 @@ function renderCategory(categoryKey, data) {
     tableEl.style.display = 'table'; // Tampilkan tabel
 
     data.forEach(item => {
-        // Asumsi data fundamental ada di item.data_saham_rel[0]
-        const fundamentalData = item.data_saham_rel ? item.data_saham_rel[0] : {};
+        // PERBAIKAN: Menggunakan item.data_saham[0]
+        const fundamentalData = item.data_saham ? item.data_saham[0] : {};
 
         const row = tableBody.insertRow();
         
@@ -97,7 +101,15 @@ function renderCategory(categoryKey, data) {
         const percentChange = fundamentalData.Selisih ? parseFloat(fundamentalData.Selisih) : 0;
         const changeCell = row.insertCell();
         changeCell.textContent = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
-        changeCell.style.color = percentChange > 0 ? 'var(--buy-color)' : (percentChange < 0 ? 'var(--sell-color)' : 'var(--text-color)');
+        // Terapkan warna berdasarkan perubahan harga
+        if (percentChange > 0) {
+            changeCell.style.color = 'var(--buy-color)'; // Hijau
+        } else if (percentChange < 0) {
+            changeCell.style.color = 'var(--sell-color)'; // Merah
+        } else {
+            changeCell.style.color = 'var(--text-color)'; // Netral
+        }
+        changeCell.style.fontWeight = 'bold'; // Tambah bold untuk penekanan
         // --- AKHIR DATA FUNDAMENTAL BARU ---
 
         // Kolom Sinyal (Aksi)
@@ -115,7 +127,7 @@ async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan fundamental dari Supabase...';
     
     try {
-        // *** PERUBAHAN QUERY UTAMA: Menambahkan Relasi data_saham_rel ***
+        // *** PERBAIKAN QUERY: Menggunakan nama relasi default 'data_saham' ***
         const { data: signals, error } = await supabaseClient 
             .from('indikator_teknikal')
             .select(`
@@ -125,11 +137,10 @@ async function fetchAndRenderSignals() {
                 "Sinyal_RSI",
                 "Sinyal_MACD",
                 "Sinyal_Volume",
-                data_saham_rel:data_saham ( "Penutupan", "Volume", "Selisih" ) 
+                data_saham ( "Penutupan", "Volume", "Selisih" ) 
             `)
             .order('Tanggal', { ascending: false })
             .limit(100); 
-            // *** CATATAN: Pastikan 'data_saham_rel' adalah nama relasi Anda di Supabase! ***
 
         if (error) throw error;
         
@@ -144,11 +155,11 @@ async function fetchAndRenderSignals() {
         // 2. Filter data untuk Tanggal Terbaru DAN memiliki MINIMAL satu sinyal
         const dailySignals = signals.filter(s => 
             s.Tanggal === latestDate && (s.Sinyal_MA || s.Sinyal_RSI || s.Sinyal_MACD || s.Sinyal_Volume)
-            && s.data_saham_rel && s.data_saham_rel.length > 0 // Hanya data yang memiliki data fundamental terkait
+            && s.data_saham && s.data_saham.length > 0 // Hanya data yang memiliki data fundamental terkait
         );
 
         if (dailySignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate} dengan data fundamental lengkap.`;
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate} dengan data fundamental lengkap. (Pastikan data MACD sudah 26 hari)`;
             
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
