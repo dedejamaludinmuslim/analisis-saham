@@ -21,437 +21,343 @@
             --buy-color: #15803d; /* Dark Green */
             --sell-bg: #fee2e2; /* Light Red */
             --sell-color: #b91c1c; /* Dark Red */
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-            padding: 20px;
-            background-color: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        h1 {
-            color: var(--primary-color);
-            margin-bottom: 5px;
-        }
-
-        /* Status & Filter Styling */
-        #statusMessage {
-            text-align: center;
-            font-size: 1.1rem;
-            font-weight: 600;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 8px;
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            border: 1px solid var(--primary-color);
-        }
-
-        #filterContainer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background-color: var(--card-bg);
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            --watch-bg: #fef9c3; /* Light Yellow */
+            --watch-color: #a16207; /* Dark Yellow */
         }
         
-        #filterContainer > div {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        body { 
+            font-family: 'Inter', sans-serif; 
+            margin: 0; 
+            padding: 20px;
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: auto; 
+            background: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
+        }
+        h1 { 
+            text-align: center; 
+            color: var(--primary-color); 
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        #statusMessage { 
+            text-align: center; 
+            margin-bottom: 10px; 
+            font-weight: 600; 
+            color: #4b5563; 
+            padding: 10px;
+            border-bottom: 2px solid var(--border-color);
         }
 
-        select, input[type="date"], input[type="number"] {
-            padding: 10px;
+        /* --- Gaya Filter --- */
+        #filterContainer {
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+            gap: 20px; 
+            margin-bottom: 30px;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        #dateFilter, #signalFilter {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            color: var(--text-color);
+            background-color: var(--primary-light);
+            cursor: pointer;
+            transition: border-color 0.3s;
+            font-family: 'Inter', sans-serif; 
+        }
+        #dateFilter:hover, #signalFilter:hover {
+            border-color: var(--primary-color);
+        }
+        
+        /* --- Gaya Kustomisasi MA --- */
+        #maCustomization {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0 10px;
+            padding: 15px;
+            background-color: var(--primary-light);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        #maCustomization input[type="number"] {
+            width: 60px;
+            padding: 8px;
             border: 1px solid var(--border-color);
             border-radius: 4px;
-            font-size: 1rem;
-            min-width: 150px;
+            text-align: center;
         }
-
-        button {
-            padding: 10px 15px;
-            background-color: var(--primary-color);
+        #applyMaCustom {
+            padding: 8px 15px;
+            background-color: var(--buy-color);
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-weight: 600;
-            transition: background-color 0.2s;
         }
-
-        button:hover:not(:disabled) {
-            background-color: #4338ca;
+        #applyMaCustom:hover {
+            background-color: #126631; 
         }
-
-        button:disabled {
-            background-color: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        /* Tabel Sinyal */
+        
+        /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
         .signal-category {
-            margin-bottom: 40px;
-            background-color: var(--card-bg);
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 25px;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
         }
-
         .signal-category h2 {
             margin-top: 0;
-            color: var(--text-color);
-            border-bottom: 2px solid var(--primary-light);
             padding-bottom: 10px;
-            margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary-light);
+            color: var(--primary-color);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-
-        .signal-category table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95rem;
+        .signal-category table { 
+            width: 100%; 
+            border-collapse: separate; 
+            border-spacing: 0; 
+            margin-top: 15px; 
+            overflow: hidden; 
+            border-radius: 6px;
         }
-
-        .signal-category th, .signal-category td {
-            padding: 12px 10px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
+        .signal-category th, .signal-category td { 
+            padding: 12px 15px; 
+            text-align: left; 
+            border-bottom: 1px solid var(--border-color); 
         }
         
-        .signal-category th {
-            background-color: var(--primary-light);
-            color: var(--primary-color);
-            font-weight: 700;
-            cursor: pointer;
+        /* Gaya Header Tabel untuk Sorting */
+        .signal-category th { 
+            background-color: var(--primary-color); 
+            color: white; 
+            font-weight: 600; 
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            cursor: pointer; 
+            user-select: none;
             position: relative;
         }
-
         .signal-category th:hover {
-            background-color: #e0e7ff;
+            background-color: #3b30bd; 
         }
-        
-        .signal-category th .sort-icon {
+        .sort-icon {
             margin-left: 5px;
             font-size: 0.8em;
-            color: var(--primary-color);
+            opacity: 0.7;
         }
+        .sort-icon.active {
+            opacity: 1;
+        }
+        /* Akhir gaya sorting */
 
-        .signal-category tbody tr:hover {
-            background-color: #f7f7f7;
+        .signal-category tr:last-child td {
+            border-bottom: none;
+        }
+        .signal-category tbody tr:nth-child(even) {
+            background-color: #f9fafb;
         }
         
-        /* Signal Badges */
-        .signal-buy {
-            background-color: var(--buy-bg);
-            color: var(--buy-color);
-            padding: 4px 8px;
-            border-radius: 4px;
+        /* Gaya Sinyal */
+        .signal-buy { 
+            background-color: var(--buy-bg); 
+            color: var(--buy-color); 
+            font-weight: 600; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .signal-sell { 
+            background-color: var(--sell-bg); 
+            color: var(--sell-color); 
+            font-weight: 600; 
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .signal-watch { 
+            background-color: var(--watch-bg); 
+            color: var(--watch-color); 
             font-weight: 600;
-        }
-        .signal-sell {
-            background-color: var(--sell-bg);
-            color: var(--sell-color);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-        .signal-watch {
-            background-color: #fef3c7; /* Light Yellow */
-            color: #b45309; /* Dark Yellow */
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        .clickable-stock {
-            cursor: pointer;
-            color: var(--primary-color);
-            font-weight: 600;
-        }
-        .clickable-stock:hover {
-            text-decoration: underline;
-        }
-
-        /* Modal (Pop-up Detail Saham) */
-        .modal {
-            display: none; 
-            position: fixed; 
-            z-index: 1000; 
-            left: 0;
-            top: 0;
-            width: 100%; 
-            height: 100%; 
-            overflow: auto; 
-            background-color: rgba(0,0,0,0.4); 
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            padding: 30px;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 900px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-            position: relative;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        #closeModalBtn {
-            position: absolute;
-            top: 15px;
-            right: 25px;
-            font-size: 30px;
-            font-weight: bold;
-            color: #aaa;
-            background: none;
-            border: none;
-            cursor: pointer;
-            padding: 0;
-        }
-
-        #closeModalBtn:hover,
-        #closeModalBtn:focus {
-            color: #000;
-            text-decoration: none;
-            cursor: pointer;
+            border-radius: 4px; 
+            padding: 4px 8px; 
+            display: inline-block;
+            font-size: 0.9rem;
         }
         
-        #rawIndicatorTable th {
-            background-color: #f4f4f4;
-            color: var(--text-color);
-        }
-        
-        #rawIndicatorTable td {
-            text-align: right;
-        }
-        #rawIndicatorTable td:first-child {
-            text-align: left;
-        }
-
-        /* Styling untuk Fitur Baru */
-        #suggestionList li:hover {
+        .category-status {
+            padding: 10px;
             background-color: var(--primary-light);
+            color: var(--primary-color);
+            border-left: 4px solid var(--primary-color);
+            border-radius: 4px;
+            font-style: italic;
+            display: none; 
         }
 
+        /* Gaya Khusus untuk Kode Saham yang Dapat Diklik */
+        .clickable-stock {
+             cursor: pointer; 
+             color: var(--primary-color) !important;
+             font-weight: bold;
+             text-decoration: underline;
+        }
+        
     </style>
 </head>
 <body>
-
     <div class="container">
-        
-        <header>
-            <h1>Screener Sinyal Saham</h1>
-            <p>Pencarian Sinyal Teknikal Berdasarkan Data Terbaru</p>
-        </header>
-
-        <div id="statusMessage">Memuat data terbaru...</div>
-        
-        <div id="uploadContainer" style="
-            display: flex; justify-content: center; align-items: center; 
-            gap: 20px; margin-bottom: 30px; padding: 15px; 
-            background-color: var(--buy-bg); border: 1px dashed var(--buy-color); 
-            border-radius: 8px;
-        ">
-            <span>Upload Data Saham (CSV) ke `temp_saham`:</span>
-            <input type="file" id="csvFileInput" accept=".csv" style="
-                border: 1px solid var(--border-color); padding: 8px; border-radius: 4px;
-            ">
-            <button id="uploadCsvBtn" style="
-                padding: 8px 15px; background-color: var(--buy-color); color: white;
-                border: none; border-radius: 4px; cursor: pointer; font-weight: 600;
-            ">Upload Data</button>
-        </div>
-        
-        <div id="searchContainer" style="
-            display: flex; justify-content: center; margin-bottom: 30px; 
-            position: relative;
-        ">
-            <input type="text" id="stockSearch" placeholder="Cari Kode Saham (Contoh: BBCA)..." style="
-                width: 350px; padding: 12px 20px; border: 2px solid var(--primary-color);
-                border-radius: 8px; font-size: 1.1rem; text-transform: uppercase;
-            ">
-            <ul id="suggestionList" style="
-                position: absolute; top: 100%; width: 350px; max-height: 200px; 
-                overflow-y: auto; background: var(--card-bg); list-style: none; 
-                padding: 0; margin: 0; border: 1px solid var(--border-color);
-                border-top: none; z-index: 10; border-radius: 0 0 8px 8px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none;
-            ">
-            </ul>
-        </div>
+        <h1>Screener Saham Hari Ini</h1>
+        <p id="statusMessage">Memuat sinyal...</p>
 
         <div id="filterContainer">
             <div>
-                <label for="dateFilter">Tanggal Data:</label>
+                <label for="dateFilter">Lihat Tanggal:</label>
                 <select id="dateFilter" disabled>
-                    <option>Memuat...</option>
+                    <option>Memuat Tanggal...</option>
                 </select>
             </div>
-
             <div>
                 <label for="signalFilter">Filter Sinyal:</label>
                 <select id="signalFilter">
-                    <option value="ALL">Semua Sinyal</option>
-                    <option value="BUY">Sinyal Beli (Buy/Oversold/Golden)</option>
-                    <option value="SELL">Sinyal Jual (Sell/Overbought/Dead)</option>
-                    <option value="WATCH">Sinyal Waspada (Watch/Spike)</option>
+                    <option value="ALL">Tampilkan Semua Sinyal</option>
+                    <option value="BUY">BUY / GOLDEN CROSS / OVERSOLD</option>
+                    <option value="SELL">SELL / DEAD CROSS / OVERBOUGHT</option>
+                    <option value="WATCH">WATCH / VOLUME SPIKE</option>
                 </select>
             </div>
-            
-            <div>
-                <label>MA Kustom:</label>
-                <input type="number" id="maFast" placeholder="Cepat (e.g., 5)" min="1" max="100" value="5" style="width: 100px;">
-                <input type="number" id="maSlow" placeholder="Lambat (e.g., 20)" min="1" max="100" value="20" style="width: 100px;">
-                <button id="applyMaCustom">Terapkan MA</button>
-            </div>
+        </div>
+        <div id="maCustomization">
+            <span>Kustomisasi MA Cross:</span>
+            <label for="maFast">MA Cepat (hari):</label>
+            <input type="number" id="maFast" value="5" min="1" max="50">
+            <label for="maSlow">MA Lambat (hari):</label>
+            <input type="number" id="maSlow" value="20" min="5" max="200">
+            <button id="applyMaCustom">Terapkan Kustom MA</button>
+        </div>
+        <div id="maCrossSection" class="signal-category">
+            <h2>📈 MA Cross (Trend Following)</h2>
+            <p class="category-status" id="maStatus">Tidak ada sinyal MA Cross hari ini.</p>
+            <table id="maCrossTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
+                        <th>Harga Beli</th>
+                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="rsiSection" class="signal-category">
+            <h2>⚖️ RSI (Kondisi Jenuh Beli/Jual)</h2>
+            <p class="category-status" id="rsiStatus">Tidak ada sinyal RSI hari ini.</p>
+            <table id="rsiTable" style="display:none;">
+                <thead>
+                    <tr>
+                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
+                        <th>Harga Beli</th>
+                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
         
-
-        <div class="signal-category">
-            <h2>MA Cross Signal</h2>
-            <p id="maStatus" style="color: #6b7280;">Tidak ada sinyal MA Cross ditemukan.</p>
-            <table id="maCrossTable" style="display: none;">
+        <div id="volumeSection" class="signal-category">
+            <h2>💥 Volume Spike (Anomali Volume)</h2>
+            <p class="category-status" id="volumeStatus">Tidak ada sinyal Volume Spike hari ini.</p>
+            <table id="volumeTable" style="display:none;">
                 <thead>
                     <tr>
                         <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th data-column="Status">Status <span class="sort-icon">↕</span></th>
-                        <th data-column="Harga Beli">Harga Beli <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
+                        <th>Harga Beli</th>
                         <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Close <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">% Change <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal_MA">Sinyal MA <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
                     </tr>
                 </thead>
-                <tbody>
-                    </tbody>
+                <tbody></tbody>
             </table>
         </div>
 
-        <div class="signal-category">
-            <h2>RSI Signal</h2>
-            <p id="rsiStatus" style="color: #6b7280;">Tidak ada sinyal RSI ditemukan.</p>
-            <table id="rsiTable" style="display: none;">
+        <div id="macdSection" class="signal-category">
+            <h2>⚡ MACD (Momentum)</h2>
+            <p class="category-status" id="macdStatus">Tidak ada sinyal MACD hari ini.</p>
+            <table id="macdTable" style="display:none;">
                 <thead>
                     <tr>
                         <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th data-column="Status">Status <span class="sort-icon">↕</span></th>
-                        <th data-column="Harga Beli">Harga Beli <span class="sort-icon">↕</span></th>
+                        <th>Status</th>
+                        <th>Harga Beli</th>
                         <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
                         <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Close <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">% Change <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal_RSI">Sinyal RSI <span class="sort-icon">↕</span></th>
+                        <th data-column="Penutupan">Harga Penutupan <span class="sort-icon">↕</span></th>
+                        <th data-column="Volume">Volume Harian <span class="sort-icon">↕</span></th>
+                        <th data-column="Selisih">Perubahan Harian (%) <span class="sort-icon">↕</span></th>
+                        <th data-column="Sinyal">Sinyal (Aksi)</th>
                     </tr>
                 </thead>
-                <tbody>
-                    </tbody>
+                <tbody></tbody>
             </table>
         </div>
-
-        <div class="signal-category">
-            <h2>MACD Signal</h2>
-            <p id="macdStatus" style="color: #6b7280;">Tidak ada sinyal MACD ditemukan.</p>
-            <table id="macdTable" style="display: none;">
-                <thead>
-                    <tr>
-                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th data-column="Status">Status <span class="sort-icon">↕</span></th>
-                        <th data-column="Harga Beli">Harga Beli <span class="sort-icon">↕</span></th>
-                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Close <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">% Change <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal_MACD">Sinyal MACD <span class="sort-icon">↕</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    </tbody>
-            </table>
-        </div>
-
-        <div class="signal-category">
-            <h2>Volume Signal</h2>
-            <p id="volumeStatus" style="color: #6b7280;">Tidak ada sinyal Volume ditemukan.</p>
-            <table id="volumeTable" style="display: none;">
-                <thead>
-                    <tr>
-                        <th data-column="Kode Saham">Kode Saham <span class="sort-icon">↕</span></th>
-                        <th data-column="Status">Status <span class="sort-icon">↕</span></th>
-                        <th data-column="Harga Beli">Harga Beli <span class="sort-icon">↕</span></th>
-                        <th data-column="Untung/Rugi">P/L (%) <span class="sort-icon">↕</span></th>
-                        <th data-column="Tanggal">Tanggal <span class="sort-icon">↕</span></th>
-                        <th data-column="Penutupan">Close <span class="sort-icon">↕</span></th>
-                        <th data-column="Volume">Volume <span class="sort-icon">↕</span></th>
-                        <th data-column="Selisih">% Change <span class="sort-icon">↕</span></th>
-                        <th data-column="Sinyal_Volume">Sinyal Volume <span class="sort-icon">↕</span></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    </tbody>
-            </table>
-        </div>
-
 
     </div>
 
-    <div id="stockDetailModal" class="modal">
-        <div class="modal-content">
-            
+    <div id="stockDetailModal" style="
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+        background-color: rgba(0, 0, 0, 0.6); display: none; z-index: 1000;
+        justify-content: center; align-items: center;
+    ">
+        <div style="
+            background: white; padding: 25px; border-radius: 10px; 
+            width: 90%; max-width: 900px; max-height: 90%; overflow-y: auto;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        ">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; margin-bottom: 20px;">
                 <h2 id="modalTitle">Detail Saham [KODE]</h2>
-                <button id="closeModalBtn">&times;</button>
+                <button id="closeModalBtn" style="
+                    background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #333;
+                ">&times;</button>
             </div>
             
-            <div id="portfolioControl" style="
-                display: flex; flex-wrap: wrap; align-items: center; gap: 20px; 
-                padding: 15px; margin-bottom: 20px; 
-                background-color: var(--primary-light); border-radius: 8px;
-            ">
-                <label style="font-weight: 600;">
-                    <input type="checkbox" id="ownedCheckbox" style="margin-right: 5px;">
-                    Owned (Telah Dibeli)
-                </label>
-                <div id="buyPriceGroup" style="display:none; align-items: center; gap: 10px;">
-                    <label for="buyPriceInput">Harga Beli (Rp):</label>
-                    <input type="number" id="buyPriceInput" min="1" placeholder="Harga Rata-rata" style="
-                        padding: 8px; border: 1px solid var(--border-color); 
-                        border-radius: 4px; width: 120px; text-align: right;
-                    ">
-                    <button id="savePortfolioBtn" style="
-                        padding: 8px 15px; background-color: var(--primary-color); 
-                        color: white; border: none; border-radius: 4px; cursor: pointer;
-                    ">Simpan</button>
-                </div>
-                <span id="watchlistStatus" style="font-style: italic; color: #4b5563;"></span>
-            </div>
             <h3>📈 Grafik Harga & Indikator</h3>
             <div style="height: 400px; margin-bottom: 30px;">
                 <canvas id="priceIndicatorChart"></canvas>
@@ -462,20 +368,20 @@
                 <thead>
                     <tr>
                         <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Tanggal</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: right;">Harga (Close)</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: right;">RSI</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: right;">MACD Line</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: right;">Signal Line</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: right;">MA 5</th>
-                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4; text-align: right;">MA 20</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Harga (Close)</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">RSI</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MACD Line</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">Signal Line</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MA 5</th>
+                        <th style="padding: 8px; border: 1px solid #ddd; background-color: #f4f4f4;">MA 20</th>
                     </tr>
                 </thead>
                 <tbody>
                     </tbody>
             </table>
+            
         </div>
     </div>
-
-    <script src="app (1).js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
