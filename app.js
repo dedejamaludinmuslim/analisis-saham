@@ -12,12 +12,17 @@ const signalFilter = document.getElementById('signalFilter');
 const maFastInput = document.getElementById('maFast'); 
 const maSlowInput = document.getElementById('maSlow'); 
 const applyMaCustomButton = document.getElementById('applyMaCustom'); 
+// PENAMBAHAN: Elemen Pencarian
+const stockSearchInput = document.getElementById('stockSearchInput');
+const stockSearchResults = document.getElementById('stockSearchResults');
 
 // --- DOM MODAL BARU ---
 const stockDetailModal = document.getElementById('stockDetailModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const modalTitle = document.getElementById('modalTitle');
 const rawIndicatorTableBody = document.querySelector('#rawIndicatorTable tbody');
+// PENAMBAHAN: Tombol Portfolio Status
+const portfolioStatusToggle = document.getElementById('portfolioStatusToggle');
 let priceChart = null; // Variabel untuk menyimpan instance Chart.js
 
 // --- GLOBAL STATE ---
@@ -25,6 +30,7 @@ let globalCombinedSignals = [];
 let globalCustomMASignals = []; 
 let globalPortfolio = new Map(); 
 let sortState = { column: 'Kode Saham', direction: 'asc' }; 
+let currentModalStockCode = null; // Menyimpan kode saham yang sedang dibuka
 
 // Mendapatkan elemen tabel dan status untuk setiap kategori 
 const categories = {
@@ -41,6 +47,7 @@ const categories = {
 // FUNGSI: Mengambil semua kode saham yang dimiliki
 async function fetchPortfolio() {
     try {
+        // Mengambil kode_saham dan harga_beli dari portofolio_saham
         const { data, error } = await supabaseClient
             .from('portofolio_saham')
             .select('kode_saham, harga_beli'); 
@@ -58,7 +65,100 @@ async function fetchPortfolio() {
     }
 }
 
-// FUNGSI RPC: Mengambil Sinyal MA Kustom
+// FUNGSI BARU: Mengubah Status Portofolio
+async function togglePortfolioStatus(stockCode, currentIsOwned) {
+    if (currentIsOwned) {
+        // Hapus dari Portofolio (menjadi Watchlist)
+        try {
+            const { error } = await supabaseClient
+                .from('portofolio_saham')
+                .delete()
+                .eq('kode_saham', stockCode);
+            
+            if (error) throw error;
+            
+            globalPortfolio.delete(stockCode);
+            alert(`${stockCode} dihapus dari Portofolio (menjadi Watchlist).`);
+        } catch (error) {
+            console.error('Error menghapus dari portofolio:', error);
+            alert(`Gagal menghapus ${stockCode} dari portofolio: ${error.message}`);
+            return false;
+        }
+    } else {
+        // Tambahkan ke Portofolio (menjadi Owned)
+        // Kita perlu harga beli. Karena tidak ada input, kita gunakan harga Penutupan terbaru
+        const latestPrice = await getLatestStockPrice(stockCode);
+        const latestDate = dateFilter.value; // Ambil tanggal dari filter
+        
+        if (latestPrice === null) {
+            alert(`Gagal mendapatkan harga Penutupan terbaru untuk ${stockCode}.`);
+            return false;
+        }
+        
+        const confirmPrice = prompt(`Masukkan Harga Beli untuk ${stockCode} (Harga Close terakhir: ${formatNumber(latestPrice, false, true)}):`, latestPrice);
+        
+        if (confirmPrice === null || isNaN(parseFloat(confirmPrice)) || parseFloat(confirmPrice) <= 0) {
+            alert('Pembelian dibatalkan atau Harga Beli tidak valid.');
+            return false;
+        }
+        
+        const buyPrice = parseFloat(confirmPrice);
+        
+        try {
+            // Coba masukkan data (dengan asumsi 'kode_saham' adalah unique key)
+            const { error } = await supabaseClient
+                .from('portofolio_saham')
+                .upsert(
+                    { kode_saham: stockCode, harga_beli: buyPrice, tanggal_beli: latestDate }, 
+                    { onConflict: 'kode_saham' }
+                );
+            
+            if (error) throw error;
+            
+            globalPortfolio.set(stockCode, { hargaBeli: buyPrice });
+            alert(`${stockCode} berhasil ditambahkan ke Portofolio dengan Harga Beli ${formatNumber(buyPrice, false, true)}.`);
+        } catch (error) {
+            console.error('Error menambahkan ke portofolio:', error);
+            alert(`Gagal menambahkan ${stockCode} ke portofolio: ${error.message}`);
+            return false;
+        }
+    }
+    
+    // Refresh Tampilan (jika modal masih terbuka)
+    await fetchPortfolio();
+    if (currentModalStockCode === stockCode) {
+        updatePortfolioStatusDisplay(stockCode);
+    }
+    // Render ulang tabel utama agar kolom Status dan P/L terupdate
+    const filterValue = signalFilter.value;
+    const filteredSignals = applySignalFilter(globalCombinedSignals, filterValue);
+    categorizeAndRender(filteredSignals);
+    
+    return true;
+}
+
+// FUNGSI BARU: Mengambil Harga Penutupan Terakhir
+async function getLatestStockPrice(stockCode) {
+     const targetDate = dateFilter.value;
+     
+     try {
+         const { data, error } = await supabaseClient
+            .from('data_saham')
+            .select(`"Penutupan"`)
+            .eq('Kode Saham', stockCode)
+            .eq('Tanggal Perdagangan Terakhir', targetDate)
+            .limit(1);
+            
+        if (error) throw error;
+        
+        return data && data.length > 0 ? data[0].Penutupan : null;
+     } catch (error) {
+         console.error('Error mengambil harga penutupan:', error);
+         return null;
+     }
+}
+
+// FUNGSI RPC: Mengambil Sinyal MA Kustom (Tidak Berubah)
 async function fetchCustomMASignals(targetDate, maFast, maSlow) {
     statusMessage.textContent = `Memproses sinyal MA Kustom (${maFast}/${maSlow}) untuk ${targetDate}...`;
     globalCustomMASignals = []; 
@@ -83,7 +183,7 @@ async function fetchCustomMASignals(targetDate, maFast, maSlow) {
 }
 
 
-// FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM
+// FUNGSI UNTUK MENGGABUNGKAN DATA STATIS DAN KUSTOM (Tidak Berubah)
 function mergeSignals(staticSignals, customMASignals) {
     const mergedMap = new Map();
 
@@ -114,7 +214,7 @@ function mergeSignals(staticSignals, customMASignals) {
     );
 }
 
-// FUNGSI UTAMA: Mengambil dan Merender Sinyal
+// FUNGSI UTAMA: Mengambil dan Merender Sinyal (Tidak Berubah Signifikan)
 async function fetchAndRenderSignals(selectedDate = null) {
     statusMessage.textContent = 'Memuat data...';
     applyMaCustomButton.disabled = true;
@@ -124,7 +224,6 @@ async function fetchAndRenderSignals(selectedDate = null) {
         await fetchPortfolio(); 
         
         // 2. Kueri data Sinyal dari indikator_teknikal
-        // Perhatikan: Menggunakan "Tanggal" sesuai skema indikator_teknikal
         let signalQuery = supabaseClient 
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
@@ -152,7 +251,6 @@ async function fetchAndRenderSignals(selectedDate = null) {
         }
         
         // 3. Kueri Data Fundamental dari data_saham
-        // Perhatikan: Menggunakan "Tanggal Perdagangan Terakhir" dan "Penutupan" sesuai skema data_saham
         statusMessage.textContent = `Mengambil data harga untuk tanggal ${dateToFilter}...`;
         const { data: fundamentalData, error: fundamentalError } = await supabaseClient
             .from('data_saham')
@@ -264,13 +362,100 @@ document.addEventListener('DOMContentLoaded', () => {
     
     setupSorting();
     setupModalHandlers(); 
+    setupSearchHandlers(); // PENAMBAHAN: Setup handler pencarian
     
     fetchAndRenderSignals(); 
 });
 
 
 // ********************************************
-// FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort)
+// FUNGSI BARU: LOGIKA PENCARIAN
+// ********************************************
+
+async function searchStocks(query) {
+    if (query.length < 2) {
+        stockSearchResults.style.display = 'none';
+        return [];
+    }
+    
+    // Kueri Supabase: Cari kode saham yang diawali dengan query
+    try {
+        const { data, error } = await supabaseClient
+            .from('data_saham')
+            .select(`"Kode Saham", "Nama Perusahaan"`)
+            .ilike('Kode Saham', `${query}%`) // ILIKE untuk pencarian tidak sensitif huruf besar/kecil
+            .limit(10); 
+            
+        if (error) throw error;
+        
+        return data.map(item => ({
+            code: item["Kode Saham"],
+            name: item["Nama Perusahaan"] || 'N/A'
+        }));
+
+    } catch (error) {
+        console.error('Error mencari saham:', error);
+        return [];
+    }
+}
+
+function renderSearchResults(results) {
+    stockSearchResults.innerHTML = '';
+    
+    if (results.length === 0) {
+        stockSearchResults.style.display = 'none';
+        return;
+    }
+    
+    results.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'search-result-item';
+        div.innerHTML = `<span class="search-result-code">${item.code}</span> <span class="search-result-name">${item.name}</span>`;
+        div.dataset.stockCode = item.code;
+        
+        div.addEventListener('click', () => {
+            showStockDetailModal(item.code);
+            stockSearchInput.value = '';
+            stockSearchResults.style.display = 'none';
+        });
+        
+        stockSearchResults.appendChild(div);
+    });
+    
+    stockSearchResults.style.display = 'block';
+}
+
+function setupSearchHandlers() {
+    let searchTimeout;
+    
+    stockSearchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        const query = e.target.value.trim().toUpperCase();
+        
+        searchTimeout = setTimeout(async () => {
+            const results = await searchStocks(query);
+            renderSearchResults(results);
+        }, 300); // Debounce 300ms
+    });
+    
+    // Sembunyikan hasil ketika mengklik di luar
+    document.addEventListener('click', (e) => {
+        if (!stockSearchContainer.contains(e.target)) {
+            stockSearchResults.style.display = 'none';
+        }
+    });
+    
+    stockSearchInput.addEventListener('focus', () => {
+        // Tampilkan hasil jika input tidak kosong
+        if (stockSearchResults.children.length > 0 && stockSearchInput.value.length >= 2) {
+            stockSearchResults.style.display = 'block';
+        }
+    });
+}
+
+
+// ********************************************
+// FUNGSI PENDUKUNG (Tampilan dan Logika Filter/Sort) - (Format Number diubah)
 // ********************************************
 
 async function populateDateFilter(latestDate) {
@@ -315,7 +500,8 @@ function getSignalClass(signal) {
     return '';
 }
 
-function formatNumber(num, isVolume = false) {
+// Perubahan: Menambahkan argumen isRawPrice untuk harga beli/penutupan
+function formatNumber(num, isVolume = false, isRawPrice = false) { 
     if (num === null || num === undefined) return '-';
     
     const number = parseFloat(num);
@@ -326,6 +512,13 @@ function formatNumber(num, isVolume = false) {
         if (number >= 1000) return (number / 1000).toFixed(1) + ' Rb';
         return number.toLocaleString('id-ID', { maximumFractionDigits: 0 });
     }
+    
+    // Jika harga mentah (tanpa IDR) atau jika Penutupan/Harga Beli
+    if (isRawPrice) { 
+        return new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
+    }
+    
+    // Default: format Rupiah
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
@@ -466,7 +659,7 @@ function renderCategory(categoryKey, data) {
             const currentPrice = item.Penutupan; 
             const buyPrice = parseFloat(portfolioData.hargaBeli);
             
-            buyPriceCell.textContent = formatNumber(buyPrice); 
+            buyPriceCell.textContent = formatNumber(buyPrice, false, true); // Menggunakan formatNumber baru
             
             const pnl = ((currentPrice - buyPrice) / buyPrice) * 100;
             
@@ -486,7 +679,7 @@ function renderCategory(categoryKey, data) {
         // Kolom 5: Tanggal
         row.insertCell().textContent = item["Tanggal"];
         // Kolom 6: Penutupan
-        row.insertCell().textContent = formatNumber(item.Penutupan); 
+        row.insertCell().textContent = formatNumber(item.Penutupan, false, true); // Menggunakan formatNumber baru
         // Kolom 7: Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
         
@@ -560,6 +753,15 @@ function setupModalHandlers() {
             }
         });
     }
+    
+    // PENAMBAHAN: Handler untuk Toggle Status Portfolio
+    if (portfolioStatusToggle) {
+        portfolioStatusToggle.addEventListener('click', async () => {
+            const isOwned = portfolioStatusToggle.classList.contains('owned');
+            const success = await togglePortfolioStatus(currentModalStockCode, isOwned);
+            // Status tampilan akan diperbarui di dalam togglePortfolioStatus
+        });
+    }
 }
 
 function setupStockClickHandlers() {
@@ -576,10 +778,27 @@ function handleStockClick(event) {
 
 
 // ********************************************
-// FUNGSI UTAMA DETAIL SAHAM (FIXED untuk Dual Fetch)
+// FUNGSI UTAMA DETAIL SAHAM (Diperbarui untuk Handle Portfolio Toggle)
 // ********************************************
 
+function updatePortfolioStatusDisplay(stockCode) {
+    const isOwned = globalPortfolio.has(stockCode);
+    const buyData = globalPortfolio.get(stockCode);
+    
+    portfolioStatusToggle.classList.remove('owned');
+    portfolioStatusToggle.textContent = 'Tambahkan ke Portfolio (Owned)';
+
+    if (isOwned) {
+        portfolioStatusToggle.classList.add('owned');
+        const buyPriceText = buyData && buyData.hargaBeli ? formatNumber(buyData.hargaBeli, false, true) : 'N/A';
+        portfolioStatusToggle.textContent = `OWNED (Hapus / Harga Beli: ${buyPriceText})`;
+    } else {
+        portfolioStatusToggle.textContent = 'Tambahkan ke Portfolio (Owned)';
+    }
+}
+
 async function showStockDetailModal(stockCode) {
+    currentModalStockCode = stockCode; // Simpan kode saham saat ini
     modalTitle.textContent = `Detail Saham ${stockCode}`;
     stockDetailModal.style.display = 'flex';
     rawIndicatorTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Memuat data...</td></tr>';
@@ -587,6 +806,9 @@ async function showStockDetailModal(stockCode) {
     if (priceChart) {
         priceChart.destroy();
     }
+    
+    // PERBARUI DISPLAY STATUS SAHAM SAAT MODAL DIBUKA
+    updatePortfolioStatusDisplay(stockCode);
 
     try {
         // 1. Ambil data INDIKATOR (Tanpa Harga)
@@ -658,12 +880,12 @@ function renderRawIndicatorTable(data) {
         row.style.borderBottom = '1px solid #eee';
         
         row.insertCell().textContent = item.Tanggal;
-        row.insertCell().textContent = formatNumber(item.Penutupan); 
+        row.insertCell().textContent = formatNumber(item.Penutupan, false, true); // Raw Price
         row.insertCell().textContent = item.RSI ? parseFloat(item.RSI).toFixed(2) : '-';
         row.insertCell().textContent = item.MACD_Line ? parseFloat(item.MACD_Line).toFixed(2) : '-';
         row.insertCell().textContent = item.Signal_Line ? parseFloat(item.Signal_Line).toFixed(2) : '-';
-        row.insertCell().textContent = item.MA_Cepat ? formatNumber(item.MA_Cepat) : '-';
-        row.insertCell().textContent = item.MA_Lambat ? formatNumber(item.MA_Lambat) : '-';
+        row.insertCell().textContent = item.MA_Cepat ? formatNumber(item.MA_Cepat, false, true) : '-'; // Raw Price
+        row.insertCell().textContent = item.MA_Lambat ? formatNumber(item.MA_Lambat, false, true) : '-'; // Raw Price
     });
 }
 
@@ -697,7 +919,7 @@ function renderPriceIndicatorChart(stockCode, data) {
                     pointRadius: 2
                 },
                 {
-                    label: `MA 5 (${maFastInput.value} Hari)`,
+                    label: `MA ${maFastInput.value} Hari`,
                     data: maFastData,
                     borderColor: 'rgba(255, 99, 132, 1)',
                     yAxisID: 'yPrice',
@@ -705,7 +927,7 @@ function renderPriceIndicatorChart(stockCode, data) {
                     pointRadius: 0
                 },
                 {
-                    label: `MA 20 (${maSlowInput.value} Hari)`,
+                    label: `MA ${maSlowInput.value} Hari`,
                     data: maSlowData,
                     borderColor: 'rgba(54, 162, 235, 1)',
                     yAxisID: 'yPrice',
