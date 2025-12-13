@@ -6,6 +6,7 @@ const { createClient } = window.supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); 
 
 const statusMessage = document.getElementById('statusMessage');
+const dateFilter = document.getElementById('dateFilter'); // Elemen filter tanggal baru
 
 // Mendapatkan elemen tabel dan status untuk setiap kategori
 const categories = {
@@ -40,7 +41,7 @@ function formatNumber(num, isVolume = false) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(number);
 }
 
-// Fungsi untuk mengkategorikan data berdasarkan sinyal non-NULL
+// Fungsi untuk mengkategorikan data
 function categorizeSignals(signals) {
     const categorized = { maCross: [], rsi: [], macd: [], volume: [] };
 
@@ -66,7 +67,7 @@ function categorizeSignals(signals) {
     return categorized;
 }
 
-// Fungsi untuk me-render data ke dalam kategori tabel
+// Fungsi untuk me-render data ke dalam kategori tabel (Sama seperti sebelumnya)
 function renderCategory(categoryKey, data) {
     const { tableBody, statusEl, tableEl } = categories[categoryKey];
     const signalKey = `Sinyal_${categoryKey.replace('maCross', 'MA').replace('rsi', 'RSI').replace('macd', 'MACD').replace('volume', 'Volume')}`;
@@ -117,34 +118,101 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// Fungsi utama untuk mengambil dan menampilkan data
-async function fetchAndRenderSignals() {
-    statusMessage.textContent = 'Langkah 1/3: Mengambil data sinyal terbaru...';
+
+// FUNGSI BARU: Mengisi Dropdown Tanggal
+async function populateDateFilter(latestDate) {
+    statusMessage.textContent = 'Memuat daftar tanggal yang tersedia...';
+
+    try {
+        // Ambil semua tanggal unik dari tabel indikator_teknikal
+        const { data, error } = await supabaseClient
+            .from('indikator_teknikal')
+            .select('Tanggal')
+            .order('Tanggal', { ascending: false });
+
+        if (error) throw error;
+
+        // Ekstrak tanggal unik
+        const uniqueDates = [...new Set(data.map(item => item.Tanggal))];
+        
+        dateFilter.innerHTML = '';
+        uniqueDates.forEach(date => {
+            const option = document.createElement('option');
+            option.value = date;
+            option.textContent = date;
+            if (date === latestDate) {
+                option.textContent += ' (Terbaru)';
+            }
+            dateFilter.appendChild(option);
+        });
+
+        dateFilter.disabled = false;
+        
+        // Tambahkan event listener untuk memuat ulang data saat filter diubah
+        dateFilter.addEventListener('change', () => {
+            const selectedDate = dateFilter.value;
+            fetchAndRenderSignals(selectedDate);
+        });
+        
+    } catch (error) {
+        console.error('Error memuat tanggal:', error);
+        // Biarkan filter non-aktif jika gagal
+        dateFilter.innerHTML = '<option>Gagal Memuat Tanggal</option>';
+    }
+}
+
+
+// FUNGSI UTAMA DIMODIFIKASI: Menerima selectedDate sebagai argumen
+async function fetchAndRenderSignals(selectedDate = null) {
+    statusMessage.textContent = 'Langkah 1/3: Mengambil data sinyal...';
     
     try {
-        // Query 1: Ambil data sinyal untuk menentukan tanggal terbaru
-        const { data: signalData, error: signalError } = await supabaseClient 
+        // Query 1: Ambil data sinyal. Jika selectedDate null, ambil 100 data terbaru untuk menentukan tanggal.
+        let signalQuery = supabaseClient 
             .from('indikator_teknikal')
             .select(`"Kode Saham", "Tanggal", "Sinyal_MA", "Sinyal_RSI", "Sinyal_MACD", "Sinyal_Volume"`)
-            .order('Tanggal', { ascending: false })
-            .limit(100); 
+            .order('Tanggal', { ascending: false });
+            
+        if (selectedDate) {
+            signalQuery = signalQuery.eq('Tanggal', selectedDate);
+        } else {
+            signalQuery = signalQuery.limit(100);
+        }
+
+        const { data: signalData, error: signalError } = await signalQuery;
 
         if (signalError) throw signalError;
         if (signalData.length === 0) {
-            statusMessage.textContent = 'Tidak ada data sinyal ditemukan.';
+            const message = selectedDate 
+                ? `Tidak ada sinyal ditemukan pada tanggal ${selectedDate}.` 
+                : 'Tidak ada data sinyal ditemukan.';
+            statusMessage.textContent = message;
+            // Kosongkan tabel
+            Object.values(categories).forEach(({ tableBody, statusEl, tableEl }) => {
+                tableBody.innerHTML = '';
+                tableEl.style.display = 'none';
+                statusEl.style.display = 'block';
+            });
             return;
         }
 
-        // Tentukan Tanggal Terbaru
-        const latestDate = signalData[0].Tanggal;
-        
-        statusMessage.textContent = `Langkah 2/3: Mengambil data fundamental untuk ${latestDate}...`;
+        // Tentukan Tanggal yang Akan Digunakan untuk Filter
+        const dateToFilter = selectedDate || signalData[0].Tanggal;
 
-        // Query 2: Ambil data fundamental pada tanggal terbaru tersebut
+        // Jika ini adalah pemuatan pertama, isi filter tanggal
+        if (!selectedDate) {
+            await populateDateFilter(dateToFilter);
+            // Pilih opsi yang sesuai (tanggal terbaru)
+            dateFilter.value = dateToFilter;
+        }
+        
+        statusMessage.textContent = `Langkah 2/3: Mengambil data fundamental untuk ${dateToFilter}...`;
+
+        // Query 2: Ambil data fundamental pada tanggal yang dipilih
         const { data: fundamentalData, error: fundamentalError } = await supabaseClient
             .from('data_saham')
             .select(`"Kode Saham", "Penutupan", "Volume", "Selisih"`)
-            .eq('Tanggal Perdagangan Terakhir', latestDate);
+            .eq('Tanggal Perdagangan Terakhir', dateToFilter);
 
         if (fundamentalError) throw fundamentalError;
 
@@ -164,8 +232,8 @@ async function fetchAndRenderSignals() {
         // 3. Gabungkan dan Filter Data
         const combinedSignals = [];
         signalData.forEach(s => {
-            // Hanya proses data dari tanggal terbaru
-            if (s.Tanggal !== latestDate) return; 
+            // Filter hanya data pada tanggal yang sedang diproses
+            if (s.Tanggal !== dateToFilter) return; 
 
             const fundamental = fundamentalMap[s["Kode Saham"]];
             
@@ -179,7 +247,7 @@ async function fetchAndRenderSignals() {
         });
 
         if (combinedSignals.length === 0) {
-            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${latestDate} dengan data fundamental lengkap.`;
+            statusMessage.textContent = `Tidak ada sinyal terdeteksi pada tanggal ${dateToFilter} dengan data fundamental lengkap.`;
             Object.values(categories).forEach(({ tableEl }) => tableEl.style.display = 'none');
             Object.values(categories).forEach(({ statusEl }) => statusEl.style.display = 'block');
             return;
@@ -194,13 +262,16 @@ async function fetchAndRenderSignals() {
         renderCategory('macd', categorizedData.macd);
 
         let totalSignals = Object.values(categorizedData).flat().length;
-        statusMessage.textContent = `Sinyal untuk ${combinedSignals.length} saham terdeteksi pada ${latestDate}. Total ${totalSignals} Sinyal.`;
+        statusMessage.textContent = `Sinyal untuk ${combinedSignals.length} saham terdeteksi pada ${dateToFilter}. Total ${totalSignals} Sinyal.`;
 
     } catch (error) {
-        statusMessage.textContent = `Error memuat data: ${error.message}. Cek nama kolom dan ketersediaan data.`;
+        statusMessage.textContent = `Error memuat data: ${error.message}. Cek koneksi Supabase.`;
         console.error('Error fetching data:', error);
     }
 }
 
 // Jalankan fungsi ketika halaman dimuat
-document.addEventListener('DOMContentLoaded', fetchAndRenderSignals);
+document.addEventListener('DOMContentLoaded', () => {
+    // Panggil tanpa argumen agar mengambil tanggal terbaru saat pertama kali dibuka
+    fetchAndRenderSignals(); 
+});
