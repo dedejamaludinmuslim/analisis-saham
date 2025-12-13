@@ -45,12 +45,35 @@
         }
         #statusMessage { 
             text-align: center; 
-            margin-bottom: 30px; 
+            margin-bottom: 10px; /* Diperkecil */
             font-weight: 600; 
             color: #4b5563; 
             padding: 10px;
             border-bottom: 2px solid var(--border-color);
         }
+
+        /* --- Gaya Baru untuk Filter --- */
+        #filterContainer {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 10px 0;
+            border-bottom: 1px dashed var(--border-color);
+        }
+        #dateFilter {
+            padding: 10px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            color: var(--text-color);
+            background-color: var(--primary-light);
+            cursor: pointer;
+            transition: border-color 0.3s;
+            font-family: 'Inter', sans-serif; 
+        }
+        #dateFilter:hover {
+            border-color: var(--primary-color);
+        }
+        /* ----------------------------- */
         
         /* Gaya untuk Kontainer Sinyal Kategori (Kartu) */
         .signal-category {
@@ -147,6 +170,12 @@
         <h1>Screener Saham Hari Ini</h1>
         <p id="statusMessage">Memuat sinyal...</p>
 
+        <div id="filterContainer">
+            <label for="dateFilter">Lihat Sinyal Tanggal:</label>
+            <select id="dateFilter" disabled>
+                <option>Memuat Tanggal...</option>
+            </select>
+        </div>
         <div id="maCrossSection" class="signal-category">
             <h2>📈 MA Cross (Trend Following)</h2>
             <p class="category-status" id="maStatus">Tidak ada sinyal MA Cross hari ini.</p>
