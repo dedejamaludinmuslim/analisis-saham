@@ -60,7 +60,7 @@ function renderCategory(categoryKey, data) {
     data.forEach(item => {
         const row = tableBody.insertRow();
         
-        // Ambil data harga dan volume dari hasil join. data_saham adalah array di sini.
+        // Ambil data harga dan volume dari hasil join (data_saham adalah array)
         const priceData = item.data_saham ? item.data_saham[0] : null; 
         
         row.insertCell().textContent = item["Kode Saham"];
@@ -82,7 +82,7 @@ function renderCategory(categoryKey, data) {
     });
 }
 
-// FUNGSI UTAMA DENGAN QUERY JOIN YANG SUDAH DIPERBAIKI
+// FUNGSI UTAMA DENGAN QUERY JOIN YANG SUDAH DIPERBAIKI (TANPA KOMENTAR YANG ERROR)
 async function fetchAndRenderSignals() {
     statusMessage.textContent = 'Mengambil data sinyal dan harga...';
     
