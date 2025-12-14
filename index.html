@@ -61,15 +61,40 @@
 
         .container { max-width: 1200px; margin: auto; padding: 0 15px 40px; }
 
-        /* Search & Controls */
-        #stockSearchContainer { position: relative; max-width: 500px; margin: 0 auto 20px; z-index: 50; }
+        /* Search & Controls (STICKY) */
+        #stockSearchContainer { 
+            position: sticky; 
+            top: 0; 
+            padding-top: 15px; 
+            background-color: var(--bg-body); 
+            z-index: 51; 
+            margin-bottom: 0; 
+            position: relative; 
+            max-width: 500px; 
+            margin: 0 auto 0; 
+            z-index: 50; 
+        }
         #stockSearchInput { width: 100%; padding: 16px 20px; border: none; border-radius: 50px; font-size: 1rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); outline: none; }
         #stockSearchResults { position: absolute; top: 110%; left: 15px; right: 15px; background: var(--bg-card); border-radius: 12px; box-shadow: var(--shadow-md); display: none; border: 1px solid var(--border); }
         .search-result-item { padding: 12px 20px; cursor: pointer; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
         .search-result-item:hover { background-color: var(--primary-light); }
         .search-result-code { font-weight: 700; color: var(--primary); }
 
-        .controls-wrapper { background: var(--bg-card); border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; border: 1px solid var(--border); }
+        .controls-wrapper { 
+            position: sticky; 
+            top: 80px; /* Below the search container */
+            z-index: 50; 
+            
+            /* Existing styles: */
+            background: var(--bg-card); 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-bottom: 25px; /* Restore margin after sticky section */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* subtle shadow for separation */
+            display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: center; 
+            border: 1px solid var(--border); 
+        }
+        
         .control-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 150px; }
         .control-group label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         select, input[type="number"], input[type="date"] { padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; outline: none; font-family: inherit; width: 100%; background-color: #fff; }
@@ -97,14 +122,13 @@
             left: 0; 
             z-index: 2; 
             background-color: inherit; 
-            /* Menambahkan bayangan untuk memisahkan kolom */
             box-shadow: 2px 0 3px -2px rgba(0,0,0,0.1);
         }
         .signal-card table th.sticky-col { 
-            background-color: #f9fafb; /* Pastikan header memiliki background yang sama */
+            background-color: #f9fafb;
         }
         .signal-card table tr td:first-child { 
-            background-color: var(--bg-card); /* Warna background saat scroll */
+            background-color: var(--bg-card); 
         }
         
         /* Badges */
@@ -306,11 +330,11 @@
                 <button id="closeModalBtn" class="btn-close">&times;</button>
             </div>
             <div class="modal-body">
-                <h3 style="margin-top:0; font-size:1rem; color:var(--text-muted);">Grafik Harga & Indikator (60 Hari)</h3>
+                <h3 style="margin-top:0; font-size:1rem; color:var(--text-muted);">Grafik Harga & Indikator (30 Hari)</h3>
                 <div style="height: 300px; margin-bottom: 20px; position: relative;">
                     <canvas id="priceIndicatorChart"></canvas>
                 </div>
-                <h3 style="font-size:1rem; color:var(--text-muted);">Data Historis (60 Hari)</h3>
+                <h3 style="font-size:1rem; color:var(--text-muted);">Data Historis (30 Hari)</h3>
                 <div class="table-responsive">
                     <table id="rawIndicatorTable" style="font-size: 0.85rem;">
                         <thead><tr><th>Tanggal</th><th>Close</th><th>RSI</th><th>MACD</th><th>Signal</th><th>MA Fast</th><th>MA Slow</th><th>ATR</th></tr></thead>
