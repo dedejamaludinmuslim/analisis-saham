@@ -139,12 +139,12 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
                     
                     <div style="display: flex; flex-direction: column; width: 80%; text-align: left;">
                         <label for="swal-input-date" style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">Tanggal Beli:</label>
-                        <input id="swal-input-date" type="date" value="${latestDate}" max="${latestDate}" class="swal2-input" style="text-align: center; height: 40px; padding: 5px; width: 100%;">
+                        <input id="swal-input-date" type="date" value="${latestDate}" max="${latestDate}" class="swal2-input" style="text-align: center; height: 40px; padding: 5px; margin: 0; width: 100%;">
                     </div>
                     
-                    <div style="display: flex; flex-direction: column; width: 80%; text-align: left;">
+                    <div style="display: flex; flex-direction: column; width: 80%; text-align: left; margin-top: 10px;">
                         <label for="swal-input-price" style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">Harga Beli:</label>
-                        <input id="swal-input-price" type="number" value="${latestPrice}" min="1" step="1" class="swal2-input" style="width: 100%; margin-top: 0; text-align: center; height: 40px; padding: 5px;">
+                        <input id="swal-input-price" type="number" value="${latestPrice}" min="1" step="1" class="swal2-input" style="width: 100%; margin: 0; text-align: center; height: 40px; padding: 5px;">
                     </div>
                 </div>
             `,
@@ -530,7 +530,7 @@ function renderCategory(key, data) {
         // 5. Avg Price (Harga Beli) 
         row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
 
-        // 6. P/L %
+        // 6. P/L % - NEW POSITION
         const plCell = row.insertCell();
         if (pf) {
             const pnl = ((item.Penutupan - pf.hargaBeli) / pf.hargaBeli) * 100;
@@ -538,7 +538,7 @@ function renderCategory(key, data) {
             plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
         } else { plCell.textContent = '-'; }
 
-        // 7. Chg% (Selisih) 
+        // 7. Chg% (Selisih) - NEW POSITION
         const chg = parseFloat(item.Selisih || 0);
         const chgCell = row.insertCell();
         chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
@@ -624,13 +624,13 @@ async function showStockDetailModal(stockCode) {
             
         const fundamentalData = latestFundamental?.[0];
 
-        // BAGIAN 2: Ambil Indikator (ATR, MA, RSI, dll. - 60 hari)
+        // BAGIAN 2: Ambil Indikator (ATR, MA, RSI, dll. - 30 hari)
         const { data: indicators } = await supabaseClient
             .from('indikator_teknikal')
             .select(`*, "ATR_14"`) 
             .eq('Kode Saham', stockCode)
             .order('Tanggal', { ascending: false })
-            .limit(60); 
+            .limit(30); // Dibatasi 30 hari
 
         if(!indicators || !indicators.length) { 
             rawIndicatorTableBody.innerHTML = '<tr><td colspan="8">Data indikator kosong</td></tr>'; 
@@ -640,7 +640,7 @@ async function showStockDetailModal(stockCode) {
         
         const dates = indicators.map(i => i.Tanggal);
         
-        // BAGIAN 3: Ambil Harga Historis (Penutupan) untuk 60 hari indikator
+        // BAGIAN 3: Ambil Harga Historis (Penutupan) untuk 30 hari indikator
         const { data: prices } = await supabaseClient.from('data_saham')
             .select(`"Tanggal Perdagangan Terakhir", "Penutupan"`) 
             .eq('Kode Saham', stockCode)
