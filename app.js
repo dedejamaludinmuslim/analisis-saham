@@ -120,7 +120,7 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
             }
         } else { return false; }
 
-    // B. LOGIKA TAMBAH/BELI BARU (Simetri UI dan Tambah Date Input)
+    // B. LOGIKA TAMBAH/BELI BARU (Alignment, Fix Input Duplikat, dan Tambah Date Input)
     } else {
         const latestPrice = await getLatestStockPrice(stockCode);
         const latestDate = dateFilter.value; // Tanggal Analisis Terakhir (untuk default max date)
@@ -132,14 +132,14 @@ async function togglePortfolioStatus(stockCode, currentIsOwned) {
 
         // Popup Input Harga
         const { value: formValues } = await Swal.fire({
-            title: `Tambah ${stockCode}`,
+            title: `Tambahkan ${stockCode} ke Portofolio?`,
             html: `
-                <p style="margin-bottom: 15px; color: #6b7280;">Harga penutupan terakhir (${latestDate}): <b>Rp ${formatNumber(latestPrice, false, true)}</b></p>
+                <p style="margin-bottom: 15px; color: #6b7280; text-align: center;">Harga penutupan terakhir (${latestDate}): <b>Rp ${formatNumber(latestPrice, false, true)}</b></p>
                 <div style="display: flex; gap: 10px; flex-direction: column; align-items: center; width: 100%;">
                     
                     <div style="display: flex; flex-direction: column; width: 80%; text-align: left;">
                         <label for="swal-input-date" style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">Tanggal Beli:</label>
-                        <input id="swal-input-date" type="date" value="${latestDate}" max="${latestDate}" class="swal2-input" style="text-align: center; height: 40px; padding: 5px;">
+                        <input id="swal-input-date" type="date" value="${latestDate}" max="${latestDate}" class="swal2-input" style="text-align: center; height: 40px; padding: 5px; width: 100%;">
                     </div>
                     
                     <div style="display: flex; flex-direction: column; width: 80%; text-align: left;">
@@ -251,7 +251,7 @@ async function fetchAndRenderSignals(selectedDate = null) {
         // PANGGIL RPC untuk mendapatkan sinyal dan Power Score
         const { data: signalData, error: signalError } = await supabaseClient.rpc('get_signals_with_score', { target_date: selectedDate }); 
         
-        if (signalError) throw error;
+        if (signalError) throw signalError;
         
         if (!signalData || signalData.length === 0) {
             statusMessage.textContent = `Tidak ada data perdagangan pada tanggal ${selectedDate}.`;
@@ -501,7 +501,7 @@ function categorizeAndRender(signals) {
     document.querySelectorAll('.clickable-stock').forEach(el => el.onclick = handleStockClick);
 }
 
-// MEMPERBARUI FUNGSI RENDER UNTUK URUTAN KOLOM BARU
+// MEMPERBARUI FUNGSI RENDER UNTUK URUTAN KOLOM BARU DAN STICKY COLUMN
 function renderCategory(key, data) {
     const { tableBody, statusEl, tableEl } = categories[key];
     const sigKey = `Sinyal_${key.replace('maCross','MA').replace('rsi','RSI').replace('macd','MACD').replace('volume','Volume')}`;
@@ -513,8 +513,10 @@ function renderCategory(key, data) {
         const code = item["Kode Saham"];
         const pf = globalPortfolio.get(code);
         
-        // 1. Kode
-        row.insertCell().innerHTML = `<span class="clickable-stock">${code}</span>`;
+        // 1. Kode (Sticky)
+        const codeCell = row.insertCell();
+        codeCell.className = 'sticky-col'; // Tambahkan class sticky
+        codeCell.innerHTML = `<span class="clickable-stock">${code}</span>`;
 
         // 2. Tanggal
         row.insertCell().textContent = item.Tanggal ? item.Tanggal.slice(5) : '-';
@@ -525,7 +527,7 @@ function renderCategory(key, data) {
         // 4. Volume
         row.insertCell().textContent = formatNumber(item.Volume, true);
         
-        // 5. Avg Price (Harga Beli) - Pindah ke sini
+        // 5. Avg Price (Harga Beli) 
         row.insertCell().textContent = pf ? formatNumber(pf.hargaBeli, false, true) : '-';
 
         // 6. P/L %
@@ -536,7 +538,7 @@ function renderCategory(key, data) {
             plCell.textContent = `${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}%`;
         } else { plCell.textContent = '-'; }
 
-        // 7. Chg% (Selisih) - Pindah ke sini
+        // 7. Chg% (Selisih) 
         const chg = parseFloat(item.Selisih || 0);
         const chgCell = row.insertCell();
         chgCell.className = chg > 0 ? 'text-green' : (chg < 0 ? 'text-red' : ''); 
@@ -568,6 +570,12 @@ function renderCategory(key, data) {
         const signalText = item[sigKey] || '-';
         row.insertCell().innerHTML = `<span class="${getSignalClass(signalText)}">${signalText}</span>`;
     });
+
+    // Terapkan class sticky pada header
+    const headers = tableEl.querySelectorAll('th');
+    if (headers.length > 0) {
+        headers[0].className = 'sticky-col';
+    }
 }
 
 function setupSorting() { 
